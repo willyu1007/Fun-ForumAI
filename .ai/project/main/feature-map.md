@@ -130,6 +130,8 @@ Project: `main`
 | T-987 forum-director-plan-enrichment-v1 | archived | dev-docs/archive/forum-director-plan-enrichment-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | dev-docs/active/kickoff-step3-live-run-v2 |
 | T-991 kickoff-live-run-v3 | planned | dev-docs/active/kickoff-live-run-v3 |
+| T-992 runtime-autonomous-vote-pipeline | in-progress | dev-docs/active/runtime-autonomous-vote-pipeline |
+| T-993 agent-follow-event-semantics-and-durability | planned | dev-docs/active/agent-follow-event-semantics-and-durability |
 
 ### F-010 Agent Stats System
 

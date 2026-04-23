@@ -65,6 +65,10 @@ import { buildOwnerPrivatePoolSceneId } from '../media/media-binding-service.js'
 import { MEDIA_SEMANTIC_SCHEMA_VERSION, normalizeStoredSemanticSummary } from '../media/media-contract-utils.js'
 import type { LaunchSystemIdentityConfig } from '../launch/system-roster.js'
 import { bootstrapLaunchRosterMemberships } from '../launch/launch-membership-bootstrap.js'
+import {
+  deleteSeedMediaCleanupTargets,
+  expandSeedMediaCleanupTargets,
+} from './dev-seed-media-cleanup.js'
 
 type SeededAgentRef = {
   id: string
@@ -894,11 +898,10 @@ async function resetWarmupGovernanceFixtures(prisma: PrismaClient | null): Promi
       semanticSnapshotId: true,
     },
   })
-  const bindingIds = governedBindingRows.map((item) => item.id)
-  const assetIds = Array.from(new Set([...directAssetIds, ...governedBindingRows.map((item) => item.assetId)]))
-  const semanticSnapshotIds = Array.from(
-    new Set(governedBindingRows.map((item) => item.semanticSnapshotId)),
-  )
+  const mediaCleanupTargets = await expandSeedMediaCleanupTargets(prisma, {
+    directAssetIds,
+    bindingRows: governedBindingRows,
+  })
 
   await prisma.$transaction(async (tx) => {
     if (threadIds.length > 0) {
@@ -1067,71 +1070,7 @@ async function resetWarmupGovernanceFixtures(prisma: PrismaClient | null): Promi
         },
       })
     }
-    if (bindingIds.length > 0) {
-      await tx.mediaContextProjection.deleteMany({
-        where: {
-          bindingId: {
-            in: bindingIds,
-          },
-        },
-      })
-    }
-    if (bindingIds.length > 0 || assetIds.length > 0) {
-      await tx.sceneMediaBinding.deleteMany({
-        where: {
-          OR: [
-            bindingIds.length > 0 ? { id: { in: bindingIds } } : undefined,
-            assetIds.length > 0 ? { assetId: { in: assetIds } } : undefined,
-          ].filter(Boolean) as Prisma.SceneMediaBindingWhereInput[],
-        },
-      })
-    }
-    if (assetIds.length > 0) {
-      await tx.mediaReusePolicyRecord.deleteMany({
-        where: {
-          subjectType: 'asset',
-          subjectId: {
-            in: assetIds,
-          },
-        },
-      })
-    }
-    if (semanticSnapshotIds.length > 0) {
-      await tx.mediaLineageEdge.deleteMany({
-        where: {
-          OR: [
-            {
-              fromNodeType: 'asset',
-              fromNodeId: {
-                in: assetIds,
-              },
-            },
-            {
-              toNodeType: 'semantic_snapshot',
-              toNodeId: {
-                in: semanticSnapshotIds,
-              },
-            },
-          ],
-        },
-      })
-      await tx.mediaSemanticSnapshot.deleteMany({
-        where: {
-          id: {
-            in: semanticSnapshotIds,
-          },
-        },
-      })
-    }
-    if (assetIds.length > 0) {
-      await tx.mediaAsset.deleteMany({
-        where: {
-          id: {
-            in: assetIds,
-          },
-        },
-      })
-    }
+    await deleteSeedMediaCleanupTargets(tx, mediaCleanupTargets)
     if (turnIds.length > 0 || batchIds.length > 0) {
       await tx.publicStageTurn.deleteMany({
         where: {
@@ -1284,11 +1223,10 @@ export async function resetNonGovernedDevSeedPublicFixtures(
       semanticSnapshotId: true,
     },
   })
-  const bindingIds = bindingRows.map((row) => row.id)
-  const assetIds = Array.from(new Set([...directAssetIds, ...bindingRows.map((row) => row.assetId)]))
-  const semanticSnapshotIds = Array.from(
-    new Set(bindingRows.map((row) => row.semanticSnapshotId)),
-  )
+  const mediaCleanupTargets = await expandSeedMediaCleanupTargets(prisma, {
+    directAssetIds,
+    bindingRows,
+  })
 
   await prisma.$transaction(async (tx) => {
     if (threadIds.length > 0) {
@@ -1406,75 +1344,7 @@ export async function resetNonGovernedDevSeedPublicFixtures(
       })
     }
 
-    if (bindingIds.length > 0) {
-      await tx.mediaContextProjection.deleteMany({
-        where: {
-          bindingId: {
-            in: bindingIds,
-          },
-        },
-      })
-    }
-
-    if (bindingIds.length > 0 || assetIds.length > 0) {
-      await tx.sceneMediaBinding.deleteMany({
-        where: {
-          OR: [
-            bindingIds.length > 0 ? { id: { in: bindingIds } } : undefined,
-            assetIds.length > 0 ? { assetId: { in: assetIds } } : undefined,
-          ].filter(Boolean) as Prisma.SceneMediaBindingWhereInput[],
-        },
-      })
-    }
-
-    if (assetIds.length > 0) {
-      await tx.mediaReusePolicyRecord.deleteMany({
-        where: {
-          subjectType: 'asset',
-          subjectId: {
-            in: assetIds,
-          },
-        },
-      })
-    }
-
-    if (semanticSnapshotIds.length > 0) {
-      await tx.mediaLineageEdge.deleteMany({
-        where: {
-          OR: [
-            {
-              fromNodeType: 'asset',
-              fromNodeId: {
-                in: assetIds,
-              },
-            },
-            {
-              toNodeType: 'semantic_snapshot',
-              toNodeId: {
-                in: semanticSnapshotIds,
-              },
-            },
-          ],
-        },
-      })
-      await tx.mediaSemanticSnapshot.deleteMany({
-        where: {
-          id: {
-            in: semanticSnapshotIds,
-          },
-        },
-      })
-    }
-
-    if (assetIds.length > 0) {
-      await tx.mediaAsset.deleteMany({
-        where: {
-          id: {
-            in: assetIds,
-          },
-        },
-      })
-    }
+    await deleteSeedMediaCleanupTargets(tx, mediaCleanupTargets)
 
     if (turnIds.length > 0) {
       await tx.publicStageTurn.deleteMany({

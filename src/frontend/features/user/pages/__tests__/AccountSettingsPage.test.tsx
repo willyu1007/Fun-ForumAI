@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountSettingsPage } from '../AccountSettingsPage'
 import { useAuth } from '@/shared/hooks/use-auth'
@@ -82,6 +82,18 @@ function renderPage() {
   )
 }
 
+function renderPageWithRoutes(initialEntries: string[] = ['/settings/account']) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <Routes>
+        <Route path="/" element={<div>home page</div>} />
+        <Route path="/search" element={<div>search page</div>} />
+        <Route path="/settings/account" element={<AccountSettingsPage />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
 describe('AccountSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -131,6 +143,18 @@ describe('AccountSettingsPage', () => {
       })
     })
     expect(screen.getByText('已保存')).toBeTruthy()
+  })
+
+  it('falls back to the home route when there is no browser history to return to', async () => {
+    useAuthMock.mockReturnValue(buildAuthMock())
+
+    renderPageWithRoutes(['/settings/account'])
+
+    fireEvent.click(screen.getByRole('button', { name: '返回上一页' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('home page')).toBeTruthy()
+    })
   })
 
   it('resets the password through the account settings email verification flow', async () => {

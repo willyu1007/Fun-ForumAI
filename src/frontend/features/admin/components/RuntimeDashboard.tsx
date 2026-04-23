@@ -16,8 +16,14 @@ import type {
   RuntimeBaselineAdmission,
 } from '@/api/types'
 import { useSseStatus } from '@/app/sse-context'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 interface RuntimeStats {
@@ -274,59 +280,64 @@ export function RuntimeDashboard() {
   }, [mediaRolloutData])
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard
-          title="Runtime"
-          value={runtimeRunning ? '运行中' : '已停止'}
-          variant={runtimeRunning ? 'success' : 'muted'}
-          detail={llmConfigured ? 'LLM 已配置' : 'LLM 未配置'}
-        />
-        <StatCard
-          title="事件队列"
-          value={String(stats?.event_queue.size ?? status?.queue_size ?? 0)}
-          variant="default"
-          detail="待处理事件"
-        />
-        <StatCard
-          title="今日发帖"
-          value={`${stats?.scheduler.postsToday ?? 0} / ${stats?.scheduler.postMaxPerDay ?? 50}`}
-          variant="default"
-          detail={
-            stats?.scheduler.lastPostAt
-              ? `上次：${formatTime(stats.scheduler.lastPostAt)}`
-              : '尚未发帖'
-          }
-        />
-        <StatCard
-          title="Baseline Gate"
-          value={baselineAdmission?.allow_public_growth ? '放量允许' : '放量关闭'}
-          variant={baselineAdmission?.allow_public_growth ? 'success' : 'muted'}
-          detail={
-            baselineAdmission
-              ? baselineAdmission.reasons[0] ?? 'baseline_ready'
-              : 'baseline admission unavailable'
-          }
-        />
-        <StatCard
-          title="SSE 连接"
-          value={String(stats?.sse.connected_clients ?? 0)}
-          variant={sseConnected ? 'success' : 'muted'}
-          detail={`客户端状态: ${formatSsePhase(sseStatus.phase)}`}
-        />
-        <StatCard
-          title="实名门禁"
-          value={formatIdentityGateValue(stats?.runtime.identity_gate)}
-          variant={stats?.runtime.identity_gate?.enforced ? 'default' : 'success'}
-          detail={formatIdentityGateDetail(stats?.runtime.identity_gate)}
-        />
-      </div>
+    <div className="space-y-0">
+      <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold">Runtime 状态</h3>
+        </div>
+        <ul data-ui="list" data-variant="admin-rows">
+          <StatRow
+            title="Runtime"
+            value={runtimeRunning ? '运行中' : '已停止'}
+            variant={runtimeRunning ? 'success' : 'muted'}
+            detail={llmConfigured ? 'LLM 已配置' : 'LLM 未配置'}
+          />
+          <StatRow
+            title="事件队列"
+            value={String(stats?.event_queue.size ?? status?.queue_size ?? 0)}
+            variant="default"
+            detail="待处理事件"
+          />
+          <StatRow
+            title="今日发帖"
+            value={`${stats?.scheduler.postsToday ?? 0} / ${stats?.scheduler.postMaxPerDay ?? 50}`}
+            variant="default"
+            detail={
+              stats?.scheduler.lastPostAt
+                ? `上次：${formatTime(stats.scheduler.lastPostAt)}`
+                : '尚未发帖'
+            }
+          />
+          <StatRow
+            title="Baseline Gate"
+            value={baselineAdmission?.allow_public_growth ? '放量允许' : '放量关闭'}
+            variant={baselineAdmission?.allow_public_growth ? 'success' : 'muted'}
+            detail={
+              baselineAdmission
+                ? baselineAdmission.reasons[0] ?? 'baseline_ready'
+                : 'baseline admission unavailable'
+            }
+          />
+          <StatRow
+            title="SSE 连接"
+            value={String(stats?.sse.connected_clients ?? 0)}
+            variant={sseConnected ? 'success' : 'muted'}
+            detail={`客户端状态: ${formatSsePhase(sseStatus.phase)}`}
+          />
+          <StatRow
+            title="实名门禁"
+            value={formatIdentityGateValue(stats?.runtime.identity_gate)}
+            variant={stats?.runtime.identity_gate?.enforced ? 'default' : 'success'}
+            detail={formatIdentityGateDetail(stats?.runtime.identity_gate)}
+          />
+        </ul>
+      </section>
 
-      <Card>
-        <CardHeader className={"pb-2"}>
-          <CardTitle className={"text-sm"}>Runtime 控制</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold">Runtime 控制</h3>
+        </div>
+        <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
             {runtimeRunning ? (
               <Button
@@ -381,18 +392,22 @@ export function RuntimeDashboard() {
               </p>
             )}
             <div className={"mt-2 flex flex-wrap items-center gap-2"}>
-              <select
-                className={"h-8 rounded-md border bg-background px-2 text-xs"}
+              <Select
                 value={String(rotationOpenCount)}
-                onChange={(event) => {
-                  const next = Number.parseInt(event.target.value, 10)
+                onValueChange={(value) => {
+                  const next = Number.parseInt(value, 10)
                   setRotationOpenCount(Number.isFinite(next) ? next : 3)
                 }}
               >
-                <option value="3">开放 3 个</option>
-                <option value="4">开放 4 个</option>
-                <option value="5">开放 5 个</option>
-              </select>
+                <SelectTrigger className="h-8 w-[120px]" aria-label="开放数量">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">开放 3 个</SelectItem>
+                  <SelectItem value="4">开放 4 个</SelectItem>
+                  <SelectItem value="5">开放 5 个</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 size="sm"
                 variant="outline"
@@ -465,8 +480,8 @@ export function RuntimeDashboard() {
               </p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <PersonalityCompilerCard counters={runtimeFeatures?.data?.counters?.inference_profile} />
       <MediaOpsCard
@@ -557,46 +572,46 @@ function PersonalityCompilerCard({
   }
 }) {
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>Personality Compiler</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <StatCard
+    <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold">Personality Compiler</h3>
+      </div>
+      <div className="space-y-3">
+        <ul data-ui="list" data-variant="admin-rows">
+          <StatRow
             title="Compile"
             value={String(counters?.compile_runs ?? 0)}
             variant="default"
             detail="runtime compile runs"
           />
-          <StatCard
+          <StatRow
             title="Candidate"
             value={String(counters?.candidate_runs ?? 0)}
             variant="default"
             detail="candidate windows"
           />
-          <StatCard
+          <StatRow
             title="Shadow"
             value={String(counters?.shadow_runs ?? 0)}
             variant="default"
             detail="shadow windows"
           />
-          <StatCard
+          <StatRow
             title="Blocked"
             value={String(counters?.blocked_runs ?? 0)}
             variant="muted"
             detail="governance freezes"
           />
-          <StatCard
+          <StatRow
             title="Reanchor"
             value={String(counters?.approved_reanchors ?? 0)}
             variant="success"
             detail="approved rare reanchors"
           />
-        </div>
+        </ul>
         <p className={"text-xs text-muted-foreground"}>编译层只服务治理和路由，不直接进入 prompt 主文本。</p>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
 function ProviderAdmissionCard({
@@ -619,76 +634,78 @@ function ProviderAdmissionCard({
   }
 }) {
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>Provider Admission</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StatCard
+    <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold">Provider Admission</h3>
+      </div>
+      <div className="space-y-3">
+        <ul data-ui="list" data-variant="admin-rows">
+          <StatRow
             title="Admitted"
             value={String(summary?.totals.admitted ?? 0)}
             variant="success"
             detail="visible actor slots"
           />
-          <StatCard
+          <StatRow
             title="Shadow"
             value={String(summary?.totals.shadow ?? 0)}
             variant="default"
             detail="compare-only slots"
           />
-          <StatCard
+          <StatRow
             title="Blocked"
             value={String(summary?.totals.blocked ?? 0)}
             variant="muted"
             detail="reserved / rollback guard"
           />
-        </div>
+        </ul>
 
-        <div className="space-y-2">
+        <ul data-ui="list" data-variant="admin-rows" className="mt-4">
           {(summary?.by_voice_line ?? []).map((entry) => (
-            <div key={entry.voice_line_id} className={"grid grid-cols-[minmax(0,1fr)_repeat(4,auto)] items-center gap-2 rounded border px-3 py-2 text-[11px]"}>
-              <span className={"truncate font-medium"}>
+            <li key={entry.voice_line_id} className={"flex flex-wrap items-center justify-between gap-2 py-2"}>
+              <span className={"truncate font-medium text-sm"}>
                 {entry.voice_line_id} · {entry.core_family}
               </span>
-              <Badge variant="outline">admitted {entry.admitted}</Badge>
-              <Badge variant="outline">shadow {entry.shadow}</Badge>
-              <Badge variant="outline">blocked {entry.blocked}</Badge>
-            </div>
+              <div className="flex gap-2">
+                <Badge variant="outline">admitted {entry.admitted}</Badge>
+                <Badge variant="outline">shadow {entry.shadow}</Badge>
+                <Badge variant="outline">blocked {entry.blocked}</Badge>
+              </div>
+            </li>
           ))}
-        </div>
-      </CardContent>
-    </Card>
+        </ul>
+      </div>
+    </section>
   )
 }
 export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeData | null }) {
   const reasonEntries = Object.entries(guidance?.per_reason ?? {})
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>Guidance Runtime</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
+    <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold">Guidance Runtime</h3>
+      </div>
+      <div className="space-y-3">
+        <ul data-ui="list" data-variant="admin-rows">
+          <StatRow
             title="Guidance Bell"
             value={`${guidance?.bell.unread_count ?? 0} unread`}
             variant={(guidance?.bell.unread_count ?? 0) > 0 ? 'default' : 'muted'}
             detail={`active ${guidance?.bell.active_count ?? 0}`}
           />
-          <StatCard
+          <StatRow
             title="Recall Flag"
             value={guidance?.flags.guidance_recall_v1 ? '开启' : '关闭'}
             variant={guidance?.flags.guidance_recall_v1 ? 'success' : 'muted'}
             detail={guidance?.flags.guidance_v1 ? 'guidance v1 已开启' : 'guidance v1 已关闭'}
           />
-          <StatCard
+          <StatRow
             title="交付延迟"
             value={formatDurationMs(guidance?.avg_delivery_delay_ms ?? null)}
             variant="default"
             detail="平均 recall delivery delay"
           />
-          <StatCard
+          <StatRow
             title="Suppression"
             value={String(
               (guidance?.suppression.same_reason_count ?? 0) +
@@ -697,7 +714,7 @@ export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeDa
             variant="default"
             detail={`same-reason ${guidance?.suppression.same_reason_count ?? 0} · 24h cap ${guidance?.suppression.daily_cap_count ?? 0}`}
           />
-        </div>
+        </ul>
 
         <div className={"rounded border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground"}>
           <p>teaching-first violations: {guidance?.teaching_first_violation_count ?? 0}</p>
@@ -707,23 +724,25 @@ export function GuidanceRuntimeCard({ guidance }: { guidance?: GuidanceRuntimeDa
           </p>
         </div>
 
-        <div className="space-y-2">
+        <ul data-ui="list" data-variant="admin-rows" className="mt-4">
           {reasonEntries.length === 0 ? (
-            <p className={"text-xs text-muted-foreground"}>暂无 Guidance Runtime 指标。</p>
+            <li className={"text-xs text-muted-foreground py-2"}>暂无 Guidance Runtime 指标。</li>
           ) : (
             reasonEntries.map(([reasonCode, metric]) => (
-              <div key={reasonCode} className={"grid grid-cols-[minmax(0,1fr)_repeat(4,auto)] items-center gap-2 rounded border px-3 py-2 text-[11px]"}>
-                <span className={"truncate font-medium"}>{reasonCode}</span>
-                <Badge variant="outline">delivered {metric.delivered}</Badge>
-                <Badge variant="outline">opened {metric.opened}</Badge>
-                <Badge variant="outline">dismissed {metric.dismissed}</Badge>
-                <Badge variant="outline">completed {metric.completed}</Badge>
-              </div>
+              <li key={reasonCode} className={"flex flex-wrap items-center justify-between gap-2 py-2"}>
+                <span className={"truncate font-medium text-sm"}>{reasonCode}</span>
+                <div className="flex gap-2">
+                  <Badge variant="outline">delivered {metric.delivered}</Badge>
+                  <Badge variant="outline">opened {metric.opened}</Badge>
+                  <Badge variant="outline">dismissed {metric.dismissed}</Badge>
+                  <Badge variant="outline">completed {metric.completed}</Badge>
+                </div>
+              </li>
             ))
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </ul>
+      </div>
+    </section>
   )
 }
 export function MediaOpsCard({
@@ -816,37 +835,37 @@ export function MediaOpsCard({
 }) {
   const metrics = observability?.metrics
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>Media Ops</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
+    <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold">Media Ops</h3>
+      </div>
+      <div className="space-y-4">
+        <ul data-ui="list" data-variant="admin-rows">
+          <StatRow
             title="Root Post 带图率"
             value={formatPercent(metrics?.root_post.attach_rate_7d)}
             variant={variantFromGate(observability?.gates, 'root_post_band')}
             detail={`7d attempted ${metrics?.root_post.attempted_7d ?? 0}`}
           />
-          <StatCard
+          <StatRow
             title="挂图失败"
             value={formatPercent(metrics?.root_post.attach_failure_rate_24h)}
             variant={variantFromGate(observability?.gates, 'attach_stability')}
             detail={`24h failed ${metrics?.root_post.attach_failed_24h ?? 0}`}
           />
-          <StatCard
+          <StatRow
             title="Generation 成功率"
             value={formatPercent(metrics?.generation_24h.success_rate)}
             variant={variantFromGate(observability?.gates, 'generation_health')}
             detail={`24h req ${metrics?.generation_24h.requested ?? 0}`}
           />
-          <StatCard
+          <StatRow
             title="Private Leak"
             value={String(metrics?.root_post.critical_private_leaks_24h ?? 0)}
             variant={variantFromGate(observability?.gates, 'privacy_safety')}
             detail="24h critical blocks"
           />
-        </div>
+        </ul>
 
         <div className={"grid gap-4 lg:grid-cols-[1.3fr_1fr]"}>
           <div className={"space-y-3 rounded border bg-muted/20 p-3"}>
@@ -887,11 +906,16 @@ export function MediaOpsCard({
             <div className={"grid gap-2 sm:grid-cols-2 lg:grid-cols-3"}>
               <label className={"text-xs"}>
                 <span className={"mb-1 block text-muted-foreground"}>Mode</span>
-                <select className={"h-8 w-full rounded-md border bg-background px-2"} value={overrideMode} onChange={(event) => onOverrideModeChange(event.target.value as 'AUTO' | 'MANUAL' | 'OFF')}>
-                  <option value="AUTO">AUTO</option>
-                  <option value="MANUAL">MANUAL</option>
-                  <option value="OFF">OFF</option>
-                </select>
+                <Select value={overrideMode} onValueChange={(value) => onOverrideModeChange(value as 'AUTO' | 'MANUAL' | 'OFF')}>
+                  <SelectTrigger className="h-8 w-full" aria-label="Mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AUTO">AUTO</SelectItem>
+                    <SelectItem value="MANUAL">MANUAL</SelectItem>
+                    <SelectItem value="OFF">OFF</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
               <label className={"text-xs"}>
                 <span className={"mb-1 block text-muted-foreground"}>Target Min</span>
@@ -907,12 +931,17 @@ export function MediaOpsCard({
               </label>
               <label className={"text-xs"}>
                 <span className={"mb-1 block text-muted-foreground"}>Generation Tier</span>
-                <select className={"h-8 w-full rounded-md border bg-background px-2"} value={generationTier} onChange={(event) => onGenerationTierChange(event.target.value as 'none' | 'low' | 'medium' | 'high')}>
-                  <option value="none">none</option>
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                </select>
+                <Select value={generationTier} onValueChange={(value) => onGenerationTierChange(value as 'none' | 'low' | 'medium' | 'high')}>
+                  <SelectTrigger className="h-8 w-full" aria-label="Generation Tier">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">none</SelectItem>
+                    <SelectItem value="low">low</SelectItem>
+                    <SelectItem value="medium">medium</SelectItem>
+                    <SelectItem value="high">high</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
               <label className={"text-xs"}>
                 <span className={"mb-1 block text-muted-foreground"}>Sync Budget Ms</span>
@@ -1004,11 +1033,11 @@ export function MediaOpsCard({
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
-function StatCard({
+function StatRow({
   title,
   value,
   variant,
@@ -1025,17 +1054,15 @@ function StatCard({
     default: 'bg-primary/10 text-primary',
   }[variant]
   return (
-    <Card>
-      <CardContent className={"pt-4 pb-3"}>
+    <li className="flex items-center justify-between py-2">
+      <div className="flex flex-col gap-1">
         <p className={"text-[10px] font-medium text-muted-foreground uppercase tracking-wider"}>{title}</p>
-        <div className={"mt-1 flex items-baseline gap-2"}>
-          <Badge variant="outline" className={cn("text-xs", badgeClass)}>
-            {value}
-          </Badge>
-        </div>
-        <p className={"mt-1 text-[10px] text-muted-foreground"}>{detail}</p>
-      </CardContent>
-    </Card>
+        <p className={"text-[10px] text-muted-foreground"}>{detail}</p>
+      </div>
+      <Badge variant="outline" className={cn("text-xs", badgeClass)}>
+        {value}
+      </Badge>
+    </li>
   )
 }
 function formatDurationMs(value: number | null): string {
@@ -1089,11 +1116,11 @@ type MediaObservabilityGateId =
   | 'privacy_safety'
 function TickResultCard({ result }: { result: TickResult }) {
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>Tick 结果</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
+    <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold">Tick 结果</h3>
+      </div>
+      <div className="space-y-2">
         <div className={"flex gap-3 text-xs"}>
           <span>事件: {result.processed_events}</span>
           <span>分配: {result.batch_stats.allocated_agents}</span>
@@ -1111,9 +1138,9 @@ function TickResultCard({ result }: { result: TickResult }) {
           </div>
         )}
         {result.executions.length > 0 && (
-          <div className="space-y-1">
+          <ul data-ui="list" data-variant="admin-rows">
             {result.executions.map((exec, i) => (
-              <div key={i} className={"flex items-center justify-between rounded border px-2 py-1 text-[11px]"}>
+              <li key={i} className={"flex items-center justify-between py-2 text-sm"}>
                 <span className="truncate">{exec.agent_id}</span>
                 <div className="flex items-center gap-2">
                   {exec.usage && (
@@ -1127,58 +1154,57 @@ function TickResultCard({ result }: { result: TickResult }) {
                     {exec.success ? '✓' : '✗'}
                   </Badge>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
 function PostResultCard({ result }: { result: PostResult }) {
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>发帖结果</CardTitle>
-      </CardHeader>
-      <CardContent className={"text-xs space-y-1"}>
+    <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold">发帖结果</h3>
+      </div>
+      <div className={"text-sm space-y-1"}>
         {result.post_id ? (
-          <>
-            <p>
-              <span className={"text-muted-foreground"}>帖子 ID:</span> {result.post_id}
-            </p>
-            <p>
-              <span className={"text-muted-foreground"}>Agent:</span> {result.agent_id}
-            </p>
-            <p>
-              <span className={"text-muted-foreground"}>社区:</span> {result.community_id}
-            </p>
+          <ul data-ui="list" data-variant="admin-rows">
+            <li className="flex justify-between py-2">
+              <span className={"text-muted-foreground"}>帖子 ID:</span> <span>{result.post_id}</span>
+            </li>
+            <li className="flex justify-between py-2">
+              <span className={"text-muted-foreground"}>Agent:</span> <span>{result.agent_id}</span>
+            </li>
+            <li className="flex justify-between py-2">
+              <span className={"text-muted-foreground"}>社区:</span> <span>{result.community_id}</span>
+            </li>
             {result.usage && (
-              <p>
-                <span className={"text-muted-foreground"}>Tokens:</span> {result.usage.total_tokens} (
-                {result.usage.prompt_tokens}p + {result.usage.completion_tokens}c)
-              </p>
+              <li className="flex justify-between py-2">
+                <span className={"text-muted-foreground"}>Tokens:</span> <span>{result.usage.total_tokens} ({result.usage.prompt_tokens}p + {result.usage.completion_tokens}c)</span>
+              </li>
             )}
             {result.latency_ms && (
-              <p>
-                <span className={"text-muted-foreground"}>延迟:</span> {result.latency_ms}ms
-              </p>
+              <li className="flex justify-between py-2">
+                <span className={"text-muted-foreground"}>延迟:</span> <span>{result.latency_ms}ms</span>
+              </li>
             )}
-          </>
+          </ul>
         ) : (
           <p className={"text-warning"}>{result.error ?? '未触发'}</p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
 function StageRotationResultCard({ result }: { result: StageSeasonRotationResult }) {
   return (
-    <Card>
-      <CardHeader className={"pb-2"}>
-        <CardTitle className={"text-sm"}>Season Rotation 结果</CardTitle>
-      </CardHeader>
-      <CardContent className={"space-y-2 text-xs"}>
+    <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold">Season Rotation 结果</h3>
+      </div>
+      <div className={"space-y-2 text-sm"}>
         <p>
           开放数量: {result.open_count} · activated: {result.activated.length} · replaced:{' '}
           {result.replaced.length}
@@ -1187,17 +1213,20 @@ function StageRotationResultCard({ result }: { result: StageSeasonRotationResult
           dist 导出: {result.exported_templates} templates / {result.launch_templates} launch
         </p>
         {result.activated.length > 0 && (
-          <div className={"rounded border bg-muted/20 px-2 py-1"}>
-            <p className={"font-medium"}>新启用</p>
-            {result.activated.map((item) => (
-              <p key={`${item.slot}-${item.template_id}`} className={"text-[11px] text-muted-foreground"}>
-                {item.slot}: {item.template_id}
-              </p>
-            ))}
+          <div className={"rounded border bg-muted/20 px-3 py-2 mt-2"}>
+            <p className={"font-medium mb-2"}>新启用</p>
+            <ul data-ui="list" data-variant="admin-rows">
+              {result.activated.map((item) => (
+                <li key={`${item.slot}-${item.template_id}`} className={"flex justify-between py-2 text-muted-foreground"}>
+                  <span>{item.slot}</span>
+                  <span>{item.template_id}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
 function formatTime(ts: number): string {

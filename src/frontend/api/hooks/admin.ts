@@ -38,6 +38,7 @@ import type {
   WarmupRunDetail,
   WarmupRunListItem,
 } from '../types'
+import type { CommunityFamily, CommunityInteractionContract } from '../../../shared/semantic-taxonomy'
 
 function buildDisabledRuntimeFeaturesResponse(): ApiResponse<RuntimeFeaturesData> {
   return {
@@ -442,6 +443,75 @@ export function useApplyCommunityHotTopicPolicy() {
       qc.invalidateQueries({ queryKey: ['feed'] })
       qc.invalidateQueries({ queryKey: ['room'] })
       qc.invalidateQueries({ queryKey: ['roomProgram'] })
+    },
+  })
+}
+
+export function useApplyCommunitySurfaceSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      communityId: string
+      bannerImageUrl: string
+      avatarImageUrl: string
+      publicIntro: string | null
+      topicFamily: CommunityFamily | null
+      interactionContract: CommunityInteractionContract | null
+    }) => {
+      const proposal = await api
+        .post(`communities/${input.communityId}/config/proposals`, {
+          json: {
+            patch: {
+              launch_profile: {
+                community_family: input.topicFamily,
+              },
+              stage_spec_v1: {
+                human_participation: {
+                  public_participation_mode: input.interactionContract?.public_participation_mode ?? null,
+                  audience_signal_ingestion: input.interactionContract?.audience_signal_ingestion ?? null,
+                  agent_human_response_mode: input.interactionContract?.agent_human_response_mode ?? null,
+                },
+              },
+              community_surface_v1: {
+                banner_image_url: input.bannerImageUrl,
+                avatar_image_url: input.avatarImageUrl,
+                public_intro: input.publicIntro,
+              },
+            },
+            summary: 'Update community settings',
+            reason: 'Admin updated community settings',
+            risk_level: 'LOW',
+          },
+        })
+        .json<ApiResponse<CommunityConfigPatch>>()
+
+      await api
+        .post(`communities/${input.communityId}/config/proposals/${proposal.data.id}/validate`, {
+          json: {},
+        })
+        .json<ApiResponse<CommunityConfigValidationResult>>()
+
+      await api
+        .post(`communities/${input.communityId}/config/proposals/${proposal.data.id}/approve`, {
+          json: {
+            reason: 'Approve community surface settings update',
+          },
+        })
+        .json<ApiResponse<CommunityConfigPatch>>()
+
+      return api
+        .post(`communities/${input.communityId}/config/apply`, {
+          json: {
+            proposal_id: proposal.data.id,
+          },
+        })
+        .json<ApiResponse<CommunityConfigApplyResult>>()
+    },
+    onSuccess: (_, input) => {
+      qc.invalidateQueries({ queryKey: ['communities'] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+      qc.invalidateQueries({ queryKey: ['homeProgramming'] })
+      qc.invalidateQueries({ queryKey: queryKeys.communityParticipationContract(input.communityId) })
     },
   })
 }

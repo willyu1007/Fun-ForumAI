@@ -19,8 +19,9 @@ export class ProactiveEventHandler {
   handle(event: DomainEvent): void {
     switch (event.event_type) {
       case 'VOTE_CAST':
+      case 'AGENT_VOTE_CAST':
         this.handleVoteCast(event).catch((err) =>
-          console.error('[ProactiveEventHandler] VOTE_CAST handler failed:', err),
+          console.error(`[ProactiveEventHandler] ${event.event_type} handler failed:`, err),
         )
         break
 

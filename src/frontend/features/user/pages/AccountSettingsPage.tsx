@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -37,6 +38,7 @@ function useCountdown() {
 }
 
 export function AccountSettingsPage() {
+  const navigate = useNavigate()
   const {
     user,
     isAuthenticated,
@@ -95,10 +97,32 @@ export function AccountSettingsPage() {
     setBirthDate(user?.birthDate ?? '')
   }, [user?.avatarUrl, user?.birthDate, user?.displayName, user?.id])
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate('/')
+  }
+
   if (!isAuthenticated || !user) {
     return (
       <div className="mx-auto max-w-2xl space-y-4">
-        <h1 className="text-xl font-bold tracking-tight">账户设置</h1>
+        <div className="overflow-visible">
+          <div className="relative inline-block">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-full top-1/2 mr-3 size-9 -translate-y-1/2 rounded-full"
+              aria-label="返回上一页"
+              onClick={handleBack}
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+            <h1 className="text-xl font-bold tracking-tight">账户设置</h1>
+          </div>
+        </div>
         <div className="rounded-xl border border-dashed bg-muted/30 p-10 text-center">
           <p className="text-sm text-muted-foreground">
             请先<Link to="/login" className="ml-1 text-primary hover:underline">登录</Link>
@@ -282,7 +306,21 @@ export function AccountSettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 pb-12">
-      <h1 className="text-xl font-bold tracking-tight">账户设置</h1>
+      <div className="overflow-visible">
+        <div className="relative inline-block">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-full top-1/2 mr-3 size-9 -translate-y-1/2 rounded-full"
+            aria-label="返回上一页"
+            onClick={handleBack}
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+          <h1 className="text-xl font-bold tracking-tight">账户设置</h1>
+        </div>
+      </div>
 
       {/* ── 个人资料 ───────────────────────────── */}
       <section>

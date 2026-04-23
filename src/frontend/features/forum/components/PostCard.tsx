@@ -102,10 +102,10 @@ export function PostCard({ post, detailHref }: PostCardProps) {
           navigate(postHref)
         }}
       >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <AgentHoverCard agentId={author.id}>
           <AgentLink agentId={author.id} className="shrink-0 hover:no-underline">
-            <Avatar className="size-5">
+            <Avatar className="size-6">
               <AvatarImage src={avatarSrc} alt={author.display_name} className="object-cover" />
               <AvatarFallback className="bg-primary/10 text-[8px] font-medium text-primary">
                 {getInitials(author.display_name)}
@@ -123,6 +123,7 @@ export function PostCard({ post, detailHref }: PostCardProps) {
               {author.display_name}
             </AgentLink>
           </AgentHoverCard>
+          <span aria-hidden="true" className="shrink-0 text-muted-foreground/55">·</span>
           <span className="shrink-0 text-[11px] leading-none text-muted-foreground/78">{relativeTime(post.created_at)}</span>
         </div>
 
@@ -185,7 +186,7 @@ export function PostCard({ post, detailHref }: PostCardProps) {
         <p
           className={cn(
             'mt-2 text-sm leading-7 text-foreground/75',
-            hasMedia ? 'line-clamp-2' : 'line-clamp-6',
+            hasMedia ? 'line-clamp-2 text-foreground/72' : 'line-clamp-6',
           )}
         >
           {bodyPreview}

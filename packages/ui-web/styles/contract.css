@@ -150,10 +150,7 @@
   [data-ui="icon-button"][disabled] { opacity: 0.6; cursor: not-allowed; }
 
   [data-ui="button"]:focus-visible,
-  [data-ui="icon-button"]:focus-visible,
-  [data-ui="input"]:focus-visible,
-  [data-ui="textarea"]:focus-visible,
-  [data-ui="select"]:focus-visible {
+  [data-ui="icon-button"]:focus-visible {
     outline: 2px solid var(--ui-color-focus-ring);
     outline-offset: 2px;
   }
@@ -172,17 +169,19 @@
     border: var(--ui-border-width-sm) solid var(--ui-color-border);
     background: var(--ui-color-surface);
     color: var(--ui-color-text-primary);
-    font: inherit;
+    font-family: inherit;
+    font-size: var(--ui-typography-size-body);
+    line-height: var(--ui-typography-line-height-body);
     transition: border-color var(--ui-motion-duration-normal) var(--ui-motion-ease-standard),
                 box-shadow var(--ui-motion-duration-normal) var(--ui-motion-ease-standard);
   }
   [data-ui="input"][data-size="sm"],
-  [data-ui="select"][data-size="sm"] { padding: var(--ui-space-2) var(--ui-space-3); }
+  [data-ui="select"][data-size="sm"] { padding: var(--ui-space-1) var(--ui-space-2); }
   [data-ui="input"][data-size="md"],
-  [data-ui="select"][data-size="md"] { padding: var(--ui-space-3) var(--ui-space-3); }
+  [data-ui="select"][data-size="md"] { padding: var(--ui-space-2) var(--ui-space-3); }
   [data-ui="input"][data-size="lg"],
   [data-ui="select"][data-size="lg"] { padding: var(--ui-space-3) var(--ui-space-4); }
-  [data-ui="textarea"] { min-height: var(--ui-sizing-textarea-min-height); padding: var(--ui-space-3) var(--ui-space-3); }
+  [data-ui="textarea"] { min-height: var(--ui-sizing-textarea-min-height); padding: var(--ui-space-2) var(--ui-space-3); }
 
   [data-ui="input"][data-state="error"],
   [data-ui="textarea"][data-state="error"],

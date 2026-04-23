@@ -103,6 +103,8 @@ function createDeps(
       id: string
       display_name: string
     }>
+    serviceableAgentIds?: string[]
+    homeVoiceLineByAgentId?: Record<string, 'qwen-social-v1' | 'doubao-deep-v1' | 'glm-deep-v1' | 'minimax-her-v1' | 'kimi-deep-v1'>
     membershipRole?: 'RESIDENT' | 'GUEST'
     membershipStatus?: 'ACTIVE' | 'PAUSED' | 'BANNED'
     agentTier?: 'T1' | 'T2' | 'T3' | 'T4' | 'T5'
@@ -140,6 +142,9 @@ function createDeps(
 
   return {
     llmGateway: {
+      canServeRoute: vi.fn((input: { agentId: string }) =>
+        (options.serviceableAgentIds ?? activeAgents.map((item) => item.id)).includes(input.agentId),
+      ),
       generateVisibleText: vi.fn(async () => ({
         content: 'mock llm output',
         messages: [],
@@ -275,6 +280,12 @@ function createDeps(
         runtimeEnvelope: null,
       })),
     } as unknown as PostSchedulerDeps['promptOrchestrator'],
+    inferenceProfileService: {
+      resolveVisibleRoute: vi.fn(async (input: { agentId: string; requestedTier: 'lite' | 'base' | 'premium' }) => ({
+        homeVoiceLineId: options.homeVoiceLineByAgentId?.[input.agentId] ?? 'qwen-social-v1',
+        requestedTier: input.requestedTier,
+      })),
+    } as unknown as NonNullable<PostSchedulerDeps['inferenceProfileService']>,
     publicSceneSelectorService: {
       selectScheduledPost: vi.fn(async () => defaultSceneSelection),
     } as unknown as NonNullable<PostSchedulerDeps['publicSceneSelectorService']>,
@@ -480,6 +491,12 @@ function createDeps(
   }
 }
 
+function makeRouteUnavailableError(message: string, code: 'AuthError' | 'RateLimitError' | 'TimeoutError' = 'RateLimitError'): Error & { code: string } {
+  const error = new Error(message) as Error & { code: string }
+  error.code = code
+  return error
+}
+
 describe('PostScheduler', () => {
   it('does not consume daily quota when write fails', async () => {
     const write = vi.fn(async () => ({ success: false, error: 'write failed' }))
@@ -584,6 +601,175 @@ describe('PostScheduler', () => {
         source_callsite_id: 'post-scheduler-create-post',
       }),
     )
+  })
+
+  it('skips agents whose scheduled-post route is not serviceable in the current environment', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-serviceable' }))
+    const scheduler = new PostScheduler(createDeps(write, {
+      activeAgents: [
+        {
+          id: 'agent-1',
+          display_name: 'Agent One',
+        },
+        {
+          id: 'agent-2',
+          display_name: 'Agent Two',
+        },
+      ],
+      serviceableAgentIds: ['agent-2'],
+      homeVoiceLineByAgentId: {
+        'agent-1': 'doubao-deep-v1',
+        'agent-2': 'qwen-social-v1',
+      },
+      activeCommunityIdsByAgent: ['community-1'],
+      scheduledPostCommunityId: 'community-1',
+    }), {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    const result = await scheduler.createPost({
+      governance_context: {
+        governance_batch_id: 'warmup-batch-1',
+        generation_mode: 'warmup_runtime',
+      },
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      triggered: true,
+      agent_id: 'agent-2',
+      community_id: 'community-1',
+      post_id: 'post-serviceable',
+    }))
+    expect(write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'create_post',
+        community_id: 'community-1',
+      }),
+      'agent-2',
+      'evt-1',
+      expect.anything(),
+      expect.any(Number),
+      0,
+      expect.anything(),
+    )
+  })
+
+  it('retries the next runnable candidate when scheduled-post generation fails at route execution time', async () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-second-agent' }))
+    const deps = createDeps(write, {
+      activeAgents: [
+        {
+          id: 'agent-1',
+          display_name: 'Agent One',
+        },
+        {
+          id: 'agent-2',
+          display_name: 'Agent Two',
+        },
+      ],
+      serviceableAgentIds: ['agent-1', 'agent-2'],
+      activeCommunityIdsByAgent: ['community-1'],
+      scheduledPostCommunityId: 'community-1',
+    })
+    ;(deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { agentId: string }) => {
+        if (input.agentId === 'agent-1') {
+          throw makeRouteUnavailableError('Failed to resolve any credential for token-plan-openai/qwen3.6-plus', 'AuthError')
+        }
+        return {
+          content: 'mock llm output',
+          messages: [],
+          usage: { prompt_tokens: 10, completion_tokens: 12, total_tokens: 22 },
+          latencyMs: 15,
+          platformRetryCount: 0,
+          renderDecision: {
+            voiceLineId: 'qwen-social-v1',
+            tier: 'base',
+            profileId: 'profile-1',
+            providerId: 'dashscope-openai',
+            modelId: 'qwen-plus',
+            region: 'cn',
+            endpointId: 'default',
+            credentialId: 'cred-1',
+            fallbackLevel: 'none',
+            reasons: ['test'],
+            promptTemplateId: 'agent-create-post',
+            promptVersion: 4,
+          },
+          promptRef: { id: 'agent-create-post', version: 4 },
+        }
+      },
+    )
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    const result = await scheduler.createPost()
+
+    expect(result).toEqual(expect.objectContaining({
+      triggered: true,
+      agent_id: 'agent-2',
+      community_id: 'community-1',
+      post_id: 'post-second-agent',
+    }))
+    expect(deps.eventRepo.create as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'create_post',
+        community_id: 'community-1',
+      }),
+      'agent-2',
+      'evt-1',
+      expect.anything(),
+      expect.any(Number),
+      0,
+      expect.anything(),
+    )
+    randomSpy.mockRestore()
+  })
+
+  it('returns a controlled no-trigger result and cools down when every runnable candidate fails route execution', async () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-ignored' }))
+    const deps = createDeps(write, {
+      activeAgents: [
+        {
+          id: 'agent-1',
+          display_name: 'Agent One',
+        },
+        {
+          id: 'agent-2',
+          display_name: 'Agent Two',
+        },
+      ],
+      serviceableAgentIds: ['agent-1', 'agent-2'],
+      activeCommunityIdsByAgent: ['community-1'],
+      scheduledPostCommunityId: 'community-1',
+    })
+    ;(deps.llmGateway.generateVisibleText as ReturnType<typeof vi.fn>).mockRejectedValue(
+      makeRouteUnavailableError('rate limit exceeded for scheduled-post route'),
+    )
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    const first = await scheduler.createPost()
+    const second = await scheduler.createPost()
+
+    expect(first).toEqual(expect.objectContaining({
+      triggered: false,
+      error: expect.stringContaining('All runnable scheduled-post candidates failed route execution'),
+    }))
+    expect(second).toEqual({ triggered: false })
+    expect(deps.eventRepo.create as ReturnType<typeof vi.fn>).not.toHaveBeenCalled()
+    expect(write).not.toHaveBeenCalled()
+    expect((deps.agentService.listActiveAgents as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(1)
+    randomSpy.mockRestore()
   })
 
   it('does not spend an LLM call when no enrolled community passes the stage role gate', async () => {

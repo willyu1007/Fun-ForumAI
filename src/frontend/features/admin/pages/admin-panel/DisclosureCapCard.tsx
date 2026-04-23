@@ -1,5 +1,12 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { renderCapOverrideSummary } from './constants'
 import { useDisclosureCapsController } from './use-governance-controller'
@@ -15,18 +22,18 @@ export function DisclosureCapCard() {
           <label htmlFor="disclosure-cap-scope-type" className="sr-only">
             Cap 作用域类型
           </label>
-          <select
-            id="disclosure-cap-scope-type"
-            name="disclosure-cap-scope-type"
+          <Select
             value={disclosureCaps.scopeType}
-            onChange={(event) =>
-              disclosureCaps.setScopeType(event.target.value as 'agent' | 'community')
-            }
-            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            onValueChange={(value) => disclosureCaps.setScopeType(value as 'agent' | 'community')}
           >
-            <option value="agent">agent</option>
-            <option value="community">community</option>
-          </select>
+            <SelectTrigger id="disclosure-cap-scope-type" aria-label="Cap 作用域类型">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="agent">agent</SelectItem>
+              <SelectItem value="community">community</SelectItem>
+            </SelectContent>
+          </Select>
           <label htmlFor="disclosure-cap-scope-id" className="sr-only">
             Cap 作用域 ID
           </label>
@@ -40,19 +47,21 @@ export function DisclosureCapCard() {
           <label htmlFor="disclosure-cap-level" className="sr-only">
             Cap 级别
           </label>
-          <select
-            id="disclosure-cap-level"
-            name="disclosure-cap-level"
+          <Select
             value={disclosureCaps.capLevel}
-            onChange={(event) => disclosureCaps.setCapLevel(event.target.value)}
-            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            onValueChange={(value) => disclosureCaps.setCapLevel(value)}
           >
-            {[0, 1, 2, 3].map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="disclosure-cap-level" aria-label="Cap 级别">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[0, 1, 2, 3].map((value) => (
+                <SelectItem key={value} value={String(value)}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <label htmlFor="disclosure-cap-reason" className="sr-only">
           设置原因
@@ -71,7 +80,7 @@ export function DisclosureCapCard() {
           }}
           disabled={disclosureCaps.createMutation.isPending || !disclosureCaps.scopeId.trim()}
         >
-          {disclosureCaps.createMutation.isPending ? '设置中…' : '设置 Cap Override'}
+          {disclosureCaps.createMutation.isPending ? '设置中…' : '设置限流规则'}
         </Button>
         <label htmlFor="disclosure-cap-release-reason" className="sr-only">
           释放原因
@@ -97,14 +106,14 @@ export function DisclosureCapCard() {
                   className="mt-2"
                   disabled={disclosureCaps.releaseMutation.isPending}
                 >
-                  {disclosureCaps.releaseMutation.isPending ? '释放中…' : '释放当前 Override'}
+                  {disclosureCaps.releaseMutation.isPending ? '释放中…' : '释放当前规则'}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>确认释放 Override</DialogTitle>
+                  <DialogTitle>确认释放规则</DialogTitle>
                   <DialogDescription>
-                    您确定要释放此 Disclosure Cap Override 吗？
+                    您确定要释放此限流规则吗？
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

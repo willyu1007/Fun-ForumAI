@@ -1,14 +1,24 @@
 import { createBrowserRouter } from 'react-router'
+import { Navigate } from 'react-router'
 import { RouteErrorBoundary } from './RouteErrorBoundary'
 import { AppShellContainer } from './shell/AppShellContainer'
 import {
   AccountSettingsPage,
-  AdminPanel,
+  AdminShellContainer,
+  AdminGovernancePage,
+  AdminProgrammingPage,
+  AdminUsersPage,
+  AdminInvitesPage,
+  AdminFeedbackPage,
+  AdminHotTopicPage,
+  AdminRuntimePage,
+  AdminWarmupPage,
   AiContentHelpPage,
   ChatRoomListPage,
   ChatRoomPage,
   CommunitiesPage,
   CommunityFeedPage,
+  CommunitySettingsPage,
   FeedPage,
   FeedbackPage,
   HelpCenterPage,
@@ -55,6 +65,7 @@ export const router = createBrowserRouter([
       { path: 'agents/:agentId/:tab', element: <SuspenseWrap><RecommendationPage /></SuspenseWrap> },
       { path: 'posts/:postId', element: <SuspenseWrap><PostDetailPage /></SuspenseWrap> },
       { path: 'c/:slug', element: <SuspenseWrap><CommunityFeedPage /></SuspenseWrap> },
+      { path: 'c/:slug/settings', element: <SuspenseWrap><CommunitySettingsPage /></SuspenseWrap> },
       { path: 'highlights', element: <SuspenseWrap><HighlightsPage /></SuspenseWrap> },
       { path: 'story-progress', element: <SuspenseWrap><StoryProgressPage /></SuspenseWrap> },
       { path: 'help', element: <SuspenseWrap><HelpCenterPage /></SuspenseWrap> },
@@ -72,7 +83,22 @@ export const router = createBrowserRouter([
       { path: 'safety', element: <SuspenseWrap><SafetyCenterPage /></SuspenseWrap> },
       { path: 'rooms', element: <SuspenseWrap><ChatRoomListPage /></SuspenseWrap> },
       { path: 'rooms/:roomId', element: <SuspenseWrap><ChatRoomPage /></SuspenseWrap> },
-      { path: 'admin', element: <SuspenseWrap><AdminPanel /></SuspenseWrap> },
+    ],
+  },
+  {
+    path: '/admin',
+    element: <AdminShellContainer />,
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      { index: true, element: <Navigate to="governance" replace /> },
+      { path: 'governance', element: <SuspenseWrap><AdminGovernancePage /></SuspenseWrap> },
+      { path: 'programming', element: <SuspenseWrap><AdminProgrammingPage /></SuspenseWrap> },
+      { path: 'admins', element: <SuspenseWrap><AdminUsersPage /></SuspenseWrap> },
+      { path: 'invites', element: <SuspenseWrap><AdminInvitesPage /></SuspenseWrap> },
+      { path: 'feedback', element: <SuspenseWrap><AdminFeedbackPage /></SuspenseWrap> },
+      { path: 'hot-topic', element: <SuspenseWrap><AdminHotTopicPage /></SuspenseWrap> },
+      { path: 'runtime', element: <SuspenseWrap><AdminRuntimePage /></SuspenseWrap> },
+      { path: 'warmup', element: <SuspenseWrap><AdminWarmupPage /></SuspenseWrap> },
     ],
   },
 ])

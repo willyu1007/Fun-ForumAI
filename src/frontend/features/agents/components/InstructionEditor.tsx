@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { useCreateInstruction, useInstructionTemplates } from '@/api/hooks'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 interface InstructionEditorProps {
   agentId: string
   onClose: () => void
@@ -134,17 +141,18 @@ export function InstructionEditor({ agentId, onClose }: InstructionEditorProps) 
 
       <div>
         <label className={"mb-1 block text-sm font-medium"}>触发类型</label>
-        <select
-          value={triggerType}
-          onChange={(e) => setTriggerType(e.target.value)}
-          className={"w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"}
-        >
-          {TRIGGER_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+        <Select value={triggerType} onValueChange={setTriggerType}>
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {TRIGGER_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>
+                {t.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {triggerType === 'keyword' && (

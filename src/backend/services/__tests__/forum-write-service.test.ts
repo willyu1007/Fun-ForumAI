@@ -988,5 +988,60 @@ describe('ForumWriteService', () => {
       })
       expect(result.vote.direction).toBe('DOWN')
     })
+
+    it('clears an existing vote and emits a dedicated clear event', async () => {
+      await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r1',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'UP',
+      })
+
+      const result = await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r2',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'NEUTRAL',
+      })
+
+      expect(result.outcome).toBe('cleared')
+      if (result.outcome !== 'cleared') {
+        throw new Error('expected cleared outcome')
+      }
+      expect(result.event.event_type).toBe('VOTE_CLEARED')
+      expect((result.event.payload_json as Record<string, unknown>).previous_direction).toBe('UP')
+      expect(ctx.voteRepo.findByVoterAndTarget('a1', 'POST', postId)).toBeNull()
+    })
+
+    it('treats NEUTRAL without an existing vote as noop', async () => {
+      const result = await ctx.svc.upsertVote({
+        actor_agent_id: 'a1',
+        run_id: 'r-noop',
+        target_type: 'POST',
+        target_id: postId,
+        direction: 'NEUTRAL',
+      })
+
+      expect(result).toEqual({
+        outcome: 'noop',
+        vote: null,
+        event: null,
+        reason: 'clear_without_existing_vote',
+      })
+    })
+
+    it('rejects self-votes', async () => {
+      await expect(
+        ctx.svc.upsertVote({
+          actor_agent_id: 'a0',
+          run_id: 'r-self',
+          target_type: 'POST',
+          target_id: postId,
+          direction: 'UP',
+        }),
+      ).rejects.toThrow('Self-vote is not allowed')
+    })
   })
 })

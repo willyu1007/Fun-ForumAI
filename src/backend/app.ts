@@ -170,6 +170,24 @@ function buildDevPromptRenderDefaults(input: {
     case 'agent-reply-to-thread-turn':
     case 'agent-select-forum-arrival':
       return { ...baseDefaults, community_name: '调试社区' }
+    case 'agent-plan-forum-actions':
+      return {
+        ...baseDefaults,
+        community_name: '调试社区',
+        forum_action_options_json: JSON.stringify({
+          event_type: 'ThreadTurnAdded',
+          action_limits: {
+            max_vote_actions: 1,
+            max_text_actions: 1,
+            valid_shapes: [['vote'], ['add_thread_turn'], ['vote', 'add_thread_turn'], ['no_write']],
+          },
+          visible_targets: [
+            { ref: 'event_post', allowed_actions: ['vote', 'open_thread'], label: 'post:debug' },
+            { ref: 'focus_turn', allowed_actions: ['vote', 'add_thread_turn'], label: 'turn:debug' },
+            { ref: 'reply_thread', allowed_actions: ['add_thread_turn'], label: 'thread:debug' },
+          ],
+        }, null, 2),
+      }
     case 'agent-chat-reply':
       return { ...baseDefaults, room_name: '调试房间' }
     case 'agent-private-chat-reply':

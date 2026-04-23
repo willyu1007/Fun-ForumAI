@@ -78,7 +78,6 @@ export async function createSceneThreadTurn(
       community_id: input.community_id,
       target_type: 'TURN',
       post_id: input.turn.post_id,
-      thread_id: input.turn.thread_id,
       payload: input.scene,
     }),
     event: input.event,

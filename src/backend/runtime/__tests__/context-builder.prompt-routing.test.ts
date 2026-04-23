@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { buildAgentTarget } from '../../../shared/agent-target.js'
 import { ContextBuilder } from '../context-builder.js'
+import { buildForumActionOptions } from '../forum-target-ref-resolver.js'
 import type { ExecutionContext } from '../types.js'
 import type { ContextBuilderDeps } from '../context-builder.js'
 import { config } from '../../lib/config.js'
@@ -1186,6 +1187,388 @@ describe('ContextBuilder prompt routing', () => {
       reply_thread_id: 'thread-1',
     })
     expect(ctx.threadTurns?.map((item) => item.id)).toEqual(['thread-1', 'turn-2'])
+  })
+
+  it('falls back to runtime-only root post reads for fresh new posts and exposes event_post action options', async () => {
+    const buildRuntimeContextPreviewInternal = vi.fn(async () => ({
+      post_capsule: {
+        post_id: 'post-1',
+        schema_version: 'post-semantic-capsule.v1',
+      },
+      thread_capsule: null,
+      forest: {
+        schema_version: 'discussion-forest.v1',
+        post_id: 'post-1',
+        focus_thread_id: null,
+        focus_turn_id: null,
+        nodes: [],
+        edges: [],
+      },
+      perceived_slice: null,
+      runtime_context: {
+        schema_version: 'runtime-context-envelope.v1',
+        post_id: 'post-1',
+        thread_id: null,
+      },
+      orchestration_policy: null,
+    }))
+
+    const builder = new ContextBuilder({
+      forumReadService: {
+        getCommunities: vi.fn(async () => ({
+          items: [{
+            id: 'community-1',
+            name: '社区',
+            description: '',
+            rules_json: null,
+          }],
+        })),
+        getPost: vi.fn(async () => {
+          throw new Error('not found')
+        }),
+        getRuntimePost: vi.fn(async () => ({
+          id: 'post-1',
+          title: 'Fresh pending post',
+          body: 'Fresh post body',
+          author_agent_id: 'agent-2',
+        })),
+        getDiscussionForest: vi.fn(async () => {
+          throw new Error('not found')
+        }),
+        buildRuntimeContextPreviewInternal,
+      } as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {
+        getAgent: vi.fn(() => ({ display_name: 'Layer Bot' })),
+        getLatestConfig: vi.fn(() => null),
+      } as unknown as ContextBuilderDeps['agentService'],
+    })
+
+    const ctx = await builder.build(
+      {
+        event_id: 'evt-fresh-post',
+        event_type: 'NewPostCreated',
+        idempotency_key: 'idem-fresh-post',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        author_agent_id: 'agent-2',
+        created_at: new Date().toISOString(),
+      },
+      {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+    )
+
+    expect(buildRuntimeContextPreviewInternal).toHaveBeenCalledWith({
+      post_id: 'post-1',
+      thread_id: null,
+      focus_turn_id: null,
+      agent_id: 'agent-1',
+    })
+    expect(ctx.post).toMatchObject({
+      id: 'post-1',
+      title: 'Fresh pending post',
+      author_agent_id: 'agent-2',
+    })
+    expect(buildForumActionOptions(ctx)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ref: 'event_post',
+          target_type: 'POST',
+          target_id: 'post-1',
+          allowed_actions: ['vote', 'open_thread'],
+        }),
+      ]),
+    )
+  })
+
+  it('preserves method binding when invoking runtime preview builders with internal visibility fallback', async () => {
+    const runtimePreviewBuilder = {
+      marker: 'runtime-preview-service',
+      buildRuntimeContextPreviewInternal: vi.fn(async function (
+        this: { marker: string },
+        input: {
+          post_id: string
+          thread_id?: string | null
+          focus_turn_id?: string | null
+          agent_id?: string | null
+        },
+      ) {
+        expect(this.marker).toBe('runtime-preview-service')
+        expect(input).toEqual({
+          post_id: 'post-1',
+          thread_id: null,
+          focus_turn_id: null,
+          agent_id: 'agent-1',
+        })
+        return {
+          post_capsule: {
+            post_id: 'post-1',
+            schema_version: 'post-semantic-capsule.v1',
+          },
+          thread_capsule: null,
+          forest: {
+            schema_version: 'discussion-forest.v1',
+            post_id: 'post-1',
+            focus_thread_id: null,
+            focus_turn_id: null,
+            nodes: [],
+            edges: [],
+          },
+          perceived_slice: null,
+          runtime_context: {
+            schema_version: 'runtime-context-envelope.v1',
+            post_id: 'post-1',
+            thread_id: null,
+          },
+          orchestration_policy: null,
+        }
+      }),
+    }
+
+    const builder = new ContextBuilder({
+      forumReadService: {
+        getCommunities: vi.fn(async () => ({
+          items: [{
+            id: 'community-1',
+            name: '社区',
+            description: '',
+            rules_json: null,
+          }],
+        })),
+        getPost: vi.fn(async () => {
+          throw new Error('not found')
+        }),
+        getRuntimePost: vi.fn(async () => ({
+          id: 'post-1',
+          title: 'Fresh pending post',
+          body: 'Fresh post body',
+          author_agent_id: 'agent-2',
+        })),
+        getDiscussionForest: vi.fn(async () => {
+          throw new Error('not found')
+        }),
+        ...runtimePreviewBuilder,
+      } as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {
+        getAgent: vi.fn(() => ({ display_name: 'Layer Bot' })),
+        getLatestConfig: vi.fn(() => null),
+      } as unknown as ContextBuilderDeps['agentService'],
+    })
+
+    const ctx = await builder.build(
+      {
+        event_id: 'evt-fresh-post-bound',
+        event_type: 'NewPostCreated',
+        idempotency_key: 'idem-fresh-post-bound',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        author_agent_id: 'agent-2',
+        created_at: new Date().toISOString(),
+      },
+      {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+    )
+
+    expect(runtimePreviewBuilder.buildRuntimeContextPreviewInternal).toHaveBeenCalledTimes(1)
+    expect(ctx.forum_runtime_context).toMatchObject({
+      post_id: 'post-1',
+      thread_id: null,
+    })
+  })
+
+  it('falls back to runtime thread reads for fresh ThreadOpened context when public thread reads are unavailable', async () => {
+    const buildRuntimeContextPreviewInternal = vi.fn(async () => ({
+      post_capsule: {
+        post_id: 'post-1',
+        schema_version: 'post-semantic-capsule.v1',
+      },
+      thread_capsule: {
+        thread_id: 'thread-1',
+        schema_version: 'thread-capsule.v1',
+      },
+      forest: {
+        schema_version: 'discussion-forest.v1',
+        post_id: 'post-1',
+        focus_thread_id: 'thread-1',
+        focus_turn_id: null,
+        nodes: [],
+        edges: [],
+      },
+      perceived_slice: null,
+      runtime_context: {
+        schema_version: 'runtime-context-envelope.v1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+      },
+      orchestration_policy: null,
+    }))
+    const getRuntimeThread = vi.fn(async () => ({
+      id: 'thread-1',
+      post_id: 'post-1',
+      community_id: 'community-1',
+      author_actor_type: 'agent' as const,
+      author_agent_id: 'agent-2',
+      author_user_id: null,
+      body: 'Fresh thread body',
+      visibility: 'GRAY' as const,
+      state: 'PENDING' as const,
+      governance_batch_id: null,
+      generation_mode: null,
+      thread_state: 'OPEN' as const,
+      reply_budget: 6,
+      active_route: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+      author: {
+        actor_type: 'agent' as const,
+        id: 'agent-2',
+        display_name: 'Thread Author',
+      },
+      votes: {
+        agent: { up: 0, down: 0, score: 0 },
+        human: { up: 0, down: 0, score: 0 },
+        weighted_score: 0,
+        viewer_direction: null,
+      },
+      turn_count: 0,
+      participant_count: 1,
+      last_activity_at: new Date(),
+      turns: [],
+      attachments: [],
+      moderation: {
+        topic_signals: null,
+      },
+      lifecycle: {
+        thread_id: 'thread-1',
+        thread_state: 'OPEN' as const,
+        reply_budget: {
+          hard_cap_turns: 6,
+          remaining_turns: 6,
+          limit: 6,
+          remaining: 6,
+        },
+        active_route: null,
+        writeability: {
+          reply_allowed: true,
+          suggested_reply_mode: 'DIRECT_REPLY',
+          reason_code: 'THREAD_OPEN',
+          prompts: [],
+          ui_affordance: 'composer',
+          suggested_route: null,
+        },
+      },
+    }))
+
+    const builder = new ContextBuilder({
+      forumReadService: {
+        getCommunities: vi.fn(async () => ({
+          items: [{
+            id: 'community-1',
+            name: '社区',
+            description: '',
+            rules_json: null,
+          }],
+        })),
+        getPost: vi.fn(async () => {
+          throw new Error('not found')
+        }),
+        getRuntimePost: vi.fn(async () => ({
+          id: 'post-1',
+          title: 'Fresh pending post',
+          body: 'Fresh post body',
+          author_agent_id: 'agent-3',
+        })),
+        getThread: vi.fn(async () => {
+          throw new Error('not found')
+        }),
+        getRuntimeThread,
+        getThreadLifecycle: vi.fn(async () => ({
+          thread_id: 'thread-1',
+          thread_state: 'OPEN' as const,
+          reply_budget: {
+            hard_cap_turns: 6,
+            remaining_turns: 6,
+            limit: 6,
+            remaining: 6,
+          },
+          active_route: null,
+          writeability: {
+            reply_allowed: true,
+            suggested_reply_mode: 'DIRECT_REPLY',
+            reason_code: 'THREAD_OPEN',
+            prompts: [],
+            ui_affordance: 'composer',
+            suggested_route: null,
+          },
+        })),
+        buildRuntimeContextPreviewInternal,
+      } as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {
+        getAgent: vi.fn(() => ({ display_name: 'Layer Bot' })),
+        getLatestConfig: vi.fn(() => null),
+      } as unknown as ContextBuilderDeps['agentService'],
+    })
+
+    const ctx = await builder.build(
+      {
+        event_id: 'evt-fresh-thread',
+        event_type: 'ThreadOpened',
+        idempotency_key: 'idem-fresh-thread',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        author_agent_id: 'agent-2',
+        created_at: new Date().toISOString(),
+      },
+      {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+    )
+
+    expect(getRuntimeThread).toHaveBeenCalledWith('thread-1')
+    expect(buildRuntimeContextPreviewInternal).toHaveBeenCalledWith({
+      post_id: 'post-1',
+      thread_id: 'thread-1',
+      focus_turn_id: null,
+      agent_id: 'agent-1',
+    })
+    expect(ctx.threadTurns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'thread-1',
+          thread_id: 'thread-1',
+          entry_kind: 'THREAD',
+          body: 'Fresh thread body',
+          author_agent_id: 'agent-2',
+        }),
+      ]),
+    )
+    expect(buildForumActionOptions(ctx)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ref: 'event_thread',
+          target_type: 'THREAD',
+          target_id: 'thread-1',
+          allowed_actions: ['vote'],
+        }),
+        expect.objectContaining({
+          ref: 'focus_turn',
+          target_type: 'THREAD',
+          target_id: 'thread-1',
+          allowed_actions: ['vote', 'add_thread_turn'],
+        }),
+      ]),
+    )
   })
 
   it('keeps event target separate from perceived focus and routes prompt inputs through the focus entry', async () => {

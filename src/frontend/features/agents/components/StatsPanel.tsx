@@ -108,14 +108,14 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
 
   return (
     <div className="space-y-4 pb-3">
-      <div className="grid grid-cols-3 items-center rounded-sm bg-muted/[0.48] px-3 py-2.5">
+      <div className="grid grid-cols-10 items-center rounded-sm bg-muted/[0.48] px-3 py-2.5">
         {xpData ? (
-          <div className="relative flex min-w-0 items-center gap-3 pr-4 after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']">
-            <div className="flex items-baseline gap-1.5 text-sm">
-              <span className="text-foreground">等级：</span>
+          <div className="relative col-span-5 flex min-w-0 items-center gap-3 pr-4 after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']">
+            <div className="flex shrink-0 items-baseline gap-1.5 text-sm whitespace-nowrap">
+              <span className="text-foreground whitespace-nowrap">等级：</span>
               <span className="font-semibold text-foreground">{xpData.level}</span>
             </div>
-            <div className="w-24 max-w-full">
+            <div className="min-w-0 flex-1">
               <svg
                 viewBox="0 0 100 6"
                 preserveAspectRatio="none"
@@ -134,15 +134,15 @@ export function StatsPanel({ agentId }: StatsPanelProps) {
             </div>
           </div>
         ) : (
-          <div className="relative after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']" />
+          <div className="relative col-span-5 after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']" />
         )}
-        <div className="relative flex items-baseline justify-center gap-1.5 px-4 text-sm after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']">
-          <span className="text-foreground">可用点数：</span>
+        <div className="relative col-span-3 flex min-w-0 items-baseline justify-center gap-1.5 px-4 text-sm after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-border/70 after:content-['']">
+          <span className="shrink-0 whitespace-nowrap text-foreground">可用点数：</span>
           <span className="font-semibold text-foreground">
             {availablePoints}/{statsData.stats.unspent_points}
           </span>
         </div>
-        <div className="flex items-center justify-end gap-1.5 pl-4">
+        <div className="col-span-2 flex min-w-0 items-center justify-end gap-1.5 pl-4">
           <Button
             type="button"
             variant="ghost"

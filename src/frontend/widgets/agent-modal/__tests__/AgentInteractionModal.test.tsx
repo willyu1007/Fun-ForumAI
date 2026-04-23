@@ -78,7 +78,23 @@ vi.mock('@/components/ui/dialog', async () => {
       ...props
     }, ref) => (
       <div
-        ref={ref}
+        ref={(node) => {
+          if (typeof ref === 'function') {
+            ref(node)
+          } else if (ref) {
+            ref.current = node
+          }
+          if (node) {
+            ;(node as HTMLDivElement & {
+              __onInteractOutside?: (event: Event) => void
+              __onPointerDownOutside?: (event: Event) => void
+            }).__onInteractOutside = onInteractOutside
+            ;(node as HTMLDivElement & {
+              __onInteractOutside?: (event: Event) => void
+              __onPointerDownOutside?: (event: Event) => void
+            }).__onPointerDownOutside = onPointerDownOutside
+          }
+        }}
         data-has-interact-outside-handler={onInteractOutside ? 'true' : undefined}
         data-has-pointer-down-outside-handler={onPointerDownOutside ? 'true' : undefined}
         onKeyDown={(event) => {
@@ -102,20 +118,10 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipContent: () => null,
 }))
 
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: ReactNode }) => <>{children}</>,
-  DropdownMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({
-    children,
-    onClick,
-    ...props
-  }: ComponentProps<'button'>) => (
-    <button type="button" onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
-}))
+type ModalContentTestElement = HTMLDivElement & {
+  __onInteractOutside?: (event: Event) => void
+  __onPointerDownOutside?: (event: Event) => void
+}
 
 vi.mock('../AgentListSidebar', () => ({
   AgentListSidebar: () => <div data-testid="agent-list-sidebar" />,
@@ -355,6 +361,12 @@ describe('AgentInteractionModal geometry updates', () => {
     })
   }
 
+  function openGeometryMenu() {
+    act(() => {
+      fireEvent.click(screen.getByTestId('agent-modal-more-button'))
+    })
+  }
+
   it('updates modal position while keeping the active tab render stable during drag', () => {
     renderOpenModal()
 
@@ -418,6 +430,19 @@ describe('AgentInteractionModal geometry updates', () => {
     expect(modal.style.width).toBe('832px')
   })
 
+  it('uses a near-fullscreen default rect for manage mode on narrow viewports', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 })
+
+    renderOpenModal()
+
+    const modal = screen.getByTestId('agent-modal-content')
+
+    expect(modal.style.transform).toBe('translate3d(12px, 12px, 0)')
+    expect(modal.style.width).toBe('676px')
+    expect(modal.style.height).toBe('876px')
+  })
+
   it('restores the modal to the default size without changing its anchored position', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1600 })
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 })
@@ -439,6 +464,8 @@ describe('AgentInteractionModal geometry updates', () => {
       fireEvent.pointerMove(window, { pointerId: 2, clientX: 420, clientY: 160 })
       fireEvent.pointerUp(window, { pointerId: 2 })
     })
+
+    openGeometryMenu()
 
     act(() => {
       fireEvent.click(screen.getByTestId('agent-modal-restore-button'))
@@ -463,6 +490,8 @@ describe('AgentInteractionModal geometry updates', () => {
       fireEvent.pointerMove(window, { pointerId: 1, clientX: 480, clientY: 220 })
       fireEvent.pointerUp(window, { pointerId: 1 })
     })
+
+    openGeometryMenu()
 
     act(() => {
       fireEvent.click(screen.getByTestId('agent-modal-center-button'))
@@ -495,6 +524,8 @@ describe('AgentInteractionModal geometry updates', () => {
       fireEvent.pointerUp(window, { pointerId: 2 })
     })
 
+    openGeometryMenu()
+
     act(() => {
       fireEvent.click(screen.getByTestId('agent-modal-restore-button'))
     })
@@ -521,7 +552,7 @@ describe('AgentInteractionModal geometry updates', () => {
       useAgentModalStore.getState().hideForCapture()
     })
 
-    const modal = screen.getByTestId('agent-modal-content')
+    const modal = screen.getByTestId('agent-modal-content') as ModalContentTestElement
     expect(modal.className).toContain('pointer-events-none')
     expect(modal.className).toContain('invisible')
   })
@@ -581,8 +612,17 @@ describe('AgentInteractionModal geometry updates', () => {
     })
 
     expect(screen.getByTestId('screenshot-cropper').getAttribute('data-open')).toBe('true')
-    expect(modal.getAttribute('data-has-interact-outside-handler')).toBe('true')
-    expect(modal.getAttribute('data-has-pointer-down-outside-handler')).toBe('true')
+
+    const afterInteractOutside = { defaultPrevented: false, preventDefault: vi.fn(), target: modal }
+    const afterPointerDownOutside = { defaultPrevented: false, preventDefault: vi.fn(), target: modal }
+
+    act(() => {
+      modal.__onInteractOutside?.(afterInteractOutside as unknown as Event)
+      modal.__onPointerDownOutside?.(afterPointerDownOutside as unknown as Event)
+    })
+
+    expect(afterInteractOutside.preventDefault).toHaveBeenCalledTimes(1)
+    expect(afterPointerDownOutside.preventDefault).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the chat subtree mounted long enough for screenshot confirm to resolve back into the composer flow', async () => {
@@ -618,6 +658,7 @@ describe('AgentInteractionModal geometry updates', () => {
     renderOpenModal()
 
     const moreButton = screen.getByTestId('agent-modal-more-button')
+    openGeometryMenu()
     const centerButton = screen.getByTestId('agent-modal-center-button')
     const restoreButton = screen.getByTestId('agent-modal-restore-button')
     const closeButton = screen.getByTestId('agent-modal-close-button')
@@ -625,6 +666,7 @@ describe('AgentInteractionModal geometry updates', () => {
 
     expect(controls?.firstElementChild).toBe(moreButton)
     expect(controls?.lastElementChild).toBe(closeButton)
+
     expect(centerButton.parentElement).not.toBe(controls)
     expect(restoreButton.parentElement).toBe(centerButton.parentElement)
     expect(centerButton.nextElementSibling).toBe(restoreButton)
@@ -899,6 +941,34 @@ describe('AgentInteractionModal geometry updates', () => {
     const modal = screen.getByTestId('agent-modal-content')
     expect(modal.style.width).toBe('768px')
     expect(modal.style.height).toBe('780px')
+  })
+
+  it('uses a near-fullscreen default rect for readonly mode on narrow viewports', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 })
+
+    act(() => {
+      useAgentModalStore.setState({
+        isOpen: true,
+        isCaptureHidden: false,
+        activeAgentId: 'agent-1',
+        viewMode: 'readonly',
+        activeTab: 'intro',
+        introSection: null,
+        sourceSessionId: null,
+        lastModalRect: null,
+        lastModalRectMode: null,
+        readonlyLayoutVersion: READONLY_MODAL_LAYOUT_VERSION,
+      })
+    })
+
+    render(<AgentInteractionModal />)
+
+    const modal = screen.getByTestId('agent-modal-content')
+
+    expect(modal.style.transform).toBe('translate3d(12px, 12px, 0)')
+    expect(modal.style.width).toBe('676px')
+    expect(modal.style.height).toBe('876px')
   })
 
   it('exposes intro, moments, social, and history tabs in readonly mode', () => {

@@ -232,6 +232,18 @@ function createHarness() {
         return { entry, moderation: null, event: null }
       }),
       upsertVote: vi.fn(async (input: MockUpsertVoteInput) => {
+        const targetAuthorAgentId =
+          input.target_type === 'POST'
+            ? (await postRepo.findById(input.target_id))?.author_agent_id ?? null
+            : input.target_type === 'THREAD'
+              ? (await publicStageThreadRepo.findById(input.target_id))?.author_agent_id ?? null
+              : (await publicStageTurnRepo.findById(input.target_id))?.author_agent_id ?? null
+        if (!targetAuthorAgentId) {
+          throw new Error(`missing vote target ${input.target_type}:${input.target_id}`)
+        }
+        if (targetAuthorAgentId === input.actor_agent_id) {
+          throw new Error('Self-vote is not allowed')
+        }
         const vote = voteRepo.upsert({
           voter_agent_id: input.actor_agent_id,
           target_type: input.target_type,
@@ -453,14 +465,31 @@ async function waitForWarmupRunToSettle(
   service: WarmupGovernanceService,
   runId: string,
 ): Promise<Awaited<ReturnType<WarmupGovernanceService['getWarmupRun']>>> {
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
     const run = await service.getWarmupRun(runId)
     if (run.state !== 'generating') {
       return run
     }
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 5))
   }
   throw new Error(`warmup run ${runId} did not settle in time`)
+}
+
+async function waitForStoredWarmupBatchToSettle(
+  repo: ReturnType<typeof createHarness>['repos']['warmupGovernanceRepo'],
+  runId: string,
+) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const run = await repo.findBatchById(runId)
+    if (!run) {
+      throw new Error(`expected warmup batch ${runId}`)
+    }
+    if (run.state !== 'generating') {
+      return run
+    }
+    await Promise.resolve()
+  }
+  throw new Error(`warmup batch ${runId} did not settle in time`)
 }
 
 describe('WarmupGovernanceService', () => {
@@ -848,6 +877,152 @@ describe('WarmupGovernanceService', () => {
     ])
   })
 
+  it('reclaims stale generating warmup runs during baseline admission checks', async () => {
+    vi.useFakeTimers()
+    const tempRoot = createTempRepoRoot('warmup-runtime-reclaim')
+    tempRoots.push(tempRoot)
+    process.chdir(tempRoot)
+    const ctx = createHarness()
+    const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+
+    await ctx.service.importKickoffBaseline({
+      manifest_path: manifestPath,
+      now: new Date('2026-04-18T10:00:00.000Z'),
+    })
+
+    ctx.service.attachRuntimeDeps({
+      postScheduler: {
+        forcePost: vi.fn(async () => ({ triggered: false })),
+        createPost: vi.fn(async () => ({ triggered: false })),
+      },
+      runtimeLoop: {
+        isRunning: true,
+        tick: vi.fn(async () => ({
+          processed_events: 0,
+          batch_stats: {
+            successful: 0,
+          },
+        })),
+      },
+      warmupAttemptTimeoutMs: 10,
+    })
+
+    const kickoff = await ctx.service.getKickoffStatus()
+    const staleStartedAt = new Date('2026-04-18T11:00:00.000Z')
+    vi.setSystemTime(staleStartedAt)
+    const staleRun = await ctx.repos.warmupGovernanceRepo.createBatch({
+      baseline_id: kickoff.id,
+      batch_kind: 'warmup',
+      state: 'generating',
+      source_batch_id: null,
+      revision_key: `warmup:processing:${staleStartedAt.getTime()}:orphaned-processor`,
+      package_hash: `warmup:processing:${staleStartedAt.getTime()}:orphaned-processor`,
+      notes: JSON.stringify({
+        kind: 'warmup_run',
+        target_posts: 1,
+        max_attempts: 1,
+        attempted: 0,
+        triggered: 0,
+        errors: [],
+        stop_reason: null,
+        rolled_back_at: null,
+      }),
+    })
+
+    vi.setSystemTime(new Date(staleStartedAt.getTime() + 61_000))
+    const admission = await ctx.service.getRuntimeBaselineAdmission()
+    expect(admission.allow_public_growth).toBe(false)
+
+    const settledRun = await waitForStoredWarmupBatchToSettle(
+      ctx.repos.warmupGovernanceRepo,
+      staleRun.id,
+    )
+    expect(settledRun.state).toBe('failed')
+    expect(settledRun.revision_key).toMatch(/^warmup:failed:/)
+
+    const settledDetail = await ctx.service.getWarmupRun(staleRun.id)
+    expect(settledDetail.stop_reason).toBe('max_attempts_exhausted')
+    expect(settledDetail.errors).toEqual([])
+  })
+
+  it('waits for queued runtime follow-up work to settle before failing the run', async () => {
+    const tempRoot = createTempRepoRoot('warmup-runtime-followup-settle')
+    tempRoots.push(tempRoot)
+    process.chdir(tempRoot)
+    const ctx = createHarness()
+    const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+
+    await ctx.service.importKickoffBaseline({
+      manifest_path: manifestPath,
+      now: new Date('2026-04-18T10:00:00.000Z'),
+    })
+
+    let currentBatchId: string | null = null
+    let tickAttempts = 0
+    let processing = false
+    ctx.service.attachRuntimeDeps({
+      postScheduler: {
+        forcePost: vi.fn(async (input?: { governance_context?: { governance_batch_id: string } }) => {
+          const batchId = input?.governance_context?.governance_batch_id
+          if (!batchId) {
+            throw new Error('warmup batch id is required')
+          }
+          currentBatchId = batchId
+          const created = await appendRuntimeWarmupPost(ctx, batchId, 1)
+          return {
+            triggered: true,
+            post_id: created.post.id,
+            agent_id: created.agent.id,
+            community_id: created.community.id,
+          }
+        }),
+        createPost: vi.fn(async () => ({ triggered: false })),
+      },
+      runtimeLoop: {
+        isRunning: true,
+        get isProcessing() {
+          return processing
+        },
+        tick: vi.fn(async () => {
+          tickAttempts += 1
+          if (tickAttempts === 1) {
+            processing = true
+            setTimeout(() => {
+              if (currentBatchId) {
+                void appendRuntimeWarmupPromptCoverage(ctx, currentBatchId)
+              }
+              processing = false
+            }, 5)
+          }
+          return {
+            processed_events: 0,
+            batch_stats: {
+              successful: 0,
+            },
+          }
+        }),
+      },
+      eventQueue: {
+        clear: vi.fn(async () => {}),
+        size: vi.fn(async () => (tickAttempts < 1 ? 1 : 0)),
+      },
+      warmupAttemptTimeoutMs: 50,
+    })
+
+    const run = await ctx.service.startWarmupRun({
+      actor_user_id: 'admin-1',
+      target_posts: 1,
+      max_attempts: 1,
+    })
+    const settledRun = await waitForWarmupRunToSettle(ctx.service, run.id)
+
+    expect(settledRun.state).toBe('active')
+    expect(settledRun.stop_reason).toBe('target_reached')
+    expect(settledRun.triggered).toBe(1)
+    expect(await ctx.repos.publicStageThreadRepo.findByGovernanceBatch(run.id)).toHaveLength(1)
+    expect(await ctx.repos.publicStageTurnRepo.findByGovernanceBatch(run.id)).toHaveLength(1)
+  })
+
   it('fails warmup runs when runtime follow-up does not produce thread/turn coverage', async () => {
     const tempRoot = createTempRepoRoot('warmup-runtime-followup-fail')
     tempRoots.push(tempRoot)
@@ -886,6 +1061,11 @@ describe('WarmupGovernanceService', () => {
           },
         })),
       },
+      eventQueue: {
+        clear: vi.fn(async () => {}),
+        size: vi.fn(async () => 0),
+      },
+      warmupAttemptTimeoutMs: 10,
     })
 
     const run = await ctx.service.startWarmupRun({

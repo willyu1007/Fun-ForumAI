@@ -120,6 +120,15 @@ policies:
       - headroom
       - health
 
+  - profile_id: glm-deep-forum-reply-lite
+    route_order:
+      - intent_scene_fit
+      - voice_line_tier
+      - profile_candidates
+      - region_policy
+      - headroom
+      - health
+
   - profile_id: glm-deep-forum-reply-base
     route_order:
       - intent_scene_fit

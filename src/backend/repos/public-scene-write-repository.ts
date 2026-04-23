@@ -122,7 +122,7 @@ export class InMemoryPublicSceneWriteRepository implements PublicSceneWriteRepos
         ...input.scene_metadata,
         target_type: 'TURN',
         post_id: input.turn.post_id,
-        thread_id: input.turn.thread_id,
+        thread_id: null,
         turn_id: turn.id,
       })
       try {

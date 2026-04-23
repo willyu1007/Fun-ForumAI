@@ -71,18 +71,18 @@ export interface UiRoleAttributesMap {
   };
   "list": {
     density?: "comfortable" | "compact";
-    variant?: "plain" | "rows" | "cards";
+    variant?: "plain" | "rows" | "cards" | "admin-rows";
   };
   "modal": {
     size?: "sm" | "md" | "lg";
     state?: "open" | "closed";
   };
   "nav": {
-    variant?: "sidebar" | "top";
+    variant?: "sidebar" | "top" | "admin-sidebar";
     state?: "default" | "collapsed";
   };
   "page": {
-    layout?: "app" | "auth" | "settings";
+    layout?: "app" | "auth" | "settings" | "admin";
     density?: "comfortable" | "compact";
   };
   "radio": {
@@ -202,7 +202,8 @@ export const UI_ROLE_MANIFEST = {
       "layout": [
         "app",
         "auth",
-        "settings"
+        "settings",
+        "admin"
       ],
       "density": [
         "comfortable",
@@ -583,7 +584,8 @@ export const UI_ROLE_MANIFEST = {
       "variant": [
         "plain",
         "rows",
-        "cards"
+        "cards",
+        "admin-rows"
       ]
     },
     "slots": []
@@ -718,7 +720,8 @@ export const UI_ROLE_MANIFEST = {
     "attrs": {
       "variant": [
         "sidebar",
-        "top"
+        "top",
+        "admin-sidebar"
       ],
       "state": [
         "default",

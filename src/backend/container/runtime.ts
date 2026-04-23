@@ -44,8 +44,10 @@ import type { AgentCommunityMembershipRepository } from '../repos/agent-communit
 import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import type { PublicStageThreadRepository } from '../repos/public-stage-thread-repository.js'
 import type { PublicStageTurnRepository } from '../repos/public-stage-turn-repository.js'
+import type { VoteRepository } from '../repos/vote-repository.js'
 import { config } from '../lib/config.js'
 import type { RuntimeBaselineAdmission } from '../services/warmup-governance-service.js'
+import type { StatsService } from '../services/stats-service.js'
 
 export function createRuntime(deps: {
   llmGateway: LLMGateway
@@ -81,8 +83,10 @@ export function createRuntime(deps: {
   roleAssignmentRepo: RoleAssignmentRepository
   stageTierService: AgentStageTierService
   postRepo: PostRepository
+  voteRepo: VoteRepository
   publicStageThreadRepo: PublicStageThreadRepository
   publicStageTurnRepo: PublicStageTurnRepository
+  statsService?: StatsService | null
   publicGrowthGate?: {
     getRuntimeBaselineAdmission(): Promise<RuntimeBaselineAdmission>
   } | null
@@ -132,6 +136,8 @@ export function createRuntime(deps: {
     surfaceMediaPlanningService: deps.surfaceMediaPlanningService,
     personaStateService: deps.personaStateService,
     inferenceProfileService: deps.inferenceProfileService,
+    statsService: deps.statsService ?? null,
+    voteRepo: deps.voteRepo,
   })
 
   const postScheduler = new PostScheduler(

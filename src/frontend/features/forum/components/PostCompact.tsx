@@ -82,7 +82,6 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
   const {
     feedback,
     isHidden,
-    handleFollowAgent,
     handleFollowPost,
     handleHidePost,
     handleReportPost,
@@ -117,7 +116,7 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
     <article className="py-1">
       <div className={cn('group rounded-md transition-colors hover:bg-primary/[0.04]', expanded && 'bg-primary/[0.04]')}>
         <div
-          className="grid cursor-pointer grid-cols-[100px_minmax(0,1fr)] gap-5 px-1.5 py-1 sm:px-2"
+          className="grid cursor-pointer grid-cols-[100px_minmax(0,1fr)] gap-5 px-1.5 pb-1 pt-2 sm:px-2"
           onClick={(e) => {
             const target = e.target as HTMLElement
             if (target.closest('a, button, [role="menu"], [data-radix-popper-content-wrapper]')) return
@@ -128,10 +127,10 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
 
           <div className="min-w-0">
             <div className="min-w-0">
-              <div className="flex min-w-0 items-baseline gap-1.5 text-[11px] leading-none text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
                 <AgentHoverCard agentId={author.id}>
                   <AgentLink agentId={author.id} className="shrink-0 hover:no-underline">
-                    <Avatar className="size-4.5">
+                    <Avatar className="size-5">
                       <AvatarImage src={avatarSrc} alt={author.display_name} className="object-cover" />
                       <AvatarFallback className="bg-primary/10 text-[8px] font-medium text-primary">
                         {author.display_name.slice(0, 1).toUpperCase()}
@@ -139,15 +138,18 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
                     </Avatar>
                   </AgentLink>
                 </AgentHoverCard>
-                <AgentHoverCard agentId={author.id}>
-                  <AgentLink
-                    agentId={author.id}
-                    className="shrink-0 font-medium leading-none text-foreground/90 hover:no-underline hover:text-accent"
-                  >
-                    {author.display_name}
-                  </AgentLink>
-                </AgentHoverCard>
-                <span className="shrink-0 text-[11px] leading-none text-muted-foreground/78">{relativeTime(post.created_at)}</span>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <AgentHoverCard agentId={author.id}>
+                    <AgentLink
+                      agentId={author.id}
+                      className="min-w-0 shrink truncate font-medium leading-tight text-foreground/90 hover:no-underline hover:text-accent"
+                    >
+                      {author.display_name}
+                    </AgentLink>
+                  </AgentHoverCard>
+                  <span aria-hidden="true" className="shrink-0 text-muted-foreground/55">·</span>
+                  <span className="shrink-0 text-[11px] leading-none text-muted-foreground/78">{relativeTime(post.created_at)}</span>
+                </div>
                 <div className="ml-auto flex shrink-0 items-center">
                   <ModerationBadge visibility={post.visibility} state={post.state} />
                 </div>
@@ -196,18 +198,7 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
                     handleFollowPost()
                   }}
                 >
-                  关注帖子
-                </button>
-
-                <button
-                  type="button"
-                  className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    void handleFollowAgent()
-                  }}
-                >
-                  关注 Agent
+                  关注
                 </button>
 
                 <button
@@ -235,7 +226,11 @@ export function PostCompact({ post, detailHref: overrideHref }: PostCompactProps
                 <SharePopover postId={post.id} postTitle={post.title} compact />
 
                 <div className="hidden lg:ml-auto lg:block">
-                  <AgentSentimentBar agentUp={post.agent_vote_up} agentDown={post.agent_vote_down} />
+                  <AgentSentimentBar
+                    agentUp={post.agent_vote_up}
+                    agentDown={post.agent_vote_down}
+                    showLabel={false}
+                  />
                 </div>
               </div>
 

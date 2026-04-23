@@ -1,4 +1,4 @@
-import type { ForumReadService } from '../services/forum-read-service.js'
+import type { ForumReadService, PublicStageThreadWithAuthor } from '../services/forum-read-service.js'
 import type { AgentService } from '../services/agent-service.js'
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { EventPayload, SelectedAgent } from '../allocator/types.js'
@@ -50,6 +50,39 @@ const DEFAULT_PERSONA: AgentPersona = {
 
 const DEFAULT_THREAD_LIFECYCLE_SERVICE = new ThreadLifecycleService()
 const DEFAULT_THREAD_INTERACTION_RESOLVER = new ThreadInteractionResolver()
+
+interface RuntimePreviewBuilder {
+  buildRuntimeContextPreview?: (
+    input: {
+      post_id: string
+      thread_id?: string | null
+      focus_turn_id?: string | null
+      agent_id?: string | null
+    },
+  ) => Promise<{
+    post_capsule: ExecutionContext['semantic_post_capsule']
+    thread_capsule: ExecutionContext['semantic_thread_capsule']
+    forest: ExecutionContext['discussion_forest']
+    perceived_slice: ExecutionContext['perceived_context_slice']
+    runtime_context: ExecutionContext['forum_runtime_context']
+    orchestration_policy: ExecutionContext['forum_orchestration_policy']
+  }>
+  buildRuntimeContextPreviewInternal?: (
+    input: {
+      post_id: string
+      thread_id?: string | null
+      focus_turn_id?: string | null
+      agent_id?: string | null
+    },
+  ) => Promise<{
+    post_capsule: ExecutionContext['semantic_post_capsule']
+    thread_capsule: ExecutionContext['semantic_thread_capsule']
+    forest: ExecutionContext['discussion_forest']
+    perceived_slice: ExecutionContext['perceived_context_slice']
+    runtime_context: ExecutionContext['forum_runtime_context']
+    orchestration_policy: ExecutionContext['forum_orchestration_policy']
+  }>
+}
 
 export class ContextBuilder {
   constructor(private readonly deps: ContextBuilderDeps) {}
@@ -105,27 +138,11 @@ export class ContextBuilder {
       }
     }
 
-    const runtimePreviewBuilder = this.deps.forumReadService as unknown as {
-      buildRuntimeContextPreview?: (
-        input: {
-          post_id: string
-          thread_id?: string | null
-          focus_turn_id?: string | null
-          agent_id?: string | null
-        },
-      ) => Promise<{
-        post_capsule: ExecutionContext['semantic_post_capsule']
-        thread_capsule: ExecutionContext['semantic_thread_capsule']
-        forest: ExecutionContext['discussion_forest']
-        perceived_slice: ExecutionContext['perceived_context_slice']
-        runtime_context: ExecutionContext['forum_runtime_context']
-        orchestration_policy: ExecutionContext['forum_orchestration_policy']
-      }>
-    }
+    const runtimePreviewBuilder = this.deps.forumReadService as unknown as RuntimePreviewBuilder
 
-    if (event.post_id && typeof runtimePreviewBuilder.buildRuntimeContextPreview === 'function') {
+    if (event.post_id) {
       try {
-        const preview = await runtimePreviewBuilder.buildRuntimeContextPreview({
+        const preview = await this.invokeRuntimePreviewBuilder(runtimePreviewBuilder, {
           post_id: event.post_id,
           thread_id: event.thread_id ?? null,
           focus_turn_id: agent.selected_anchor_turn_id ?? event.turn_id ?? null,
@@ -200,49 +217,54 @@ export class ContextBuilder {
     const communityHardRule = communityProfile?.hard_rules_text || ctx.community.rules
     const communitySoftCulture = communityProfile?.soft_culture_text || ctx.community.description
 
-    const composed = await this.deps.promptOrchestrator.compose({
-      agentId: ctx.agent.agent_id,
-      scene,
-      conversationText,
-      communityId: ctx.community.id,
-      topicHints,
-      currentContextSources: this.buildCurrentContextSources(ctx, scene),
-      requestEnvelope: this.buildRequestEnvelope(scene, {
-        currentUserText: promptFocusEntry?.body,
-      }),
-      communityHardRule,
-      communitySoftCulture,
-      ...(communityProfile
-        ? {
-            communityProfileProvenance: {
-              source: communityProfile.provenance.source,
-              version: 'v1',
-            },
-          }
-        : {}),
-      sceneRule: ctx.chatContext
-        ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
-        : ctx.event.event_type === 'NewMessageCreated'
-          ? '你正在聊天室中继续群聊'
-        : promptFocusEntry
-          ? '你正在公共 thread 中继续推进当前回合'
-          : '你正在论坛帖子下参与公开讨论',
-      shortTermState: ctx.chatContext
-        ? `recent_messages=${ctx.chatContext.recent_messages.length}`
-        : ctx.event.event_type === 'NewMessageCreated'
-          ? 'recent_messages=0'
-        : ctx.threadMeta
-          ? `thread_turns=${Math.max((ctx.threadTurns?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_mode=${ctx.threadMeta.writeability.reply_mode};preferred_action=${ctx.threadMeta.writeability.preferred_action};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
-          : ctx.threadTurns
-            ? `thread_turns=${Math.max(ctx.threadTurns.length - 1, 0)}`
-            : '',
-      threadTurns: ctx.threadTurns?.map((entry) => ({
-        id: entry.id,
-        author_agent_id: entry.author_agent_id,
-        body: entry.body,
-      })),
-      focusThreadTurnId: promptFocusEntry?.id,
-    })
+    let composed
+    try {
+      composed = await this.deps.promptOrchestrator.compose({
+        agentId: ctx.agent.agent_id,
+        scene,
+        conversationText,
+        communityId: ctx.community.id,
+        topicHints,
+        currentContextSources: this.buildCurrentContextSources(ctx, scene),
+        requestEnvelope: this.buildRequestEnvelope(scene, {
+          currentUserText: promptFocusEntry?.body,
+        }),
+        communityHardRule,
+        communitySoftCulture,
+        ...(communityProfile
+          ? {
+              communityProfileProvenance: {
+                source: communityProfile.provenance.source,
+                version: 'v1',
+              },
+            }
+          : {}),
+        sceneRule: ctx.chatContext
+          ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
+          : ctx.event.event_type === 'NewMessageCreated'
+            ? '你正在聊天室中继续群聊'
+          : promptFocusEntry
+            ? '你正在公共 thread 中继续推进当前回合'
+            : '你正在论坛帖子下参与公开讨论',
+        shortTermState: ctx.chatContext
+          ? `recent_messages=${ctx.chatContext.recent_messages.length}`
+          : ctx.event.event_type === 'NewMessageCreated'
+            ? 'recent_messages=0'
+            : ctx.threadMeta
+              ? `thread_turns=${Math.max((ctx.threadTurns?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_mode=${ctx.threadMeta.writeability.reply_mode};preferred_action=${ctx.threadMeta.writeability.preferred_action};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
+              : ctx.threadTurns
+                ? `thread_turns=${Math.max(ctx.threadTurns.length - 1, 0)}`
+                : '',
+        threadTurns: ctx.threadTurns?.map((entry) => ({
+          id: entry.id,
+          author_agent_id: entry.author_agent_id,
+          body: entry.body,
+        })),
+        focusThreadTurnId: promptFocusEntry?.id,
+      })
+    } catch (error) {
+      throw error
+    }
     ctx.persona = composed.persona
     ctx.blocks = composed.blocks
     ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null
@@ -279,27 +301,12 @@ export class ContextBuilder {
       ? await this.loadThreadMeta(targetThreadId)
       : undefined
 
-    const runtimePreviewBuilder = this.deps.forumReadService as unknown as {
-      buildRuntimeContextPreview?: (
-        input: {
-          post_id: string
-          thread_id?: string | null
-          focus_turn_id?: string | null
-          agent_id?: string | null
-        },
-      ) => Promise<{
-        post_capsule: ExecutionContext['semantic_post_capsule']
-        thread_capsule: ExecutionContext['semantic_thread_capsule']
-        forest: ExecutionContext['discussion_forest']
-        perceived_slice: ExecutionContext['perceived_context_slice']
-        runtime_context: ExecutionContext['forum_runtime_context']
-        orchestration_policy: ExecutionContext['forum_orchestration_policy']
-      }>
-    }
+    const runtimePreviewBuilder = this.deps.forumReadService as unknown as RuntimePreviewBuilder
 
-    if (typeof runtimePreviewBuilder.buildRuntimeContextPreview === 'function') {
+    if (typeof runtimePreviewBuilder.buildRuntimeContextPreviewInternal === 'function'
+      || typeof runtimePreviewBuilder.buildRuntimeContextPreview === 'function') {
       try {
-        const preview = await runtimePreviewBuilder.buildRuntimeContextPreview({
+        const preview = await this.invokeRuntimePreviewBuilder(runtimePreviewBuilder, {
           post_id: ctx.post.id,
           thread_id: targetThreadId,
           focus_turn_id: plan.context_focus_turn_id,
@@ -384,7 +391,30 @@ export class ContextBuilder {
         author_name: authorName,
       }
     } catch {
-      return undefined
+      const runtimeReadService = this.deps.forumReadService as unknown as {
+        getRuntimePost?: (postId: string) => Promise<{
+          id: string
+          title: string
+          body: string
+          author_agent_id: string
+        }>
+      }
+      if (typeof runtimeReadService.getRuntimePost !== 'function') {
+        return undefined
+      }
+      try {
+        const post = await runtimeReadService.getRuntimePost(postId)
+        const authorName = this.getAgentName(post.author_agent_id)
+        return {
+          id: post.id,
+          title: post.title,
+          body: post.body,
+          author_agent_id: post.author_agent_id,
+          author_name: authorName,
+        }
+      } catch {
+        return undefined
+      }
     }
   }
 
@@ -397,6 +427,19 @@ export class ContextBuilder {
       const forest = await this.deps.forumReadService.getDiscussionForest(postId)
       return this.flattenDiscussionForestNodes(forest)
     } catch {
+      if (threadId) {
+        const runtimeReadService = this.deps.forumReadService as unknown as {
+          getRuntimeThread?: (threadId: string) => Promise<PublicStageThreadWithAuthor>
+        }
+        if (typeof runtimeReadService.getRuntimeThread === 'function') {
+          try {
+            const thread = await runtimeReadService.getRuntimeThread(threadId)
+            return this.flattenThreadTurns([thread])
+          } catch {
+            return []
+          }
+        }
+      }
       return []
     }
   }
@@ -442,6 +485,31 @@ export class ContextBuilder {
     } catch {
       return undefined
     }
+  }
+
+  private async invokeRuntimePreviewBuilder(
+    builder: RuntimePreviewBuilder,
+    input: {
+      post_id: string
+      thread_id?: string | null
+      focus_turn_id?: string | null
+      agent_id?: string | null
+    },
+  ): Promise<{
+    post_capsule: ExecutionContext['semantic_post_capsule']
+    thread_capsule: ExecutionContext['semantic_thread_capsule']
+    forest: ExecutionContext['discussion_forest']
+    perceived_slice: ExecutionContext['perceived_context_slice']
+    runtime_context: ExecutionContext['forum_runtime_context']
+    orchestration_policy: ExecutionContext['forum_orchestration_policy']
+  }> {
+    if (typeof builder.buildRuntimeContextPreviewInternal === 'function') {
+      return builder.buildRuntimeContextPreviewInternal.call(builder, input)
+    }
+    if (typeof builder.buildRuntimeContextPreview === 'function') {
+      return builder.buildRuntimeContextPreview.call(builder, input)
+    }
+    throw new Error('Runtime preview builder is unavailable')
   }
 
   private finalizeForumTargeting(ctx: ExecutionContext): void {

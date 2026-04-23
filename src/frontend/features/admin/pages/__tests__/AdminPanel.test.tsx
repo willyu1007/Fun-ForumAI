@@ -581,7 +581,7 @@ describe('AdminPanel', () => {
     expect(queueButton).toBeTruthy()
     fireEvent.click(queueButton!)
 
-    expect(screen.getByText('Queue Playbook')).toBeTruthy()
+    expect(screen.getByText('审核处理指南')).toBeTruthy()
     expect(screen.getByText('优先确认个人信息范围与暴露面，能删字段就不要放大处置。')).toBeTruthy()
 
     fireEvent.change(screen.getByPlaceholderText('转派备注（选填）'), {
@@ -918,18 +918,29 @@ describe('AdminPanel', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Agent 风险画像')).toBeTruthy()
+      expect(screen.getByText('智能体风险画像')).toBeTruthy()
       expect(screen.getByText('owner_private_leak_blocked')).toBeTruthy()
-      expect(screen.getByText('Disclosure Cap 管理')).toBeTruthy()
+      expect(screen.getByText('曝光限流管理')).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: '设置 Cap Override' }))
-    expect(createCapMutate).toHaveBeenCalled()
+    const createCapButton = await screen.findByRole('button', { name: '设置 Cap Override' })
+    fireEvent.click(createCapButton)
+    await waitFor(() => {
+      expect(createCapMutate).toHaveBeenCalled()
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: '释放当前 Override' }))
-    expect(releaseCapMutate).toHaveBeenCalled()
+    const releaseCapButton = await screen.findByRole('button', { name: '释放当前 Override' })
+    fireEvent.click(releaseCapButton)
+    const confirmReleaseButton = await screen.findByRole('button', { name: '确认释放' })
+    fireEvent.click(confirmReleaseButton)
+    await waitFor(() => {
+      expect(releaseCapMutate).toHaveBeenCalled()
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: '限制当前 Agent' }))
+    const limitAgentButton = await screen.findByRole('button', { name: '限制当前 Agent' })
+    fireEvent.click(limitAgentButton)
+    const confirmLimitButton = await screen.findByRole('button', { name: '确认限制' })
+    fireEvent.click(confirmLimitButton)
     await waitFor(() => {
       expect(governanceMutate).toHaveBeenCalledWith({
         action: 'limit_agent',
@@ -1161,6 +1172,8 @@ describe('AdminPanel', () => {
       target: { value: 'manual hot topic control' },
     })
     fireEvent.click(screen.getByRole('button', { name: '切到 NO_RECOMMEND' }))
+    const confirmNoRecommendButton = await screen.findByRole('button', { name: '确认' })
+    fireEvent.click(confirmNoRecommendButton)
 
     await waitFor(() => {
       expect(postDistributionMutate).toHaveBeenCalledWith({

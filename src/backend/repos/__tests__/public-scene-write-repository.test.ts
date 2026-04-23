@@ -229,4 +229,72 @@ describe('InMemoryPublicSceneWriteRepository', () => {
       payload_json: rootPayload,
     })
   })
+
+  it('stores turn scene metadata on the turn only and preserves thread scene ownership', async () => {
+    const eventRepo = new InMemoryEventRepository()
+    const sceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const repo = new InMemoryPublicSceneWriteRepository({
+      postRepo: new InMemoryPostRepository(),
+      publicStageThreadRepo: new InMemoryPublicStageThreadRepository(),
+      publicStageTurnRepo: new InMemoryPublicStageTurnRepository(),
+      sceneMetadataRepo,
+      eventRepo,
+      agentRunRepo: new InMemoryAgentRunRepository(),
+    })
+
+    const threadResult = await repo.createThread({
+      thread: {
+        id: 'thread-1',
+        post_id: 'post-1',
+        community_id: 'community-1',
+        author_agent_id: 'agent-1',
+        body: 'Thread body',
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      },
+      scene_metadata: {
+        ...baseSceneMetadata,
+        target_type: 'THREAD',
+        actor_surface: 'forum_thread',
+      },
+      event: {
+        ...baseEvent,
+        id: 'evt-thread-1',
+        event_type: 'THREAD_OPENED',
+        payload_json: { thread_id: 'thread-1', post_id: 'post-1' },
+      },
+    })
+
+    const turnResult = await repo.createThreadTurn({
+      turn: {
+        id: 'turn-1',
+        thread_id: threadResult.thread.id,
+        post_id: 'post-1',
+        author_actor_type: 'agent',
+        author_agent_id: 'agent-2',
+        body: 'Turn body',
+        turn_index: 1,
+        visibility: 'PUBLIC',
+        state: 'APPROVED',
+      },
+      scene_metadata: {
+        ...baseSceneMetadata,
+        target_type: 'TURN',
+        actor_surface: 'forum_thread',
+      },
+      event: {
+        ...baseEvent,
+        id: 'evt-turn-1',
+        event_type: 'THREAD_TURN_ADDED',
+        payload_json: { thread_id: threadResult.thread.id, turn_id: 'turn-1', post_id: 'post-1' },
+      },
+    })
+
+    const threadSidecar = await sceneMetadataRepo.findByThreadId(threadResult.thread.id)
+    const turnSidecar = await sceneMetadataRepo.findByTurnId(turnResult.turn.id)
+    expect(threadSidecar?.thread_id).toBe(threadResult.thread.id)
+    expect(turnSidecar?.turn_id).toBe(turnResult.turn.id)
+    expect(turnSidecar?.thread_id).toBeNull()
+    expect(eventRepo.findByPostId('post-1')).toHaveLength(2)
+  })
 })

@@ -109,7 +109,13 @@ export class ForumWriteService {
     is_autonomous?: boolean
     chain_depth?: number
     governance_context?: GovernanceWriteContextInput
-  }): Promise<{ vote: Vote; event: DomainEvent }> {
+    source_event_id?: string
+    idempotency_key?: string
+  }): Promise<
+    | { outcome: 'cast'; vote: Vote; event: DomainEvent }
+    | { outcome: 'cleared'; vote: null; event: DomainEvent; previous_direction: 'UP' | 'DOWN' }
+    | { outcome: 'noop'; vote: null; event: null; reason: 'clear_without_existing_vote' }
+  > {
     return upsertVote({ deps: this.deps }, input)
   }
 }

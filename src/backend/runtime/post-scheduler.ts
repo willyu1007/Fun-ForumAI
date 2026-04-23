@@ -121,6 +121,19 @@ interface ScheduledPostVisualPlan {
   planning_audit: Record<string, unknown>
 }
 
+interface RunnableScheduledPostCandidate {
+  selected: SelectedAgent
+  writableCommunities: CommunityCandidate[]
+  routing: {
+    homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+  }
+}
+
+type ScheduledPostCandidateAttempt =
+  | { kind: 'completed'; result: PostSchedulerResult }
+  | { kind: 'retry_next'; error: string }
+
 /**
  * Schedules autonomous post creation by agents.
  * Each tick checks if enough time has elapsed and daily quota allows,
@@ -171,387 +184,33 @@ export class PostScheduler {
         this.recordSkip()
         return { triggered: false, error: 'No communities' }
       }
-      const candidate = await this.pickRunnableAgentCandidate(communities)
-      if (!candidate) {
+      const candidates = await this.listRunnableAgentCandidates({
+        communities,
+        governance_context: input?.governance_context,
+      })
+      if (candidates.length === 0) {
         this.recordSkip()
         return { triggered: false, error: 'No stage-eligible posting candidates' }
       }
-      const { selected, writableCommunities } = candidate
-      const routing = input?.governance_context
-        ? this.resolveWarmupVisibleRouting(selected.id)
-        : await this.resolveVisibleRouting(selected.id, 'base')
-      const fallbackCommunity = this.pickRandomCommunity(writableCommunities)
-      if (!fallbackCommunity) return { triggered: false, error: 'No communities' }
-      const sceneSelection = this.deps.publicSceneSelectorService
-        ? await this.deps.publicSceneSelectorService.selectScheduledPost({
-            agent: selected,
-            eligible_communities: writableCommunities,
-          })
-        : { kind: 'skip' as const, reason: 'scene_selector_unavailable' }
-      const targetCommunity = sceneSelection.kind === 'scene'
-        ? sceneSelection.community
-        : fallbackCommunity
-      const selectorScenePayload = sceneSelection.kind === 'scene'
-        ? sceneSelection.payload
-        : null
-      const scheduledFallbackReason = sceneSelection.kind === 'skip'
-        ? sceneSelection.reason
-        : null
-      let effectiveScenePayload = selectorScenePayload
-        ?? this.buildFallbackScheduledScenePayload({
-          community: targetCommunity,
-          reason: scheduledFallbackReason,
+      let lastRouteUnavailableError: string | null = null
+      for (const candidate of candidates) {
+        const attempt = await this.attemptCreatePostForCandidate({
+          candidate,
+          input,
+          start,
         })
-      if (scheduledFallbackReason) {
-        console.warn(
-          `[PostScheduler] Falling back to community scheduling for agent=${selected.id}: ${scheduledFallbackReason}`,
-        )
-      }
-      const promptRef = selectorScenePayload
-        ? PROMPT_TEMPLATE_REFS.agentCreatePostScene
-        : buildPromptTemplateRef('agent-create-post', 4)
-
-      const persona = this.loadPersona(selected.id)
-      const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
-      const communityCatalog = this.toCommunityCatalog(writableCommunities)
-      let visualPlan: ScheduledPostVisualPlan | null = null
-      if (effectiveScenePayload) {
-        try {
-          visualPlan = await this.prepareVisualPlan({
-            agent_id: selected.id,
-            community_id: targetCommunity.id,
-            scenePayload: effectiveScenePayload,
-          })
-          if (visualPlan) {
-            effectiveScenePayload = {
-              ...effectiveScenePayload,
-              planning_audit: {
-                ...(effectiveScenePayload.planning_audit ?? {}),
-                ...visualPlan.planning_audit,
-              },
-              visual_ref: {
-                directive_id: visualPlan.directive_id,
-                image_plan_id: visualPlan.image_plan_id,
-                runtime_card_ids: visualPlan.runtime_card_ids,
-              },
-            }
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'visual_planning_failed'
-          console.error(`[PostScheduler] visual planning failed for agent=${selected.id}: ${message}`)
-          effectiveScenePayload = {
-            ...effectiveScenePayload,
-            planning_audit: {
-              ...(effectiveScenePayload.planning_audit ?? {}),
-              visual_planning_status: 'degraded',
-              visual_planning_error: message,
-            },
-          }
+        if (attempt.kind === 'completed') {
+          return attempt.result
         }
+        lastRouteUnavailableError = attempt.error
       }
-      const observationIdentity = this.resolveObservationIdentity(selected.id)
-      let promptAudit: PromptComposeAudit | null = null
-      let composedBlocks: {
-        hard_control_block: string
-        compact_control_block: string
-        current_context_block: string
-        memory_block: string
-        soft_expression_block: string
-      } = {
-        hard_control_block: '',
-        compact_control_block: '',
-        current_context_block: '',
-        memory_block: '',
-        soft_expression_block: '',
-      }
-      let renderDecision: RenderTierDecisionResult | null = null
-
-      if (!this.deps.promptOrchestrator) {
-        throw new Error('PromptOrchestrator unavailable for scene scheduled_post')
-      }
-      const composed = await this.deps.promptOrchestrator.compose({
-        agentId: selected.id,
-        scene: 'scheduled_post',
-        conversationText: effectiveScenePayload
-          ? `${recentPosts}\n${effectiveScenePayload.local_intent_block}`.trim()
-          : `${recentPosts}\n${communityCatalog}`.trim(),
-        communityId: targetCommunity.id,
-        topicHints: [targetCommunity.name, ...persona.interests].slice(0, 10),
-        currentContextSources: [
-          {
-            kind: 'scheduler_context',
-            text: recentPosts || '（暂无近期帖子）',
-            priority: 'high',
-            source_id: `scheduled:${selected.id}:recent_posts`,
-          },
-          {
-            kind: 'community_context',
-            text: communityCatalog,
-            priority: 'medium',
-            source_id: `scheduled:${selected.id}:community_catalog`,
-          },
-          ...(effectiveScenePayload?.local_intent_block
-            ? [{
-                kind: 'local_intent' as const,
-                text: effectiveScenePayload.local_intent_block,
-                priority: 'high' as const,
-                source_id:
-                  effectiveScenePayload.scene_metadata.local_intent_id
-                  ?? effectiveScenePayload.scene_metadata.selection_id,
-              }]
-            : []),
-          ...(visualPlan?.current_context_source ? [visualPlan.current_context_source] : []),
-        ],
-        requestEnvelope: {
-          static_system_tokens: 200,
-          route_wrapper_tokens: 110,
-          tool_tokens: 0,
-          current_user_input_tokens: 0,
-          output_reserve: 0,
-          model_capability_ref: null,
-        },
-        communityHardRule: targetCommunity.rules,
-        communitySoftCulture: targetCommunity.description,
-        sceneRule: '你正在主动发起新的论坛帖子',
-        shortTermState: `recent_posts_len=${recentPosts.length}`,
-        shortTermStateUpdatedAt: new Date(),
-      })
-      persona.name = composed.persona.name
-      persona.style = composed.persona.style
-      persona.interests = composed.persona.interests
-      persona.language = composed.persona.language
-      renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
-      composedBlocks = {
-        hard_control_block: composed.blocks.hard_control_block ?? '',
-        compact_control_block: composed.blocks.compact_control_block ?? '',
-        current_context_block: composed.blocks.current_context_block ?? '',
-        memory_block: composed.blocks.memory_block ?? '',
-        soft_expression_block: composed.blocks.soft_expression_block ?? '',
-      }
-      promptAudit = composed.audit
-
-      const variables: Record<string, string> = {
-        persona_name: persona.name,
-        persona_style: persona.style,
-        persona_interests: persona.interests.join('、'),
-        persona_language: persona.language,
-        persona_seed_code: observationIdentity?.persona_seed_code ?? 'scholar',
-        community_name: targetCommunity.name,
-        hard_control_block: composedBlocks.hard_control_block,
-        compact_control_block: composedBlocks.compact_control_block,
-        current_context_block: composedBlocks.current_context_block,
-        memory_block: composedBlocks.memory_block,
-        soft_expression_block: composedBlocks.soft_expression_block,
-      }
-
-      const triggerEvent = this.deps.eventRepo.create({
-        event_type: 'SCHEDULED_POST_GENERATED',
-        plane: 'RUNTIME',
-        actor_type: 'agent',
-        actor_id: selected.id,
-        community_id: targetCommunity.id,
-        correlation_id: `scheduled-post:${selected.id}:${Date.now()}`,
-        payload_json: {
-          agent_id: selected.id,
-          fallback_community_id: fallbackCommunity.id,
-          target_community_id: targetCommunity.id,
-          ...(effectiveScenePayload
-            ? {
-                public_scene: {
-                  episode_id: effectiveScenePayload.scene_metadata.episode_id,
-                  selection_id: effectiveScenePayload.scene_metadata.selection_id,
-                  episode_plan_id: effectiveScenePayload.scene_metadata.episode_plan_id,
-                  local_intent_id: effectiveScenePayload.scene_metadata.local_intent_id,
-                },
-              }
-            : {}),
-          ...(scheduledFallbackReason
-            ? {
-                scene_selection: {
-                  status: 'fallback',
-                  reason: scheduledFallbackReason,
-                },
-              }
-            : {}),
-        },
-      })
-
-      const llmResponse = await this.deps.llmGateway.generateVisibleText({
-        intent: 'scheduled_post',
-        scene: 'scheduled_post',
-        modality: 'text',
-        responseMode: 'text',
-        agentId: selected.id,
-        homeVoiceLineId: routing.homeVoiceLineId,
-        promptRef,
-        variables,
-        budgetClass: 'visible_standard',
-        traceId: `scheduled-post:${selected.id}:${Date.now()}`,
-        promptBudgetSummary: buildPromptBudgetSummary('scheduled_post', promptRef, promptAudit),
-        requestedTier: routing.requestedTier,
-        allowFallbackWithinLine: true,
-        allowCrossFamily: false,
-      })
-      const latencyMs = Date.now() - start
-      const observation = buildPersonaObservation({
-        sourceCallsiteId: 'post-scheduler-create-post',
-        scene: 'scheduled_post',
-        intent: 'scheduled_post',
-        visibility: 'visible',
-        coverageStatus: observationIdentity?.persona_seed_code && observationIdentity?.home_voice_line_id
-          ? 'visible_complete'
-          : 'visible_partial',
-        personaSeedCode: observationIdentity?.persona_seed_code,
-        homeVoiceLineId: observationIdentity?.home_voice_line_id,
-        promptRef,
-        requestedTier: llmResponse.renderDecision.tier,
-        resolvedTier: llmResponse.renderDecision.tier,
-        renderDecision: llmResponse.renderDecision,
-        usage: llmResponse.usage,
-        latencyMs,
-        parseSuccess: false,
-        promptAudit,
-        llmProviderId: llmResponse.renderDecision.providerId,
-        llmModelId: llmResponse.renderDecision.modelId,
-      })
-
-      const instruction = this.deps.responseParser.parseAsScheduledPost({
-        text: llmResponse.content,
-        fallbackCommunityId: targetCommunity.id,
-        communities: writableCommunities,
-        lockedCommunityId: effectiveScenePayload ? targetCommunity.id : undefined,
-      })
-
-      if (!instruction) {
-        const failedObservation = {
-          ...observation,
-          parse_success: false,
-          error: 'Failed to parse LLM output as scheduled post',
-        }
-        this.deps.agentRunRepo.create({
-          agent_id: selected.id,
-          trigger_event_id: triggerEvent.id,
-          input_digest: `scheduled_post_parse_failed|len:${llmResponse.content.length}`,
-          output_json: attachPersonaObservation(
-            {
-              fallback_community_id: fallbackCommunity.id,
-              target_community_id: targetCommunity.id,
-              ...(scheduledFallbackReason
-                ? {
-                    scene_selection: {
-                      status: 'fallback',
-                      reason: scheduledFallbackReason,
-                    },
-                  }
-                : {}),
-              error: 'Failed to parse LLM output as post',
-            },
-            failedObservation,
-          ),
-          token_cost: llmResponse.usage.total_tokens,
-          latency_ms: latencyMs,
-        })
-        recordPersonaObservation(failedObservation)
-        console.warn('[PostScheduler] LLM output could not be parsed as scheduled post')
-        return {
-          triggered: true,
-          agent_id: selected.id,
-          community_id: targetCommunity.id,
-          error: 'Failed to parse LLM output as post',
-          usage: llmResponse.usage,
-          latency_ms: latencyMs,
-        }
-      }
-
-      if (effectiveScenePayload) {
-        instruction.public_scene = effectiveScenePayload
-      }
-      if (input?.governance_context) {
-        instruction.governance_context = input.governance_context
-      }
-      if (input?.probe_context && instruction.action === 'create_post') {
-        instruction.title = this.applyProbeTitleSuffix(
-          instruction.title ?? '',
-          input.probe_context.probe_token,
-        )
-        instruction.tags = this.applyProbeTags(instruction.tags ?? [], input.probe_context.run_id)
-        instruction.audit_metadata = {
-          ...(instruction.audit_metadata ?? {}),
-          warmup_probe: input.probe_context,
-        }
-      }
-      if (scheduledFallbackReason) {
-        instruction.audit_metadata = {
-          ...(instruction.audit_metadata ?? {}),
-          scheduled_post_scene_selection: 'fallback',
-          scheduled_post_scene_reason: scheduledFallbackReason,
-        }
-      }
-      if (visualPlan) {
-        instruction.image_plan_id = visualPlan.image_plan_id
-        instruction.display_attachment_refs = visualPlan.display_attachment_refs
-        instruction.audit_metadata = {
-          ...(instruction.audit_metadata ?? {}),
-          visual_directive_id: visualPlan.directive_id,
-          image_plan_id: visualPlan.image_plan_id,
-          planner_status: visualPlan.planning_audit.planner_status,
-          planner_decision: visualPlan.planning_audit.planner_decision,
-        }
-      }
-
-      const writeResult = await this.deps.dataplaneWriter.write(
-        instruction,
-        selected.id,
-        triggerEvent.id,
-        llmResponse.usage,
-        latencyMs,
-        0,
-        {
-          ...observation,
-          parse_success: true,
-        },
-      )
-
-      if (!writeResult.success || !writeResult.content_id) {
-        const writeError = writeResult.error ?? 'Failed to persist generated post'
-        console.warn(`[PostScheduler] Generated post was not persisted: ${writeError}`)
-        return {
-          triggered: true,
-          agent_id: selected.id,
-          community_id: instruction.community_id,
-          usage: llmResponse.usage,
-          latency_ms: latencyMs,
-          error: writeError,
-        }
-      }
-
-      this.lastPostAt = Date.now()
-      this.lastSkipAt = 0
-      this.postsToday++
-
-      if (renderDecision && this.deps.personaStateService) {
-        await this.deps.personaStateService.recordVisibleRender({
-          agentId: selected.id,
-          scene: 'scheduled_post',
-          renderDecision,
-          outputText: instruction.body,
-        }).catch((err) => {
-          console.error('[PostScheduler] persona runtime render record failed:', err)
-        })
-      }
-
-      const actualCommunity = writableCommunities.find((item) => item.id === instruction.community_id)
-      console.log(
-        `[PostScheduler] Agent "${persona.name}" posted in "${actualCommunity?.name ?? instruction.community_id}" (${latencyMs}ms, ${llmResponse.usage.total_tokens} tokens)`,
-      )
-
+      this.recordSkip()
       return {
-        triggered: true,
-        agent_id: selected.id,
-        community_id: instruction.community_id,
-        post_id: writeResult.content_id,
-        usage: llmResponse.usage,
-        latency_ms: latencyMs,
+        triggered: false,
+        error: lastRouteUnavailableError
+          ? `All runnable scheduled-post candidates failed route execution: ${lastRouteUnavailableError}`
+          : 'All runnable scheduled-post candidates failed route execution',
+        latency_ms: Date.now() - start,
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -610,20 +269,431 @@ export class PostScheduler {
     this.lastSkipAt = Date.now()
   }
 
-  private async pickRunnableAgentCandidate(communities: CommunityCandidate[]): Promise<{
-    selected: SelectedAgent
-    writableCommunities: CommunityCandidate[]
-  } | null> {
-    const activeAgents = this.listEligibleAgents()
-    if (activeAgents.length === 0) return null
+  private async attemptCreatePostForCandidate(input: {
+    candidate: RunnableScheduledPostCandidate
+    start: number
+    input?: {
+      governance_context?: import('../services/forum-write-service/types.js').GovernanceWriteContextInput
+      probe_context?: WarmupProbeContextInput
+    }
+  }): Promise<ScheduledPostCandidateAttempt> {
+    const { candidate, start } = input
+    const { selected, writableCommunities, routing } = candidate
+    const fallbackCommunity = this.pickRandomCommunity(writableCommunities)
+    if (!fallbackCommunity) {
+      return {
+        kind: 'completed',
+        result: { triggered: false, error: 'No communities' },
+      }
+    }
 
-    const candidates: Array<{
-      selected: SelectedAgent
-      writableCommunities: CommunityCandidate[]
-    }> = []
+    const sceneSelection = this.deps.publicSceneSelectorService
+      ? await this.deps.publicSceneSelectorService.selectScheduledPost({
+          agent: selected,
+          eligible_communities: writableCommunities,
+        })
+      : { kind: 'skip' as const, reason: 'scene_selector_unavailable' }
+    const targetCommunity = sceneSelection.kind === 'scene'
+      ? sceneSelection.community
+      : fallbackCommunity
+    const selectorScenePayload = sceneSelection.kind === 'scene'
+      ? sceneSelection.payload
+      : null
+    const scheduledFallbackReason = sceneSelection.kind === 'skip'
+      ? sceneSelection.reason
+      : null
+    let effectiveScenePayload = selectorScenePayload
+      ?? this.buildFallbackScheduledScenePayload({
+        community: targetCommunity,
+        reason: scheduledFallbackReason,
+      })
+    if (scheduledFallbackReason) {
+      console.warn(
+        `[PostScheduler] Falling back to community scheduling for agent=${selected.id}: ${scheduledFallbackReason}`,
+      )
+    }
+    const promptRef = selectorScenePayload
+      ? PROMPT_TEMPLATE_REFS.agentCreatePostScene
+      : buildPromptTemplateRef('agent-create-post', 4)
+
+    const persona = this.loadPersona(selected.id)
+    const recentPosts = await this.getRecentPostsSummary(targetCommunity.id)
+    const communityCatalog = this.toCommunityCatalog(writableCommunities)
+    let visualPlan: ScheduledPostVisualPlan | null = null
+    if (effectiveScenePayload) {
+      try {
+        visualPlan = await this.prepareVisualPlan({
+          agent_id: selected.id,
+          community_id: targetCommunity.id,
+          scenePayload: effectiveScenePayload,
+        })
+        if (visualPlan) {
+          effectiveScenePayload = {
+            ...effectiveScenePayload,
+            planning_audit: {
+              ...(effectiveScenePayload.planning_audit ?? {}),
+              ...visualPlan.planning_audit,
+            },
+            visual_ref: {
+              directive_id: visualPlan.directive_id,
+              image_plan_id: visualPlan.image_plan_id,
+              runtime_card_ids: visualPlan.runtime_card_ids,
+            },
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'visual_planning_failed'
+        console.error(`[PostScheduler] visual planning failed for agent=${selected.id}: ${message}`)
+        effectiveScenePayload = {
+          ...effectiveScenePayload,
+          planning_audit: {
+            ...(effectiveScenePayload.planning_audit ?? {}),
+            visual_planning_status: 'degraded',
+            visual_planning_error: message,
+          },
+        }
+      }
+    }
+    const observationIdentity = this.resolveObservationIdentity(selected.id)
+    let promptAudit: PromptComposeAudit | null = null
+    let composedBlocks: {
+      hard_control_block: string
+      compact_control_block: string
+      current_context_block: string
+      memory_block: string
+      soft_expression_block: string
+    } = {
+      hard_control_block: '',
+      compact_control_block: '',
+      current_context_block: '',
+      memory_block: '',
+      soft_expression_block: '',
+    }
+    let renderDecision: RenderTierDecisionResult | null = null
+
+    if (!this.deps.promptOrchestrator) {
+      throw new Error('PromptOrchestrator unavailable for scene scheduled_post')
+    }
+    const composed = await this.deps.promptOrchestrator.compose({
+      agentId: selected.id,
+      scene: 'scheduled_post',
+      conversationText: effectiveScenePayload
+        ? `${recentPosts}\n${effectiveScenePayload.local_intent_block}`.trim()
+        : `${recentPosts}\n${communityCatalog}`.trim(),
+      communityId: targetCommunity.id,
+      topicHints: [targetCommunity.name, ...persona.interests].slice(0, 10),
+      currentContextSources: [
+        {
+          kind: 'scheduler_context',
+          text: recentPosts || '（暂无近期帖子）',
+          priority: 'high',
+          source_id: `scheduled:${selected.id}:recent_posts`,
+        },
+        {
+          kind: 'community_context',
+          text: communityCatalog,
+          priority: 'medium',
+          source_id: `scheduled:${selected.id}:community_catalog`,
+        },
+        ...(effectiveScenePayload?.local_intent_block
+          ? [{
+              kind: 'local_intent' as const,
+              text: effectiveScenePayload.local_intent_block,
+              priority: 'high' as const,
+              source_id:
+                effectiveScenePayload.scene_metadata.local_intent_id
+                ?? effectiveScenePayload.scene_metadata.selection_id,
+            }]
+          : []),
+        ...(visualPlan?.current_context_source ? [visualPlan.current_context_source] : []),
+      ],
+      requestEnvelope: {
+        static_system_tokens: 200,
+        route_wrapper_tokens: 110,
+        tool_tokens: 0,
+        current_user_input_tokens: 0,
+        output_reserve: 0,
+        model_capability_ref: null,
+      },
+      communityHardRule: targetCommunity.rules,
+      communitySoftCulture: targetCommunity.description,
+      sceneRule: '你正在主动发起新的论坛帖子',
+      shortTermState: `recent_posts_len=${recentPosts.length}`,
+      shortTermStateUpdatedAt: new Date(),
+    })
+    persona.name = composed.persona.name
+    persona.style = composed.persona.style
+    persona.interests = composed.persona.interests
+    persona.language = composed.persona.language
+    renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
+    composedBlocks = {
+      hard_control_block: composed.blocks.hard_control_block ?? '',
+      compact_control_block: composed.blocks.compact_control_block ?? '',
+      current_context_block: composed.blocks.current_context_block ?? '',
+      memory_block: composed.blocks.memory_block ?? '',
+      soft_expression_block: composed.blocks.soft_expression_block ?? '',
+    }
+    promptAudit = composed.audit
+
+    const variables: Record<string, string> = {
+      persona_name: persona.name,
+      persona_style: persona.style,
+      persona_interests: persona.interests.join('、'),
+      persona_language: persona.language,
+      persona_seed_code: observationIdentity?.persona_seed_code ?? 'scholar',
+      community_name: targetCommunity.name,
+      hard_control_block: composedBlocks.hard_control_block,
+      compact_control_block: composedBlocks.compact_control_block,
+      current_context_block: composedBlocks.current_context_block,
+      memory_block: composedBlocks.memory_block,
+      soft_expression_block: composedBlocks.soft_expression_block,
+    }
+
+    let llmResponse: Awaited<ReturnType<LLMGateway['generateVisibleText']>>
+    try {
+      llmResponse = await this.deps.llmGateway.generateVisibleText({
+        intent: 'scheduled_post',
+        scene: 'scheduled_post',
+        modality: 'text',
+        responseMode: 'text',
+        agentId: selected.id,
+        homeVoiceLineId: routing.homeVoiceLineId,
+        promptRef,
+        variables,
+        budgetClass: 'visible_standard',
+        traceId: `scheduled-post:${selected.id}:${Date.now()}`,
+        promptBudgetSummary: buildPromptBudgetSummary('scheduled_post', promptRef, promptAudit),
+        requestedTier: routing.requestedTier,
+        allowFallbackWithinLine: true,
+        allowCrossFamily: false,
+      })
+    } catch (error) {
+      if (!this.isRouteUnavailableLlmError(error)) {
+        throw error
+      }
+      const message = error instanceof Error ? error.message : 'scheduled_post_route_unavailable'
+      console.warn(`[PostScheduler] Route unavailable for agent=${selected.id}: ${message}`)
+      return {
+        kind: 'retry_next',
+        error: message,
+      }
+    }
+
+    const latencyMs = Date.now() - start
+    const observation = buildPersonaObservation({
+      sourceCallsiteId: 'post-scheduler-create-post',
+      scene: 'scheduled_post',
+      intent: 'scheduled_post',
+      visibility: 'visible',
+      coverageStatus: observationIdentity?.persona_seed_code && observationIdentity?.home_voice_line_id
+        ? 'visible_complete'
+        : 'visible_partial',
+      personaSeedCode: observationIdentity?.persona_seed_code,
+      homeVoiceLineId: observationIdentity?.home_voice_line_id,
+      promptRef,
+      requestedTier: llmResponse.renderDecision.tier,
+      resolvedTier: llmResponse.renderDecision.tier,
+      renderDecision: llmResponse.renderDecision,
+      usage: llmResponse.usage,
+      latencyMs,
+      parseSuccess: false,
+      promptAudit,
+      llmProviderId: llmResponse.renderDecision.providerId,
+      llmModelId: llmResponse.renderDecision.modelId,
+    })
+
+    const triggerEvent = this.deps.eventRepo.create({
+      event_type: 'SCHEDULED_POST_GENERATED',
+      plane: 'RUNTIME',
+      actor_type: 'agent',
+      actor_id: selected.id,
+      community_id: targetCommunity.id,
+      correlation_id: `scheduled-post:${selected.id}:${Date.now()}`,
+      payload_json: {
+        agent_id: selected.id,
+        fallback_community_id: fallbackCommunity.id,
+        target_community_id: targetCommunity.id,
+        ...(effectiveScenePayload
+          ? {
+              public_scene: {
+                episode_id: effectiveScenePayload.scene_metadata.episode_id,
+                selection_id: effectiveScenePayload.scene_metadata.selection_id,
+                episode_plan_id: effectiveScenePayload.scene_metadata.episode_plan_id,
+                local_intent_id: effectiveScenePayload.scene_metadata.local_intent_id,
+              },
+            }
+          : {}),
+        ...(scheduledFallbackReason
+          ? {
+              scene_selection: {
+                status: 'fallback',
+                reason: scheduledFallbackReason,
+              },
+            }
+          : {}),
+      },
+    })
+
+    const instruction = this.deps.responseParser.parseAsScheduledPost({
+      text: llmResponse.content,
+      fallbackCommunityId: targetCommunity.id,
+      communities: writableCommunities,
+      lockedCommunityId: effectiveScenePayload ? targetCommunity.id : undefined,
+    })
+
+    if (!instruction) {
+      const failedObservation = {
+        ...observation,
+        parse_success: false,
+        error: 'Failed to parse LLM output as scheduled post',
+      }
+      this.deps.agentRunRepo.create({
+        agent_id: selected.id,
+        trigger_event_id: triggerEvent.id,
+        input_digest: `scheduled_post_parse_failed|len:${llmResponse.content.length}`,
+        output_json: attachPersonaObservation(
+          {
+            fallback_community_id: fallbackCommunity.id,
+            target_community_id: targetCommunity.id,
+            ...(scheduledFallbackReason
+              ? {
+                  scene_selection: {
+                    status: 'fallback',
+                    reason: scheduledFallbackReason,
+                  },
+                }
+              : {}),
+            error: 'Failed to parse LLM output as post',
+          },
+          failedObservation,
+        ),
+        token_cost: llmResponse.usage.total_tokens,
+        latency_ms: latencyMs,
+      })
+      recordPersonaObservation(failedObservation)
+      console.warn('[PostScheduler] LLM output could not be parsed as scheduled post')
+      return {
+        kind: 'completed',
+        result: {
+          triggered: true,
+          agent_id: selected.id,
+          community_id: targetCommunity.id,
+          error: 'Failed to parse LLM output as post',
+          usage: llmResponse.usage,
+          latency_ms: latencyMs,
+        },
+      }
+    }
+
+    if (effectiveScenePayload) {
+      instruction.public_scene = effectiveScenePayload
+    }
+    if (input.input?.governance_context) {
+      instruction.governance_context = input.input.governance_context
+    }
+    if (input.input?.probe_context && instruction.action === 'create_post') {
+      instruction.title = this.applyProbeTitleSuffix(
+        instruction.title ?? '',
+        input.input.probe_context.probe_token,
+      )
+      instruction.tags = this.applyProbeTags(instruction.tags ?? [], input.input.probe_context.run_id)
+      instruction.audit_metadata = {
+        ...(instruction.audit_metadata ?? {}),
+        warmup_probe: input.input.probe_context,
+      }
+    }
+    if (scheduledFallbackReason) {
+      instruction.audit_metadata = {
+        ...(instruction.audit_metadata ?? {}),
+        scheduled_post_scene_selection: 'fallback',
+        scheduled_post_scene_reason: scheduledFallbackReason,
+      }
+    }
+    if (visualPlan) {
+      instruction.image_plan_id = visualPlan.image_plan_id
+      instruction.display_attachment_refs = visualPlan.display_attachment_refs
+      instruction.audit_metadata = {
+        ...(instruction.audit_metadata ?? {}),
+        visual_directive_id: visualPlan.directive_id,
+        image_plan_id: visualPlan.image_plan_id,
+        planner_status: visualPlan.planning_audit.planner_status,
+        planner_decision: visualPlan.planning_audit.planner_decision,
+      }
+    }
+
+    const writeResult = await this.deps.dataplaneWriter.write(
+      instruction,
+      selected.id,
+      triggerEvent.id,
+      llmResponse.usage,
+      latencyMs,
+      0,
+      {
+        ...observation,
+        parse_success: true,
+      },
+    )
+
+    if (!writeResult.success || !writeResult.content_id) {
+      const writeError = writeResult.error ?? 'Failed to persist generated post'
+      console.warn(`[PostScheduler] Generated post was not persisted: ${writeError}`)
+      return {
+        kind: 'completed',
+        result: {
+          triggered: true,
+          agent_id: selected.id,
+          community_id: instruction.community_id,
+          usage: llmResponse.usage,
+          latency_ms: latencyMs,
+          error: writeError,
+        },
+      }
+    }
+
+    this.lastPostAt = Date.now()
+    this.lastSkipAt = 0
+    this.postsToday++
+
+    if (renderDecision && this.deps.personaStateService) {
+      await this.deps.personaStateService.recordVisibleRender({
+        agentId: selected.id,
+        scene: 'scheduled_post',
+        renderDecision,
+        outputText: instruction.body,
+      }).catch((err) => {
+        console.error('[PostScheduler] persona runtime render record failed:', err)
+      })
+    }
+
+    const actualCommunity = writableCommunities.find((item) => item.id === instruction.community_id)
+    console.log(
+      `[PostScheduler] Agent "${persona.name}" posted in "${actualCommunity?.name ?? instruction.community_id}" (${latencyMs}ms, ${llmResponse.usage.total_tokens} tokens)`,
+    )
+
+    return {
+      kind: 'completed',
+      result: {
+        triggered: true,
+        agent_id: selected.id,
+        community_id: instruction.community_id,
+        post_id: writeResult.content_id,
+        usage: llmResponse.usage,
+        latency_ms: latencyMs,
+      },
+    }
+  }
+
+  private async listRunnableAgentCandidates(input: {
+    communities: CommunityCandidate[]
+    governance_context?: import('../services/forum-write-service/types.js').GovernanceWriteContextInput
+  }): Promise<RunnableScheduledPostCandidate[]> {
+    const activeAgents = this.listEligibleAgents()
+    if (activeAgents.length === 0) return []
+
+    const candidates: RunnableScheduledPostCandidate[] = []
 
     for (const agent of activeAgents) {
-      const eligibleCommunities = this.resolveEligibleCommunities(agent.id, communities)
+      const eligibleCommunities = this.resolveEligibleCommunities(agent.id, input.communities)
       if (eligibleCommunities.length === 0) {
         continue
       }
@@ -634,31 +704,102 @@ export class PostScheduler {
       if (writableCommunities.length === 0) {
         continue
       }
+      const routing = input.governance_context
+        ? this.resolveWarmupVisibleRouting(agent.id)
+        : await this.resolveVisibleRouting(agent.id, 'base')
+      const canServeScheduledPost = this.deps.llmGateway.canServeRoute({
+        agentId: agent.id,
+        traceId: `post-scheduler-capability:${agent.id}`,
+        intent: 'scheduled_post',
+        visibility: 'visible',
+        scene: 'scheduled_post',
+        promptRef: PROMPT_TEMPLATE_REFS.agentCreatePostScene,
+        homeVoiceLineId: routing.homeVoiceLineId,
+        requestedTier: routing.requestedTier,
+        modality: 'text',
+        responseMode: 'text',
+        budgetClass: 'visible_standard',
+        allowFallbackWithinLine: true,
+        allowCrossFamily: false,
+      })
+      if (!canServeScheduledPost) {
+        continue
+      }
       candidates.push({
         selected: {
           id: agent.id,
           display_name: agent.display_name,
         },
         writableCommunities,
+        routing,
       })
     }
 
     if (candidates.length === 0) {
-      return null
+      return []
     }
 
     if (config.launch.capabilities.multimodalAgentMediaV1 && this.deps.imagePlannerService?.listAgentIdsWithOwnerPrivatePoolCandidates) {
       const prioritizedAgentIds = await this.deps.imagePlannerService.listAgentIdsWithOwnerPrivatePoolCandidates(100)
-      const activeById = new Map(candidates.map((candidate) => [candidate.selected.id, candidate]))
+      const activeById = new Map(candidates.map((candidate) => [candidate.selected.id, candidate] as const))
+      const prioritized: RunnableScheduledPostCandidate[] = []
       for (const agentId of prioritizedAgentIds) {
         const selected = activeById.get(agentId)
         if (selected) {
-          return selected
+          prioritized.push(selected)
+          activeById.delete(agentId)
         }
       }
+      const remaining = this.rotateCandidateOrder([...activeById.values()])
+      return [...prioritized, ...remaining]
     }
 
-    return candidates[Math.floor(Math.random() * candidates.length)] ?? null
+    return this.rotateCandidateOrder(candidates)
+  }
+
+  private rotateCandidateOrder(candidates: RunnableScheduledPostCandidate[]): RunnableScheduledPostCandidate[] {
+    if (candidates.length <= 1) {
+      return candidates
+    }
+    const startIndex = Math.floor(Math.random() * candidates.length)
+    return [
+      ...candidates.slice(startIndex),
+      ...candidates.slice(0, startIndex),
+    ]
+  }
+
+  private isRouteUnavailableLlmError(error: unknown): boolean {
+    if (
+      typeof error === 'object'
+      && error !== null
+      && 'code' in error
+      && (
+        (error as { code?: unknown }).code === 'AuthError'
+        || (error as { code?: unknown }).code === 'RateLimitError'
+        || (error as { code?: unknown }).code === 'TimeoutError'
+        || (error as { code?: unknown }).code === 'TransientError'
+      )
+    ) {
+      return true
+    }
+
+    if (!(error instanceof Error)) {
+      return false
+    }
+
+    const message = error.message.toLowerCase()
+    return (
+      message.includes('failed to resolve any credential')
+      || message.includes('failed to resolve credential')
+      || message.includes('no credential pool available')
+      || message.includes('all credential pools are saturated')
+      || message.includes('credential resolution error')
+      || message.includes('rate limit')
+      || message.includes('timeout')
+      || message.includes('fetch failed')
+      || message.includes('econnreset')
+      || message.includes('etimedout')
+    )
   }
 
   private listEligibleAgents(): Array<{ id: string; display_name: string }> {

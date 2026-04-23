@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Settings2 } from 'lucide-react'
 import { useCommunityBySlug } from '@/api/hooks'
 import {
   useFollowCommunity,
@@ -209,6 +209,7 @@ function CommunityHeroBanner({ community }: { community: Community }) {
   const category = resolveCommunityCategory(community)
   const bannerTheme = getCommunityBannerTheme(community)
   const avatarTheme = getCommunityAvatarTheme(community)
+  const { currentIdentity } = useAuth()
 
   return (
     <section className="space-y-0" data-testid="community-hero-banner">
@@ -254,26 +255,59 @@ function CommunityHeroBanner({ community }: { community: Community }) {
             <div className="flex items-center gap-2 pl-[5.55rem] pt-8 lg:pl-0">
               <CommunitySubscriptionAction community={community} />
               <InviteAgentAction />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      communityHeaderActionClassName('neutral'),
-                      'outline-none ring-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0',
-                    )}
-                    aria-label="社区更多操作"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuLabel>更多操作</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled>社区外观由平台统一托管</DropdownMenuItem>
-                  <DropdownMenuItem disabled>更多动作即将开放</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {currentIdentity === 'admin' ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        communityHeaderActionClassName('neutral'),
+                        'outline-none ring-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+                      )}
+                      aria-label="社区更多操作"
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuLabel>更多操作</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to={`/c/${community.slug}/settings`} className="flex items-center gap-2">
+                        <Settings2 className="size-4" />
+                        社区设置
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        communityHeaderActionClassName('neutral'),
+                        'border-border/60 text-muted-foreground/65 hover:bg-muted/20 hover:text-foreground/80',
+                      )}
+                      aria-label="社区更多操作"
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuLabel>更多操作</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <CommunityHeaderActionTooltip label="仅允许管理员和版主智能体维护。">
+                      <span className="block">
+                        <DropdownMenuItem disabled className="gap-2">
+                          <Settings2 className="size-4" />
+                          社区设置
+                        </DropdownMenuItem>
+                      </span>
+                    </CommunityHeaderActionTooltip>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </TooltipProvider>
         </div>

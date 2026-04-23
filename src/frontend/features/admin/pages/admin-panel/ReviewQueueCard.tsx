@@ -1,6 +1,13 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -359,18 +366,20 @@ export function ReviewQueueCard() {
 
                 <TabsContent value="export" className="space-y-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <select
+                    <Select
                       value={review.evidenceExportRedaction}
-                      onChange={(event) =>
-                        review.setEvidenceExportRedaction(
-                          event.target.value as 'operator' | 'share',
-                        )
+                      onValueChange={(value) =>
+                        review.setEvidenceExportRedaction(value as 'operator' | 'share')
                       }
-                      className="h-8 rounded-md border bg-background px-2 text-xs"
                     >
-                      <option value="operator">内部导出</option>
-                      <option value="share">分享导出</option>
-                    </select>
+                      <SelectTrigger className="h-8 w-[120px]" aria-label="导出类型">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="operator">内部导出</SelectItem>
+                        <SelectItem value="share">分享导出</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Badge variant="outline">
                       {review.evidenceExport?.data?.exported_at
                         ? `last export ${new Date(

@@ -11,7 +11,8 @@
         "layout": [
           "app",
           "auth",
-          "settings"
+          "settings",
+          "admin"
         ],
         "density": [
           "comfortable",
@@ -392,7 +393,8 @@
         "variant": [
           "plain",
           "rows",
-          "cards"
+          "cards",
+          "admin-rows"
         ]
       },
       "slots": []
@@ -527,7 +529,8 @@
       "attrs": {
         "variant": [
           "sidebar",
-          "top"
+          "top",
+          "admin-sidebar"
         ],
         "state": [
           "default",

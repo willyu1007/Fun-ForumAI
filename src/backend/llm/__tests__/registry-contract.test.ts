@@ -282,6 +282,24 @@ describe('LLM registry contract', () => {
     )
   })
 
+  it('keeps glm forum-reply lite bound to a serviceable fast lane', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+
+    expect(resolveVoiceLineTierProfileRef('glm-deep-v1', 'forum_reply', 'lite')).toBe(
+      'glm-deep-forum-reply-lite',
+    )
+    expect(profilesById.get('glm-deep-forum-reply-lite')?.candidates[0]).toMatchObject({
+      provider_id: 'ark-openai',
+      model_id: 'doubao-seed-2-0-lite-260215',
+    })
+    expect(profilesById.get('glm-deep-forum-reply-base')?.candidates[0]?.model_id).toBe(
+      'glm-5.1',
+    )
+  })
+
   it('keeps qwen private-reply realtime routing flash-first with balanced dashscope fallback', () => {
     const bundle = loadLlmRegistryBundle()
     const profilesById = new Map(

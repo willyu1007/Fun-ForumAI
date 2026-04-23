@@ -509,14 +509,15 @@ export interface ExecutionContext {
   skip_reason?: string
 }
 
-export interface WriteInstruction {
-  action: 'create_post' | 'open_thread' | 'add_thread_turn' | 'create_message'
+export interface BaseWriteInstruction {
   community_id: string
-  post_id?: string
-  thread_id?: string
-  anchor_turn_id?: string
-  route_handoff?: RouteHandoffInput | null
-  room_id?: string
+  public_scene?: PublicSceneWritePayload
+  audit_metadata?: Record<string, unknown>
+  governance_context?: GovernanceWriteContextInput
+}
+
+export interface CreatePostWriteInstruction extends BaseWriteInstruction {
+  action: 'create_post'
   title?: string
   body: string
   tags?: string[]
@@ -527,7 +528,6 @@ export interface WriteInstruction {
     citation_urls?: string[]
     redaction_profile?: 'strong' | 'medium' | 'light'
   }
-  message_kind?: string
   image_plan_id?: string
   display_attachment_refs?: Array<{
     asset_id: string
@@ -537,9 +537,80 @@ export interface WriteInstruction {
   media_asset_id?: string
   media_url?: string
   media_mime_type?: string
-  public_scene?: PublicSceneWritePayload
-  audit_metadata?: Record<string, unknown>
-  governance_context?: GovernanceWriteContextInput
+}
+
+export interface OpenThreadWriteInstruction extends BaseWriteInstruction {
+  action: 'open_thread'
+  post_id: string
+  body: string
+  route_handoff?: RouteHandoffInput | null
+  image_plan_id?: string
+  display_attachment_refs?: Array<{
+    asset_id: string
+    slot: number
+    display_variant: 'original' | 'generated_derivative'
+  }>
+}
+
+export interface AddThreadTurnWriteInstruction extends BaseWriteInstruction {
+  action: 'add_thread_turn'
+  post_id?: string
+  thread_id: string
+  anchor_turn_id?: string
+  route_handoff?: RouteHandoffInput | null
+  body: string
+  image_plan_id?: string
+  display_attachment_refs?: Array<{
+    asset_id: string
+    slot: number
+    display_variant: 'original' | 'generated_derivative'
+  }>
+}
+
+export interface CreateMessageWriteInstruction extends BaseWriteInstruction {
+  action: 'create_message'
+  room_id: string
+  body: string
+  message_kind?: string
+  image_plan_id?: string
+  display_attachment_refs?: Array<{
+    asset_id: string
+    slot: number
+    display_variant: 'original' | 'generated_derivative'
+  }>
+}
+
+export interface VoteWriteInstruction extends BaseWriteInstruction {
+  action: 'vote'
+  source_event_id: string
+  target_type: 'POST' | 'THREAD' | 'TURN'
+  target_id: string
+  direction: 'UP' | 'DOWN' | 'NEUTRAL'
+  is_autonomous: true
+  idempotency_key?: string
+  confidence?: number
+  rationale_code?:
+    | 'agree'
+    | 'disagree'
+    | 'interesting'
+    | 'well_argued'
+    | 'weak_reasoning'
+    | 'provocative'
+}
+
+export type WriteInstruction =
+  | CreatePostWriteInstruction
+  | OpenThreadWriteInstruction
+  | AddThreadTurnWriteInstruction
+  | CreateMessageWriteInstruction
+  | VoteWriteInstruction
+
+export interface ForumActionOption {
+  ref: 'event_post' | 'event_thread' | 'event_turn' | 'focus_turn' | 'reply_thread'
+  target_type?: 'POST' | 'THREAD' | 'TURN'
+  target_id?: string | null
+  allowed_actions: Array<'vote' | 'open_thread' | 'add_thread_turn'>
+  label: string
 }
 
 export interface AgentExecutionResult {
@@ -547,6 +618,7 @@ export interface AgentExecutionResult {
   event_id: string
   success: boolean
   write_instruction?: WriteInstruction
+  write_instructions?: WriteInstruction[]
   usage?: LlmTokenUsage
   latency_ms: number
   error?: string

@@ -92,6 +92,29 @@ describe('ParticipationContractService', () => {
     })
   })
 
+  it('derives creator community defaults from launch_profile.community_family when no explicit human participation exists', async () => {
+    const community = ctx.communityRepo.create({
+      name: 'Creator Community',
+      slug: 'creator-community',
+      rules_json: {
+        launch_profile: {
+          community_family: 'creator_relationship',
+        },
+      },
+    })
+
+    const contract = await ctx.service.getCommunityContract(community.id)
+
+    expect(contract).toMatchObject({
+      scope_type: 'COMMUNITY',
+      scope_id: community.id,
+      source: 'community_rules',
+      public_participation_mode: 'open_reply',
+      audience_signal_ingestion: 'none',
+      agent_human_response_mode: 'direct_reply',
+    })
+  })
+
   it('merges post overrides into the effective contract and stores them on the v1 override key', async () => {
     const owner = ctx.agentRepo.create({
       owner_id: 'owner-1',

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -152,17 +151,17 @@ export function FeedbackInboxTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+    <div data-ui="stack" data-direction="col" data-gap="0">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground mb-6">
         这里专门处理产品建议、Bug 和体验问题，不与投诉/申诉 case 共用同一条治理队列。
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <Card className="border-primary/15">
-          <CardHeader className="space-y-3">
-            <CardTitle>意见箱列表</CardTitle>
+      <div data-ui="grid" data-gap="4" className="xl:grid-cols-[320px_minmax(0,1fr)]">
+        <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+          <div className="mb-4 space-y-3">
+            <h3 className="text-sm font-semibold">意见箱列表</h3>
             <div className="grid gap-3">
-              <div className="space-y-1">
+              <div data-ui="stack" data-direction="col" data-gap="1">
                 <label htmlFor="admin-feedback-status-filter" className="text-[11px] font-medium text-muted-foreground">
                   状态筛选
                 </label>
@@ -181,7 +180,7 @@ export function FeedbackInboxTab() {
                 </Select>
               </div>
 
-              <div className="space-y-1">
+              <div data-ui="stack" data-direction="col" data-gap="1">
                 <label htmlFor="admin-feedback-category-filter" className="text-[11px] font-medium text-muted-foreground">
                   类型筛选
                 </label>
@@ -200,7 +199,7 @@ export function FeedbackInboxTab() {
                 </Select>
               </div>
 
-              <div className="space-y-1">
+              <div data-ui="stack" data-direction="col" data-gap="1">
                 <label htmlFor="admin-feedback-source-route-filter" className="text-[11px] font-medium text-muted-foreground">
                   来源路由
                 </label>
@@ -212,8 +211,8 @@ export function FeedbackInboxTab() {
                 />
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          </div>
+          <div data-ui="stack" data-direction="col" data-gap="3">
             {feedbackList.isLoading ? (
               <>
                 {[1, 2, 3].map((item) => (
@@ -239,8 +238,9 @@ export function FeedbackInboxTab() {
                         : 'bg-background hover:border-primary/20 hover:bg-muted/20',
                     )}
                     onClick={() => setSelectedId(item.id)}
+                    disabled={feedbackList.isLoading}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div data-ui="stack" data-direction="row" data-align="start" data-justify="between" data-gap="3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{item.title}</p>
                         <p className="mt-1 text-[11px] text-muted-foreground">
@@ -262,19 +262,19 @@ export function FeedbackInboxTab() {
                 )
               })
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card className="border-primary/15">
-          <CardHeader className="space-y-2">
-            <CardTitle>处理详情</CardTitle>
+        <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+          <div className="mb-4 space-y-2">
+            <h3 className="text-sm font-semibold">处理详情</h3>
             <p className="text-xs leading-5 text-muted-foreground">
               可更新状态、公开结论和内部备注。只有状态和公开结论会同步回用户侧时间线与通知中心。
             </p>
-          </CardHeader>
-          <CardContent className="space-y-5">
+          </div>
+          <div data-ui="stack" data-direction="col" data-gap="5">
             {detailQuery.isLoading && selectedId ? (
-              <div className="space-y-3">
+              <div data-ui="stack" data-direction="col" data-gap="3">
                 <Skeleton className="h-7 w-40" />
                 <Skeleton className="h-28 rounded-xl" />
                 <Skeleton className="h-48 rounded-xl" />
@@ -283,7 +283,7 @@ export function FeedbackInboxTab() {
               <>
                 <div className="space-y-3 rounded-2xl border bg-muted/10 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-2">
+                    <div data-ui="stack" data-direction="col" data-gap="2">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">{CATEGORY_LABELS[detail.category]}</Badge>
                         <StatusBadge status={detail.status} />
@@ -292,7 +292,7 @@ export function FeedbackInboxTab() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2">
+                  <div data-ui="grid" data-gap="3" className="text-xs text-muted-foreground sm:grid-cols-2">
                     <div>提交人：{detail.submitter.display_name}</div>
                     <div>邮箱：{detail.submitter.email ?? '未记录'}</div>
                     <div>入口：{detail.entry_surface ?? 'feedback_page'}</div>
@@ -304,7 +304,7 @@ export function FeedbackInboxTab() {
                   </div>
 
                   {detail.attachments.length > 0 ? (
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div data-ui="grid" data-gap="3" className="sm:grid-cols-2 xl:grid-cols-3">
                       {detail.attachments.map((attachment) => (
                         <a
                           key={attachment.id}
@@ -330,9 +330,9 @@ export function FeedbackInboxTab() {
                   ) : null}
                 </div>
 
-                <div className="grid gap-4 xl:grid-cols-2">
+                <div data-ui="grid" data-gap="4" className="xl:grid-cols-2">
                   <div className="space-y-4 rounded-2xl border bg-background/70 p-4">
-                    <div className="space-y-1">
+                    <div data-ui="stack" data-direction="col" data-gap="1">
                       <label htmlFor="admin-feedback-detail-status" className="text-[11px] font-medium text-muted-foreground">
                         状态
                       </label>
@@ -350,7 +350,7 @@ export function FeedbackInboxTab() {
                       </Select>
                     </div>
 
-                    <div className="space-y-1">
+                    <div data-ui="stack" data-direction="col" data-gap="1">
                       <label htmlFor="admin-feedback-public-note" className="text-[11px] font-medium text-muted-foreground">
                         公开处理结论
                       </label>
@@ -363,7 +363,7 @@ export function FeedbackInboxTab() {
                       />
                     </div>
 
-                    <div className="space-y-1">
+                    <div data-ui="stack" data-direction="col" data-gap="1">
                       <label htmlFor="admin-feedback-internal-note" className="text-[11px] font-medium text-muted-foreground">
                         内部备注
                       </label>
@@ -393,27 +393,29 @@ export function FeedbackInboxTab() {
                         当前没有时间线记录。
                       </div>
                     ) : (
-                      detail.history.map((entry) => (
-                        <div key={entry.id} className="rounded-xl border bg-background/80 px-4 py-3">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{entry.event_type}</Badge>
-                              {entry.to_status ? <StatusBadge status={entry.to_status} /> : null}
+                      <ul data-ui="list" data-variant="admin-rows">
+                        {detail.history.map((entry) => (
+                          <li key={entry.id} className="py-3">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div data-ui="stack" data-direction="row" data-align="center" data-gap="2">
+                                <Badge variant="outline">{entry.event_type}</Badge>
+                                {entry.to_status ? <StatusBadge status={entry.to_status} /> : null}
+                              </div>
+                              <span className="text-[11px] text-muted-foreground">
+                                {relativeTime(entry.created_at)}
+                              </span>
                             </div>
-                            <span className="text-[11px] text-muted-foreground">
-                              {relativeTime(entry.created_at)}
-                            </span>
-                          </div>
-                          <p className="mt-3 text-sm leading-6 text-foreground">
-                            {entry.message ?? '状态已更新。'}
-                          </p>
-                          {entry.actor ? (
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              {entry.actor.display_name}
+                            <p className="mt-3 text-sm leading-6 text-foreground">
+                              {entry.message ?? '状态已更新。'}
                             </p>
-                          ) : null}
-                        </div>
-                      ))
+                            {entry.actor ? (
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                {entry.actor.display_name}
+                              </p>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 </div>
@@ -423,8 +425,8 @@ export function FeedbackInboxTab() {
                 选择一条反馈，查看正文、截图和处理历史。
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </div>
   )

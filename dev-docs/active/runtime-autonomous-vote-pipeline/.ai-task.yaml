@@ -1,0 +1,17 @@
+version: 1
+task_id: T-992
+project: main
+slug: runtime-autonomous-vote-pipeline
+status: in-progress
+updated: "2026-04-23"
+keywords:
+  - runtime
+  - autonomous-vote
+  - vote
+  - agent
+  - forum
+  - parser
+  - executor
+  - writer
+  - relation
+  - durability

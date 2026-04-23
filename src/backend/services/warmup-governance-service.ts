@@ -69,9 +69,14 @@ const BATCH_COMMUNITY_FLOOR_CAP: Record<'kickoff' | 'warmup', number> = {
   warmup: 2,
 }
 
-const WARMUP_RUN_PROCESSOR_STALE_MS = 20 * 60 * 1000
 const DEFAULT_WARMUP_RUNTIME_ATTEMPT_TIMEOUT_MS = 120_000
 const DEFAULT_WARMUP_FOLLOWUP_TICK_BUDGET = 4
+const MIN_WARMUP_FOLLOWUP_SETTLE_TIMEOUT_MS = 250
+const MAX_WARMUP_FOLLOWUP_SETTLE_TIMEOUT_MS = 12_000
+const MIN_WARMUP_FOLLOWUP_SETTLE_DELAY_MS = 25
+const MAX_WARMUP_FOLLOWUP_SETTLE_DELAY_MS = 250
+const MIN_WARMUP_RUN_PROCESSOR_STALE_MS = 60_000
+const WARMUP_RUN_PROCESSOR_STALE_GRACE_MS = 60_000
 
 interface WarmupBatchContent {
   posts: Post[]
@@ -273,6 +278,7 @@ interface WarmupGovernanceServiceDeps {
   } | null
   runtimeLoop?: {
     isRunning: boolean
+    isProcessing?: boolean
     tick?(): Promise<{
       processed_events: number
       batch_stats: {
@@ -426,6 +432,31 @@ function buildRuntimeWarmupSpec(input: {
     post_vote_target: 3,
     attach_media: false,
   }
+}
+
+function pickEligibleWarmupVoters(input: {
+  candidates: Array<{ id: string }>
+  excludedAgentIds: Array<string | null | undefined>
+  limit: number
+}): Array<{ id: string }> {
+  const excluded = new Set(
+    input.excludedAgentIds.filter((agentId): agentId is string => typeof agentId === 'string' && agentId.length > 0),
+  )
+  const selected: Array<{ id: string }> = []
+  const seen = new Set<string>()
+
+  for (const candidate of input.candidates) {
+    if (excluded.has(candidate.id) || seen.has(candidate.id)) {
+      continue
+    }
+    seen.add(candidate.id)
+    selected.push(candidate)
+    if (selected.length >= input.limit) {
+      break
+    }
+  }
+
+  return selected
 }
 
 function toLocalDateKey(date: Date, timeZone: string): string {
@@ -624,6 +655,44 @@ function parseProcessingWarmupRevisionKey(revisionKey: string | null): { started
     return null
   }
   return { started_at: startedAt }
+}
+
+function computeWarmupRunProcessorStaleMs(timeoutMs: number): number {
+  return Math.max(
+    MIN_WARMUP_RUN_PROCESSOR_STALE_MS,
+    timeoutMs + WARMUP_RUN_PROCESSOR_STALE_GRACE_MS,
+  )
+}
+
+function deriveWarmupFollowupSettleTimeoutMs(attemptTimeoutMs: number): number {
+  return Math.min(
+    MAX_WARMUP_FOLLOWUP_SETTLE_TIMEOUT_MS,
+    Math.max(MIN_WARMUP_FOLLOWUP_SETTLE_TIMEOUT_MS, Math.floor(attemptTimeoutMs / 10)),
+  )
+}
+
+function deriveWarmupFollowupSettleDelayMs(settleTimeoutMs: number): number {
+  return Math.min(
+    MAX_WARMUP_FOLLOWUP_SETTLE_DELAY_MS,
+    Math.max(MIN_WARMUP_FOLLOWUP_SETTLE_DELAY_MS, Math.floor(settleTimeoutMs / 10)),
+  )
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isWarmupRunProcessingStale(input: {
+  run: GovernanceBatch
+  processing_revision: { started_at: number }
+  timeout_ms: number
+  now?: number
+}): boolean {
+  const heartbeatAt = Math.max(
+    input.processing_revision.started_at,
+    input.run.updated_at.getTime(),
+  )
+  return (input.now ?? Date.now()) - heartbeatAt >= computeWarmupRunProcessorStaleMs(input.timeout_ms)
 }
 
 export class WarmupGovernanceService {
@@ -968,7 +1037,11 @@ export class WarmupGovernanceService {
     const processingRevision = parseProcessingWarmupRevisionKey(run.revision_key)
     if (
       processingRevision
-      && Date.now() - processingRevision.started_at < WARMUP_RUN_PROCESSOR_STALE_MS
+      && !isWarmupRunProcessingStale({
+        run,
+        processing_revision: processingRevision,
+        timeout_ms: this.runtimeDeps.warmupAttemptTimeoutMs,
+      })
     ) {
       return
     }
@@ -1220,6 +1293,12 @@ export class WarmupGovernanceService {
     }
 
     const batches = await this.deps.warmupGovernanceRepo.listBatchesByBaseline(suite.id)
+    const generatingWarmupBatch = [...batches]
+      .reverse()
+      .find((item) => item.batch_kind === 'warmup' && item.state === 'generating') ?? null
+    if (generatingWarmupBatch) {
+      void this.ensureWarmupRunProcessing(generatingWarmupBatch.id)
+    }
     const kickoffBatch = batches.find((item) => item.id === suite.kickoff_batch_id) ?? null
     const warmupBatch = suite.warmup_batch_id
       ? batches.find((item) => item.id === suite.warmup_batch_id) ?? null
@@ -1475,6 +1554,7 @@ export class WarmupGovernanceService {
     const turnCount = Math.max(2, targetThreadTurnCount - 1)
     const turnIds: string[] = []
     let lastTurnId: string | null = null
+    let lastTurnAuthorId: string | null = null
     for (let index = 0; index < turnCount; index += 1) {
       const author = turnAuthorPool[index % turnAuthorPool.length]!
       const turn = await this.deps.forumWriteService.addThreadTurn({
@@ -1486,9 +1566,10 @@ export class WarmupGovernanceService {
       })
       turnIds.push(turn.entry.id)
       lastTurnId = turn.entry.id
+      lastTurnAuthorId = author.id
     }
 
-    const postVoters = [
+    const voteCandidates = [
       threadAuthor,
       turnAuthorA,
       turnAuthorB,
@@ -1496,7 +1577,12 @@ export class WarmupGovernanceService {
       voteAuthorB,
       ...supportAgents.slice(5),
     ].filter((agent): agent is { id: string } => Boolean(agent))
-    for (const [index, voter] of postVoters.slice(0, targetPostVoteCount).entries()) {
+    const postVoters = pickEligibleWarmupVoters({
+      candidates: voteCandidates,
+      excludedAgentIds: [input.rootAuthorAgentId],
+      limit: targetPostVoteCount,
+    })
+    for (const [index, voter] of postVoters.entries()) {
       await this.deps.forumWriteService.upsertVote({
         actor_agent_id: voter.id,
         run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:post-vote:${index}:${Date.now()}`,
@@ -1506,7 +1592,12 @@ export class WarmupGovernanceService {
         governance_context: governanceContext,
       })
     }
-    for (const [index, voter] of postVoters.slice(0, 3).entries()) {
+    const threadVoters = pickEligibleWarmupVoters({
+      candidates: voteCandidates,
+      excludedAgentIds: [threadAuthor.id],
+      limit: 3,
+    })
+    for (const [index, voter] of threadVoters.entries()) {
       await this.deps.forumWriteService.upsertVote({
         actor_agent_id: voter.id,
         run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:thread-vote:${index}:${Date.now()}`,
@@ -1517,7 +1608,12 @@ export class WarmupGovernanceService {
       })
     }
     if (lastTurnId) {
-      for (const [index, voter] of postVoters.slice(0, 2).entries()) {
+      const turnVoters = pickEligibleWarmupVoters({
+        candidates: voteCandidates,
+        excludedAgentIds: [lastTurnAuthorId],
+        limit: 2,
+      })
+      for (const [index, voter] of turnVoters.entries()) {
         await this.deps.forumWriteService.upsertVote({
           actor_agent_id: voter.id,
           run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:turn-vote:${index}:${Date.now()}`,
@@ -1584,11 +1680,20 @@ export class WarmupGovernanceService {
     if (!tick) {
       throw new ValidationError('warmup runtime follow-up is unavailable: runtime loop is not attached')
     }
+    const getQueueSize = this.runtimeDeps.eventQueue?.size?.bind(this.runtimeDeps.eventQueue)
+    const settleTimeoutMs = deriveWarmupFollowupSettleTimeoutMs(
+      this.runtimeDeps.warmupAttemptTimeoutMs,
+    )
+    const settleDelayMs = deriveWarmupFollowupSettleDelayMs(settleTimeoutMs)
 
     const threadTurnCoverage = await this.driveRuntimeWarmupPromptChain({
       batch_id: input.batch.id,
       post_id: input.post.id,
       tick,
+      get_queue_size: getQueueSize,
+      is_processing: () => runtimeLoop?.isProcessing === true,
+      settle_timeout_ms: settleTimeoutMs,
+      settle_delay_ms: settleDelayMs,
     })
 
     await this.seedRuntimeWarmupVotes({
@@ -1612,11 +1717,18 @@ export class WarmupGovernanceService {
         successful: number
       }
     }>
+    get_queue_size?: () => Promise<number>
+    is_processing?: () => boolean
+    settle_timeout_ms: number
+    settle_delay_ms: number
   }): Promise<{
     thread_id: string
     turn_id: string
   }> {
-    for (let attempt = 0; attempt < DEFAULT_WARMUP_FOLLOWUP_TICK_BUDGET; attempt += 1) {
+    const deadlineAt = Date.now() + input.settle_timeout_ms
+    let tickAttempts = 0
+
+    while (Date.now() < deadlineAt) {
       const coverage = await this.readRuntimeWarmupPromptCoverage(input.batch_id, input.post_id)
       if (coverage.thread_id && coverage.turn_id) {
         return {
@@ -1625,13 +1737,56 @@ export class WarmupGovernanceService {
         }
       }
 
-      const tickResult = await input.tick()
+      const queueSizeBeforeTick = input.get_queue_size
+        ? await input.get_queue_size()
+        : 0
+      const processingBeforeTick = input.is_processing?.() === true
+      let tickResult = {
+        processed_events: 0,
+        batch_stats: {
+          successful: 0,
+        },
+      }
+
       if (
-        tickResult.processed_events < 1
-        && (tickResult.batch_stats?.successful ?? 0) < 1
+        !processingBeforeTick
+        || queueSizeBeforeTick > 0
+        || tickAttempts < DEFAULT_WARMUP_FOLLOWUP_TICK_BUDGET
+      ) {
+        tickResult = await input.tick()
+        tickAttempts += 1
+      }
+
+      const postTickCoverage = await this.readRuntimeWarmupPromptCoverage(input.batch_id, input.post_id)
+      if (postTickCoverage.thread_id && postTickCoverage.turn_id) {
+        return {
+          thread_id: postTickCoverage.thread_id,
+          turn_id: postTickCoverage.turn_id,
+        }
+      }
+
+      const queueSizeAfterTick = input.get_queue_size
+        ? await input.get_queue_size()
+        : 0
+      const processingAfterTick = input.is_processing?.() === true
+      const madeProgress =
+        tickResult.processed_events > 0
+        || (tickResult.batch_stats?.successful ?? 0) > 0
+      const hasInflightWork = queueSizeAfterTick > 0 || processingAfterTick
+
+      if (
+        !hasInflightWork
+        && !madeProgress
+        && tickAttempts >= DEFAULT_WARMUP_FOLLOWUP_TICK_BUDGET
       ) {
         break
       }
+
+      if (Date.now() >= deadlineAt) {
+        break
+      }
+
+      await sleep(input.settle_delay_ms)
     }
 
     const finalCoverage = await this.readRuntimeWarmupPromptCoverage(input.batch_id, input.post_id)
@@ -1688,6 +1843,16 @@ export class WarmupGovernanceService {
     thread_id: string
     turn_id: string
   }): Promise<void> {
+    const [thread, turn] = await Promise.all([
+      this.deps.publicStageThreadRepo.findById(input.thread_id),
+      this.deps.publicStageTurnRepo.findById(input.turn_id),
+    ])
+    if (!thread) {
+      throw new NotFoundError('Thread', input.thread_id)
+    }
+    if (!turn) {
+      throw new NotFoundError('Turn', input.turn_id)
+    }
     const supportAgents = this.pickSupportAgents({
       roster: input.roster,
       indexes: input.indexes,
@@ -1700,13 +1865,29 @@ export class WarmupGovernanceService {
       generation_mode: 'warmup_runtime' as const,
     }
     const voteTargets = [
-      { target_type: 'POST' as const, target_id: input.post.id },
-      { target_type: 'THREAD' as const, target_id: input.thread_id },
-      { target_type: 'TURN' as const, target_id: input.turn_id },
+      {
+        target_type: 'POST' as const,
+        target_id: input.post.id,
+        target_author_agent_id: input.post.author_agent_id,
+      },
+      {
+        target_type: 'THREAD' as const,
+        target_id: input.thread_id,
+        target_author_agent_id: thread.author_agent_id,
+      },
+      {
+        target_type: 'TURN' as const,
+        target_id: input.turn_id,
+        target_author_agent_id: turn.author_agent_id,
+      },
     ]
 
     for (const [index, target] of voteTargets.entries()) {
-      const voter = supportAgents[index] ?? supportAgents[0]
+      const voter = pickEligibleWarmupVoters({
+        candidates: supportAgents,
+        excludedAgentIds: [target.target_author_agent_id],
+        limit: 1,
+      })[0]
       if (!voter) {
         break
       }

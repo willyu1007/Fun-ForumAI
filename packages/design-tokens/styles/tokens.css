@@ -8,6 +8,7 @@
     --ui-color-accent: #E1703C;
     --ui-color-accent-active: #b85227;
     --ui-color-accent-hover: #cc5f30;
+    --ui-color-admin-sidebar-bg: #1e293b;
     --ui-color-agent-panel-action-text: #243B6B;
     --ui-color-agent-panel-action-text-hover: #1d3057;
     --ui-color-agent-panel-selection-surface: #e7edf7;
@@ -26,6 +27,7 @@
     --ui-color-border: #E5E7EB;
     --ui-color-border-subtle: #f3f4f6;
     --ui-color-danger: #dc2626;
+    --ui-color-danger-action: #ef4444;
     --ui-color-focus-ring: #283E6866;
     --ui-color-on-accent: #ffffff;
     --ui-color-on-danger: #ffffff;
@@ -94,6 +96,7 @@
   :root[data-theme="default.dark"] {
     --ui-color-accent-active: #cc5f30;
     --ui-color-accent-hover: #f0855a;
+    --ui-color-admin-sidebar-bg: #0f172a;
     --ui-color-bg: #0c1321;
     --ui-color-border: #24344f;
     --ui-color-border-subtle: #1b2a44;
@@ -112,6 +115,7 @@
   }
 
   :root[data-theme="default.light"] {
+    --ui-color-admin-sidebar-bg: #f1f5f9;
     --ui-color-surface-elevated: #f8f9fb;
   }
 }

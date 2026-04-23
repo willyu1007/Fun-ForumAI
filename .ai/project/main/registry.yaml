@@ -1891,3 +1891,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/kickoff-live-run-v3
     updated: 2026-04-22
+  - id: T-992
+    slug: runtime-autonomous-vote-pipeline
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/runtime-autonomous-vote-pipeline
+    updated: 2026-04-23
+  - id: T-993
+    slug: agent-follow-event-semantics-and-durability
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/agent-follow-event-semantics-and-durability
+    updated: 2026-04-23

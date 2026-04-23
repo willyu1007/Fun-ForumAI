@@ -69,6 +69,18 @@ function reportDispatcherError(
   console.error(message, err)
 }
 
+function isVoteCastSignalEvent(event: DomainEvent): boolean {
+  return event.event_type === 'VOTE_CAST' || event.event_type === 'AGENT_VOTE_CAST'
+}
+
+function isVoteClearProjectionEvent(event: DomainEvent): boolean {
+  return (
+    event.event_type === 'VOTE_CLEARED'
+    || event.event_type === 'AGENT_VOTE_CLEARED'
+    || event.event_type === 'HUMAN_VOTE_CLEARED'
+  )
+}
+
 export function createForumEventDispatcher(deps: ForumEventDispatcherDeps) {
   return async (event: DomainEvent): Promise<void> => {
     await deps.searchProjectionService.handleForumEvent(event)
@@ -96,7 +108,7 @@ export function createForumEventDispatcher(deps: ForumEventDispatcherDeps) {
       })
     }
 
-    if (event.event_type === 'VOTE_CAST') {
+    if (isVoteCastSignalEvent(event)) {
       const payload = event.payload_json
       const direction = typeof payload.direction === 'string' ? payload.direction : ''
       const targetAgentId =
@@ -133,18 +145,22 @@ export function createForumEventDispatcher(deps: ForumEventDispatcherDeps) {
       deps.agentStatsVotePolicyEnabled
       && deps.relationService
       && deps.relationService.onVoteEvent
-      && event.event_type === 'VOTE_CAST'
+      && isVoteCastSignalEvent(event)
     ) {
       deps.relationService.onVoteEvent(event).catch((err) => {
         reportDispatcherError(deps, '[ForumEventDispatcher] Relation vote signal failed:', err)
       })
     }
 
-    if (deps.publicObservationMemoryEnabled && deps.publicObservationEventHandler) {
+    if (
+      deps.publicObservationMemoryEnabled
+      && deps.publicObservationEventHandler
+      && !isVoteClearProjectionEvent(event)
+    ) {
       deps.publicObservationEventHandler.handle(event)
     }
 
-    if (deps.guidanceOrchestrator) {
+    if (deps.guidanceOrchestrator && !isVoteClearProjectionEvent(event)) {
       handleGuidanceForumFanout(event, {
         guidanceEnabled: deps.guidanceEnabled,
         orchestrator: deps.guidanceOrchestrator,

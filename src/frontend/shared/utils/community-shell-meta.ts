@@ -1,5 +1,7 @@
 import type { Community, CommunitySemanticContract } from '@/api/types'
-import { readCommunityShellCategory } from '../../../shared/semantic-taxonomy.js'
+import {
+  readCommunityShellCategory,
+} from '../../../shared/semantic-taxonomy.js'
 
 export type CommunityCategory = 'theme' | 'show' | 'world' | 'creator'
 
@@ -299,7 +301,52 @@ function resolveLaunchCommunityVisualTheme(
   return theme ?? null
 }
 
-export function getCommunityBannerTheme(community: Pick<Community, 'slug'>): BannerTheme {
+export function readCommunitySurfaceSettings(
+  community: Partial<Pick<Community, 'rules_json' | 'description'>>,
+): {
+  bannerImageUrl: string | null
+  avatarImageUrl: string | null
+  publicIntro: string | null
+} {
+  const raw = community.rules_json?.community_surface_v1
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {
+      bannerImageUrl: null,
+      avatarImageUrl: null,
+      publicIntro: community.description ?? null,
+    }
+  }
+
+  const bannerImageUrl =
+    typeof (raw as { banner_image_url?: unknown }).banner_image_url === 'string'
+      ? (raw as { banner_image_url: string }).banner_image_url
+      : null
+  const avatarImageUrl =
+    typeof (raw as { avatar_image_url?: unknown }).avatar_image_url === 'string'
+      ? (raw as { avatar_image_url: string }).avatar_image_url
+      : null
+  const publicIntro =
+    typeof (raw as { public_intro?: unknown }).public_intro === 'string'
+      ? (raw as { public_intro: string }).public_intro
+      : community.description ?? null
+
+  return {
+    bannerImageUrl,
+    avatarImageUrl,
+    publicIntro,
+  }
+}
+
+export function getCommunityBannerTheme(
+  community: Pick<Community, 'slug'> & Partial<Pick<Community, 'rules_json' | 'description'>>,
+): BannerTheme {
+  const surfaceSettings = readCommunitySurfaceSettings(community)
+  if (surfaceSettings.bannerImageUrl) {
+    return {
+      type: 'custom_image',
+      value: surfaceSettings.bannerImageUrl,
+    }
+  }
   const explicitTheme = resolveLaunchCommunityVisualTheme(community)
   if (explicitTheme) {
     return explicitTheme.banner
@@ -308,7 +355,16 @@ export function getCommunityBannerTheme(community: Pick<Community, 'slug'>): Ban
   return PRESET_BANNERS[index]
 }
 
-export function getCommunityAvatarTheme(community: Pick<Community, 'slug'>): AvatarTheme {
+export function getCommunityAvatarTheme(
+  community: Pick<Community, 'slug'> & Partial<Pick<Community, 'rules_json' | 'description'>>,
+): AvatarTheme {
+  const surfaceSettings = readCommunitySurfaceSettings(community)
+  if (surfaceSettings.avatarImageUrl) {
+    return {
+      type: 'custom_image',
+      value: surfaceSettings.avatarImageUrl,
+    }
+  }
   const explicitTheme = resolveLaunchCommunityVisualTheme(community)
   if (explicitTheme) {
     return explicitTheme.avatar

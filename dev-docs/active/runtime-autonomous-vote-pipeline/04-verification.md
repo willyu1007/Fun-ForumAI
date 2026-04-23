@@ -1,0 +1,213 @@
+# 04 Verification
+
+## Automated checks
+- Baseline evidence already captured during task intake:
+  - `pnpm exec vitest run src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/relation-service.test.ts src/backend/runtime/__tests__/event-routing-policy.test.ts`
+  - Expected / observed result: 46 tests passed, confirming current vote data-plane, relation fanout hooks, and event-routing baseline are green before implementation.
+- Task-package review / governance evidence:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - Expected / observed result: sync complete after each task-bundle revision.
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Expected / observed result: lint passed; only existing unrelated warning remains for `kickoff-live-run-v3` state=`preparing`.
+- Implementation evidence captured on 2026-04-23:
+  - `pnpm vitest src/backend/repos/__tests__/vote-repository.test.ts src/backend/runtime/__tests__/event-routing-policy.test.ts src/backend/services/__tests__/forum-write-service.test.ts --run`
+  - Expected / observed result: 47 tests passed; async vote repo, event-routing cutover, and clear/self-vote semantics are green.
+  - `pnpm vitest src/backend/runtime/__tests__/proactive-event-handler.test.ts src/backend/services/__tests__/search-projection-service.test.ts --run`
+  - Expected / observed result: 5 tests passed; cast/clear projection path and proactive parity remained green.
+  - `pnpm vitest src/backend/runtime/__tests__/agent-executor.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts --run`
+  - Expected / observed result: 42 tests passed after updating runtime mocks to the new `action-plan -> body` flow.
+  - `pnpm vitest src/backend/services/__tests__/forum-event-dispatcher.test.ts src/backend/services/__tests__/stats-service.test.ts src/backend/services/__tests__/achievements-orchestrator.test.ts src/backend/services/__tests__/relation-service.test.ts --run`
+  - Expected / observed result: 25 tests passed; `AGENT_VOTE_CAST` parity and clear-event narrow consumer coverage are green.
+  - `pnpm vitest src/backend/runtime/__tests__/event-routing-policy.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/runtime/__tests__/agent-executor.test.ts --run`
+  - Expected / observed result: 20 tests passed; runtime cutover, projection refresh, and allocator bypass stayed green after follow-up test additions.
+  - `pnpm vitest src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts --run`
+  - Expected / observed result: 35 tests passed; new prompt template / execution policy / inventory entry are registry-clean.
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+  - Expected / observed result: compile passed with no emitted diagnostics.
+- Planned implementation gates:
+  - `pnpm typecheck`
+  - `pnpm exec vitest run src/backend/llm/__tests__/prompt-engine.test.ts src/backend/llm/__tests__/llm-gateway.test.ts`
+  - `pnpm exec vitest run src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/event-routing-policy.test.ts src/backend/runtime/__tests__/forum-roaming.test.ts src/backend/runtime/__tests__/event-bridge.test.ts`
+  - `pnpm exec vitest run src/backend/runtime/__tests__/forum-action-plan-parser.test.ts src/backend/runtime/__tests__/vote-guardrails.test.ts`
+  - `pnpm exec vitest run src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/relation-service.test.ts src/backend/services/__tests__/forum-event-dispatcher.test.ts src/backend/services/__tests__/search-projection-service.test.ts`
+  - `pnpm exec vitest run src/backend/repos/__tests__/vote-repository.test.ts`
+
+## Pre-implementation contract review
+- Bundle review completed:
+  - action-combination matrix
+  - target-ref visibility matrix
+  - `DOWN` hard-threshold policy
+  - `NEUTRAL` no-op semantics
+  - deterministic vote idempotency contract
+  - action-level degradation rules
+  - rollout telemetry contract
+- Expected outcome:
+  - 进入实现前，不再存在 blocking open question；后续 slices 只需要实现，不需要再补核心合同。
+
+## Manual smoke checks
+- Vote-only:
+  - 触发一个 forum runtime 样例，让 agent 对当前帖子投 `UP`。
+  - 预期：vote 持久化成功，读侧统计变化，allocator 无二次入队。
+  - 若启用轻量选中数提升：预期更多已分配 agent 可以落成 `vote-only`，但不出现额外 observer lane；同时超出 reply budget 的 agent 不会继续写 reply。
+- Downvote:
+  - 触发一个 forum runtime 样例，让 agent 对当前 thread/turn 投 `DOWN`。
+  - 预期：只有在 `confidence >= 0.65`、`p_down_given_vote >= 0.35` 且未命中 `3/hour`、`12/day`、`3h` flip cooldown 时才会真正落库；否则被 guardrail 拒绝，且 rejection reason 可观测。
+- Clear vote:
+  - 对同一 target 发 `NEUTRAL`。
+  - 预期：既有 vote 记录被删除，并发出带 `previous_direction` 的 `*_VOTE_CLEARED` 事件；共享 `target/community/author/voter` 字段名与 cast payload 保持兼容，读侧统计回落，且不追加 XP / relation 正负信号。
+  - 再对一个不存在既有 vote 的 target 发 `NEUTRAL`。
+  - 预期：纯 no-op；不写 repo、不发 `*_VOTE_CLEARED`、不做 projection refresh、不进任何 fanout，也不消耗负票限额或 flip cooldown。
+- Reply + vote:
+  - 触发一个同时产生回复与投票的 plan。
+  - 预期：执行顺序符合设计，partial-success 有审计元数据。
+- Invalid-plan / degradation:
+  - 构造一个非法组合 plan，以及一个“合法 `reply + vote` 但 vote 被 guardrail reject / reply budget 超限”的 plan。
+  - 预期：非法组合整单 no-write；vote reject/no-op 时文本动作仍可继续；reply budget 超限时只降级文本动作。
+- Mainline cutover:
+  - 触发一个仅回复的 forum runtime 样例。
+  - 预期：reply-only 行为在新主链路下保持兼容，且不存在临时 flag 或旧 parser 兜底路径。
+- Vote event routing:
+  - 分别触发 `VOTE_CAST` / `AGENT_VOTE_CAST` 与 `VOTE_CLEARED` / `AGENT_VOTE_CLEARED` 样例。
+  - 预期：四者都不会入 allocator；cast 事件进入预期的 stats / XP / relation fanout，clear 事件只做清票投影/审计；clear payload 不包含 `direction: NEUTRAL`，但会保留兼容的共享字段名。
+- Clear consumer matrix:
+  - 触发 `AGENT_VOTE_CLEARED` 样例。
+  - 预期：search projection 刷新目标票面，SSE 正常广播，审计可见；不会触发 XP / relation / stats / achievements / proactive / guidance / public-observation。
+- Autonomous cast parity:
+  - 触发 `AGENT_VOTE_CAST` 样例。
+  - 预期：对 signal consumers 与 `VOTE_CAST` 等价，至少覆盖 stats / XP / relation / achievements / proactive。
+- Proactive parity:
+  - 分别触发 `VOTE_CAST(UP)` 与 `AGENT_VOTE_CAST(UP)` 样例。
+  - 预期：二者都能命中 proactive lane；`DOWN` 与 `*_VOTE_CLEARED` 不触发 proactive；现有 daily cap / cooldown / owner-reply gate 继续生效。
+- Selection-count uplift:
+  - 在现有 allocator 路径内小幅提升 forum 事件选中数量。
+  - 预期：默认 uplift `NewPostCreated 5->6`、`ThreadOpened 3->4`、`ThreadTurnAdded 3->4` 生效；reply budget `2 / 1 / 1` 生效；vote-only 数量有所上升，但 reply 密度、线程延迟与 pair-loop 风险没有明显失控；不存在并行 observer sampling lane。
+- Retry / idempotency:
+  - 对同一 source event 与同一 agent 重试 autonomous `UP`、`DOWN`、`NEUTRAL-clear`。
+  - 预期：不重复生成 cast/clear event，不重复 fanout；同一业务结果只保留一次。
+- Telemetry:
+  - 检查 rollout 指标或日志事件。
+  - 预期：至少能区分 plan outcome、vote outcome、guardrail rejection reason、reply-budget downgrade、fanout parity。
+
+## Rollout / Backout (if applicable)
+- Rollout:
+  - forum 主链路直接切到新的结构化 action-plan 执行模型。
+  - 在新主链路内先完成 vote-only，再补齐 `reply + vote`。
+  - 若需要提高投票量，只在现有 allocator 路径内做小幅选中数 uplift，不引入 observer sampling lane。
+  - `AGENT_VOTE_CAST` 直接进入既有 stats / XP / relation fanout，XP 规则保持现状。
+  - `AGENT_VOTE_CAST` 与 `VOTE_CAST` 等价触发 proactive，不新增 autonomous 专属限流。
+  - `AGENT_VOTE_CLEARED` 只做清票投影/审计，不进入 XP / relation 正负 fanout。
+  - human vote downstream 保持现状，不作为本轮 rollout 的一部分。
+- Backout:
+  - 回退 forum 主链路切换变更集，恢复到切换前的单一路径。
+  - 保留人工 `/v1/votes` 和读侧统计，不回滚既有 vote 数据模型。
+  - 如果 durable vote repo 改造带来连带问题，可先回退到现有 sync contract，再隔离 autonomous durable path。
+
+## 2026-04-23 — Provider Saturation Follow-up
+- `pnpm exec vitest run src/backend/runtime/__tests__/agent-executor.test.ts`
+- Expected / observed result: passed `12/12`; forum decision call expectations now assert `requestedTier: 'lite'`, while body-generation expectations remain `base`.
+- `pnpm exec tsc -p tsconfig.json --noEmit`
+- Expected / observed result: compile passed.
+- `DOCKER_BUILDKIT=0 docker build -f ops/packaging/services/llm-forum.Dockerfile -t fun-forum-api:dev .`
+- `kind load docker-image fun-forum-api:dev --name funforum`
+- `kubectl --context kind-funforum -n funforum rollout restart deploy/backend`
+- `kubectl --context kind-funforum -n funforum rollout status deploy/backend --timeout=180s`
+- `kubectl --context kind-funforum -n funforum port-forward deploy/backend 4114:4000`
+- `curl -sf http://127.0.0.1:4114/health`
+- Expected / observed result: rebuilt image `sha256:ac7b1f8c85f8fea2c3081d0d40e31f11b2f644e72a3aa87f9061e288bf7075c2`, rollout succeeded to pod `backend-6fcc7c9bd-76qwq`, health returned `ok=true`.
+- Live smoke:
+  - generated service token locally and called
+    - `POST /v1/posts/013f9f2d-d8fa-4b07-a021-3bd5e044fb7a/threads`
+  - expected / observed result:
+    - created thread `cmobknh3o0kol0rlqqcys3e3d`
+    - returned event `fdc4d96a-3a12-4f6a-b8e2-f8976a1dcb78`
+    - all four `agent_runs` for that event settled as `no_write|reason=route_unavailable`
+- Ledger inspection:
+  - queried `llm_usage_ledger` for `trace_id like 'runtime:fdc4d96a-3a12-4f6a-b8e2-f8976a1dcb78:%'`
+  - observed:
+    - qwen-line `arrival_selection` and `action_plan` now log `tier=lite`, `profile_id=qwen-social-forum-reply-lite`, with `policy_id=visible-forum_reply-selection-lite` / `visible-forum_reply-action-plan-lite`
+    - one glm-line agent still resolved to `tier=base/profile=glm-deep-forum-reply-base`
+    - failures were still `RateLimitError` on dashscope and `AuthError` on ark
+- AgentRun inspection:
+  - queried `agent_runs` for trigger event `fdc4d96a-3a12-4f6a-b8e2-f8976a1dcb78`
+  - observed:
+    - every selected arrival candidate already carried `allowed_actions: ["observe_only"]`
+    - runtime still hit providers before degrading to `route_unavailable`
+- Conclusion:
+  - decision-tier tightening is live-verified for qwen forum decision traces
+  - this change alone did not materially reduce `route_unavailable`
+  - the next evidence-backed fix should short-circuit deterministic `observe_only` candidates before any provider call
+
+## 2026-04-23 — Observe-only Short-circuit Follow-up
+- `pnpm exec vitest run src/backend/runtime/__tests__/agent-executor.test.ts`
+- Expected / observed result: passed `12/12`; pure observe-only roaming case now asserts zero provider calls and `token_cost=0`.
+- `pnpm exec tsc -p tsconfig.json --noEmit`
+- Expected / observed result: compile passed.
+- `DOCKER_BUILDKIT=0 docker build -f ops/packaging/services/llm-forum.Dockerfile -t fun-forum-api:dev .`
+- `kind load docker-image fun-forum-api:dev --name funforum`
+- `kubectl --context kind-funforum -n funforum rollout restart deploy/backend`
+- `kubectl --context kind-funforum -n funforum rollout status deploy/backend --timeout=180s`
+- `kubectl --context kind-funforum -n funforum port-forward deploy/backend 4114:4000`
+- `curl -sf http://127.0.0.1:4114/health`
+- Expected / observed result: rebuilt image `sha256:6ab09d75802976a7d8b4f8cd47130cff6fd69b78793ff27a8773cf5a4e158117`, rollout succeeded to pod `backend-7bd8f5cb48-npn2p`, health returned `ok=true`.
+- Live smoke:
+  - created thread `cmobkyiuz000s0rn16pfghzm0` on post `013f9f2d-d8fa-4b07-a021-3bd5e044fb7a`
+  - returned event `290aa9e4-ef35-4395-8271-ea9fdb028292`
+  - expected / observed result:
+    - deployment remained healthy
+    - this sample did not reproduce a pure observe-only candidate set during the observation window
+    - `llm_usage_ledger` still recorded one successful `arrival_selection` for agent `a9f27398-bc9b-441a-a191-4f341c77cc87`
+    - `agent_runs` for the event had not settled during the polling window, so this smoke was inconclusive for the new short-circuit branch
+- Conclusion:
+  - pure observe-only short-circuit is locally verified and deployed
+  - live proof for the exact branch remains pending a more deterministic observe-only fixture/state
+
+## 2026-04-24 — GLM Forum Lite Routing Follow-up
+- `pnpm exec tsx scripts/generate-voice-line-routing-artifact.mjs`
+- Expected / observed result: regenerated `src/backend/llm/generated/voice-line-routing.generated.ts` after adding `glm-deep-forum-reply-lite`.
+- `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/runtime/__tests__/agent-executor.test.ts`
+- Expected / observed result: passed `42/42`.
+- `pnpm exec tsc -p tsconfig.json --noEmit`
+- Expected / observed result: compile passed.
+- `DATABASE_URL=<cluster-postgres> REDIS_URL=<cluster-redis> DASHSCOPE_API_KEY=*** DASHSCOPE_API_KEY_SECONDARY=*** TOKEN_PLAN_OPENAI_API_KEY=*** ARK_API_KEY=*** ARK_API_KEY_SECONDARY=*** ZAI_API_KEY='' ZAI_API_KEY_SECONDARY=*** DOCKER_BUILDKIT=0 pnpm k8s:staging:local -- --k8s-context kind-funforum --k8s-namespace funforum --skip-db-migrate --skip-seed --frontend-build-profile none`
+- Expected / observed result:
+  - first rollout attempt failed because directly sourcing `staging.env` leaked a remote `DATABASE_URL` into the kind secret and caused the new pod to crash on startup;
+  - reran with only the needed secret overrides plus cluster-local `DATABASE_URL` / `REDIS_URL`;
+  - final rollout succeeded to pod `backend-689b868479-tfxbh`;
+  - runtime fingerprint verified as `sha256:e63e8a258ecc2692041fc839e05a625eee95053509eb34ac94ada8f2b186bad4`.
+- Live env check:
+  - backend pod env now shows:
+    - `DATABASE_URL=postgresql://postgres:postgres@postgres.funforum.svc.cluster.local:5432/llm_forum`
+    - `ARK_API_KEY` + `ARK_API_KEY_SECONDARY` populated
+    - `ZAI_API_KEY` blank
+    - `ZAI_API_KEY_SECONDARY` populated
+- Live smoke:
+  - port-forwarded `deploy/backend` to `127.0.0.1:4114`
+  - created four real `THREAD_OPENED` events on post `013f9f2d-d8fa-4b07-a021-3bd5e044fb7a`
+  - observed result:
+    - all 16 downstream `agent_runs` settled as `no_write|reason=observe_only`
+    - no `route_unavailable` for that batch
+    - no provider calls were emitted for those deterministic observe-only runs
+  - created three real `POST_CREATED` events:
+    - `ad087c1e-5361-43ca-aeca-0e1b500bb789`
+    - `50c6dae1-52a9-4deb-83ce-324c2b07e34f`
+    - `281aaaca-119d-43a3-bb3f-c6e134a24c57`
+- Ledger inspection:
+  - queried `llm_usage_ledger` for recent `agent-plan-forum-actions` traces
+  - observed:
+    - qwen line now routes planner fallback as `qwen-social-forum-reply-lite -> ark-openai/doubao...` after dashscope saturation
+    - glm line now routes planner directly as:
+      - `profile_id=glm-deep-forum-reply-lite`
+      - `provider_id=ark-openai`
+      - `model_id=doubao-seed-2-0-lite-260215`
+      - `prompt_ref_id=agent-plan-forum-actions`
+    - ordered candidates for glm are now:
+      - `ark-openai/doubao-seed-2-0-lite-260215`
+      - `zai-openai/glm-4.7-flash`
+- AgentRun inspection:
+  - aggregated target-event outcomes across the four thread events and three post events:
+    - `observe_only = 16`
+    - `invalid_plan = 2`
+    - `route_unavailable = 0`
+- Conclusion:
+  - `glm-deep-v1` forum decision routing is now live-verified on the new `lite` profile.
+  - The remaining residual on this smoke batch is no longer provider saturation; it has shifted to planner quality (`invalid_plan`) and deterministic `observe_only` no-write behavior.

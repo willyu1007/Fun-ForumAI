@@ -352,6 +352,20 @@ function isPubliclyVisibleContent(
   return value.state === 'APPROVED' && (value.visibility === 'PUBLIC' || value.visibility === 'GRAY')
 }
 
+function isRuntimeVisibleRootPost(
+  value: Pick<Post, 'visibility' | 'state'>,
+): boolean {
+  return (value.state === 'APPROVED' || value.state === 'PENDING')
+    && (value.visibility === 'PUBLIC' || value.visibility === 'GRAY')
+}
+
+function isRuntimeVisibleStageContent(
+  value: Pick<PublicStageThreadTurn, 'visibility' | 'state'>,
+): boolean {
+  return (value.state === 'APPROVED' || value.state === 'PENDING')
+    && (value.visibility === 'PUBLIC' || value.visibility === 'GRAY')
+}
+
 export class ForumReadService {
   private mediaRolloutProfileCache:
     | { expires_at: number; value: MediaRolloutControllerProfile | null }
@@ -633,10 +647,16 @@ export class ForumReadService {
     postId: string,
     threads: PublicStageThreadWithAuthor[],
     viewerUserId?: string,
+    opts?: {
+      allow_runtime_root_visibility?: boolean
+    },
   ): Promise<PostWithMeta> {
     const post = await this.deps.postRepo.findById(postId)
     if (!post) throw new NotFoundError('Post', postId)
-    if (!isPubliclyVisibleContent(post)) throw new NotFoundError('Post', postId)
+    const isVisible = opts?.allow_runtime_root_visibility
+      ? isRuntimeVisibleRootPost(post)
+      : isPubliclyVisibleContent(post)
+    if (!isVisible) throw new NotFoundError('Post', postId)
 
     const projectionEntries = [
       ...threads.map((thread) => toPublicStageThreadTurnFromThread(thread)),
@@ -765,6 +785,10 @@ export class ForumReadService {
       focus_turn_id?: string | null
     },
     viewerUserId?: string,
+    opts?: {
+      allow_runtime_root_visibility?: boolean
+      allow_runtime_thread_visibility?: boolean
+    },
   ): Promise<{
     post: PostWithMeta
     threads: PublicStageThreadWithAuthor[]
@@ -776,8 +800,8 @@ export class ForumReadService {
     selected_thread: PublicStageThreadWithAuthor | null
   }> {
     const { semanticProjectionService, displayProjectionService } = this.requireProjectionServices()
-    const threads = await this.buildProjectionThreads(postId, input, viewerUserId)
-    const post = await this.getPostProjectionMeta(postId, threads, viewerUserId)
+    const threads = await this.buildProjectionThreads(postId, input, viewerUserId, opts)
+    const post = await this.getPostProjectionMeta(postId, threads, viewerUserId, opts)
     const audienceSignals = await this.buildAudienceSignalCapsule(postId)
     const postCapsule = semanticProjectionService.buildPostSemanticCapsule(post, threads, audienceSignals)
     const resolvedFocusThreadId = this.resolveFocusThreadId(threads, input)
@@ -818,21 +842,37 @@ export class ForumReadService {
       focus_turn_id?: string | null
     },
     viewerUserId?: string,
+    opts?: {
+      allow_runtime_thread_visibility?: boolean
+    },
   ): Promise<PublicStageThreadWithAuthor[]> {
-    const page = await this.deps.publicStageThreadRepo.findByPost(postId, {
-      limit: PROJECTION_THREAD_LIMIT,
-    })
+    const isThreadVisible = (thread: PublicStageThread) =>
+      opts?.allow_runtime_thread_visibility
+        ? isRuntimeVisibleStageContent(thread)
+        : isPubliclyVisibleContent(thread)
+    const isTurnVisible = (turn: PublicStageTurn) =>
+      opts?.allow_runtime_thread_visibility
+        ? isRuntimeVisibleStageContent(turn)
+        : isPubliclyVisibleContent(turn)
+
+    const page = opts?.allow_runtime_thread_visibility
+      ? await this.deps.publicStageThreadRepo.findByPostAll(postId, {
+          limit: PROJECTION_THREAD_LIMIT,
+        })
+      : await this.deps.publicStageThreadRepo.findByPost(postId, {
+          limit: PROJECTION_THREAD_LIMIT,
+        })
     const threadById = new Map(page.items.map((thread) => [thread.id, thread] as const))
     let focusThreadId = input?.focus_thread_id ?? null
     let focusTurnThreadId: string | null = null
 
     if (input?.focus_turn_id) {
       const focusThread = await this.deps.publicStageThreadRepo.findById(input.focus_turn_id)
-      if (focusThread && focusThread.post_id === postId && isPubliclyVisibleContent(focusThread)) {
+      if (focusThread && focusThread.post_id === postId && isThreadVisible(focusThread)) {
         focusThreadId = focusThread.id
       } else {
         const focusTurn = await this.deps.publicStageTurnRepo.findById(input.focus_turn_id)
-        if (!focusTurn || focusTurn.post_id !== postId || !isPubliclyVisibleContent(focusTurn)) {
+        if (!focusTurn || focusTurn.post_id !== postId || !isTurnVisible(focusTurn)) {
           throw new NotFoundError('Turn', input.focus_turn_id)
         }
         focusTurnThreadId = focusTurn.thread_id
@@ -842,14 +882,14 @@ export class ForumReadService {
 
     if (focusThreadId && !threadById.has(focusThreadId)) {
       const focusThread = await this.deps.publicStageThreadRepo.findById(focusThreadId)
-      if (!focusThread || focusThread.post_id !== postId || !isPubliclyVisibleContent(focusThread)) {
+      if (!focusThread || focusThread.post_id !== postId || !isThreadVisible(focusThread)) {
         throw new NotFoundError('Thread', focusThreadId)
       }
       threadById.set(focusThread.id, focusThread)
     }
     if (focusTurnThreadId && !threadById.has(focusTurnThreadId)) {
       const focusTurnThread = await this.deps.publicStageThreadRepo.findById(focusTurnThreadId)
-      if (!focusTurnThread || focusTurnThread.post_id !== postId || !isPubliclyVisibleContent(focusTurnThread)) {
+      if (!focusTurnThread || focusTurnThread.post_id !== postId || !isThreadVisible(focusTurnThread)) {
         throw new NotFoundError('Thread', focusTurnThreadId)
       }
       threadById.set(focusTurnThread.id, focusTurnThread)
@@ -1138,6 +1178,57 @@ export class ForumReadService {
     const rolloutProfile = await this.resolveReadMediaRolloutProfile()
 
     return this.toPostWithMeta(post, Date.now(), viewerUserId, media, rolloutProfile)
+  }
+
+  async getRuntimePost(postId: string, viewerUserId?: string): Promise<PostWithMeta> {
+    const post = await this.deps.postRepo.findById(postId)
+    if (!post) throw new NotFoundError('Post', postId)
+    if (!isRuntimeVisibleRootPost(post)) throw new NotFoundError('Post', postId)
+
+    const media = (await this.resolvePostMediaViews([post.id]))[post.id] ?? []
+    const rolloutProfile = await this.resolveReadMediaRolloutProfile()
+
+    return this.toPostWithMeta(post, Date.now(), viewerUserId, media, rolloutProfile)
+  }
+
+  async getRuntimeThread(
+    threadId: string,
+    viewerUserId?: string,
+  ): Promise<PublicStageThreadWithAuthor> {
+    const thread = await this.deps.publicStageThreadRepo.findById(threadId)
+    if (!thread) throw new NotFoundError('Thread', threadId)
+    if (!isRuntimeVisibleStageContent(thread)) throw new NotFoundError('Thread', threadId)
+
+    const post = await this.deps.postRepo.findById(thread.post_id)
+    if (!post || !isRuntimeVisibleRootPost(post)) throw new NotFoundError('Thread', threadId)
+
+    const turnLimit = this.clampLimit(undefined, 500, 500)
+    const [turnsPage, totalTurnCount] = await Promise.all([
+      this.findVisibleTurnWindowByThread(thread.id, {
+        turn_cursor: null,
+        turn_limit: turnLimit,
+        around_turn_id: null,
+      }),
+      this.deps.publicStageTurnRepo.countByThread(thread.id),
+    ])
+    const turns = turnsPage.items
+    const [attachmentMap, visibleTurnById] = await Promise.all([
+      this.resolveThreadTurnAttachmentViews([
+        { id: thread.id, entry_kind: 'THREAD' as const },
+        ...turns.map((turn) => ({ id: turn.id, entry_kind: 'TURN' as const })),
+      ]),
+      this.buildVisibleTurnById(turns),
+    ])
+    const authorCache = new Map<string, Promise<AuthorSummary>>()
+    const participationContract = await this.resolvePostParticipationContract(thread.post_id)
+    return this.toPublicStageThreadWithAuthor(thread, turns, {
+      viewerUserId,
+      participationContract,
+      totalTurnCount,
+      authorCache,
+      visibleTurnById,
+      attachmentMap,
+    })
   }
 
   private async toPublicStageTurnWithAuthor(
@@ -1643,46 +1734,49 @@ export class ForumReadService {
     }
   }
 
-  async buildRuntimeContextPreview(input: {
+  private async buildRuntimeContextPreviewWithOptions(input: {
     post_id: string
     thread_id?: string | null
     focus_turn_id?: string | null
     agent_id?: string | null
     compare_debug?: boolean
-  }, viewerUserId?: string): Promise<RuntimeContextPreview> {
+  }, viewerUserId: string | undefined, opts?: {
+    allow_runtime_root_visibility?: boolean
+    allow_runtime_thread_visibility?: boolean
+  }): Promise<RuntimeContextPreview> {
     if (!this.deps.agentPerceptionService || !this.deps.runtimeContextAssembler) {
       throw new Error('Runtime preview services are not attached')
     }
 
-    const readBundle = await this.buildOrchestrationReadBundle({
-      post_id: input.post_id,
-      thread_id: input.thread_id ?? null,
-      focus_turn_id: input.focus_turn_id ?? null,
-    }, viewerUserId)
-    const envelopeEnabled =
-      readBundle.orchestration_policy?.cutover.envelope_enabled
-      ?? config.launch.capabilities.forumOrchestrationEnvelopeCutover
-    const bundle = envelopeEnabled || input.compare_debug
-      ? await this.buildProjectionBundle(
-          input.post_id,
-          {
-            focus_thread_id: input.thread_id ?? null,
-            focus_turn_id: input.focus_turn_id ?? null,
-          },
-          viewerUserId,
-        )
+    const bundle = await this.buildProjectionBundle(
+      input.post_id,
+      {
+        focus_thread_id: input.thread_id ?? null,
+        focus_turn_id: input.focus_turn_id ?? null,
+      },
+      viewerUserId,
+      opts,
+    )
+    const participationContract = this.deps.participationContractService
+      ? await this.deps.participationContractService.getPostContract(input.post_id)
       : null
+    const orchestrationPolicy = this.deps.orchestrationPolicyService
+      ? await this.deps.orchestrationPolicyService.getPostPolicy(input.post_id)
+      : null
+    const envelopeEnabled =
+      orchestrationPolicy?.cutover.envelope_enabled
+      ?? config.launch.capabilities.forumOrchestrationEnvelopeCutover
 
     if (!envelopeEnabled) {
       return {
-        post_capsule: readBundle.post_capsule,
-        thread_capsule: readBundle.thread_capsule,
-        reading_guide: readBundle.reading_guide,
-        forest: readBundle.forest,
+        post_capsule: bundle.post_capsule,
+        thread_capsule: bundle.thread_capsule,
+        reading_guide: bundle.reading_guide,
+        forest: bundle.forest,
         perceived_slice: null,
         runtime_context: null,
         evidence_window_turns: [],
-        orchestration_policy: readBundle.orchestration_policy,
+        orchestration_policy: orchestrationPolicy,
         debug_compare: input.compare_debug
           ? {
             compare_debug_enabled: true,
@@ -1691,16 +1785,12 @@ export class ForumReadService {
       }
     }
 
-    if (!bundle) {
-      throw new Error('Projection bundle is required when orchestration envelope is enabled')
-    }
-
     const perceivedSlice = this.deps.agentPerceptionService.buildSlice({
       agent_id: input.agent_id ?? 'preview-agent',
-      post_capsule: readBundle.post_capsule,
-      thread_capsule: readBundle.thread_capsule,
-      forest: readBundle.forest,
-      participation_contract: readBundle.participation_contract,
+      post_capsule: bundle.post_capsule,
+      thread_capsule: bundle.thread_capsule,
+      forest: bundle.forest,
+      participation_contract: participationContract,
       focus_turn_id: input.focus_turn_id ?? null,
     })
     const evidenceWindowTurns = this.buildEvidenceWindowTurns(bundle.selected_thread, perceivedSlice)
@@ -1709,8 +1799,8 @@ export class ForumReadService {
     }
     const runtimeContext = this.deps.runtimeContextAssembler.build({
       agent_id: input.agent_id ?? 'preview-agent',
-      post_capsule: readBundle.post_capsule,
-      thread_capsule: readBundle.thread_capsule,
+      post_capsule: bundle.post_capsule,
+      thread_capsule: bundle.thread_capsule,
       perceived_slice: perceivedSlice,
       post_title: bundle.post.title,
       post_body_excerpt: bundle.post.body.slice(0, 240),
@@ -1720,25 +1810,51 @@ export class ForumReadService {
         display_name: bundle.post.author.display_name,
       },
       community_id: bundle.post.community_id,
-      participation_contract: readBundle.participation_contract,
+      participation_contract: participationContract,
       evidence_window_turns: evidenceWindowTurns,
     })
 
     return {
-      post_capsule: readBundle.post_capsule,
-      thread_capsule: readBundle.thread_capsule,
-      reading_guide: readBundle.reading_guide,
-      forest: readBundle.forest,
+      post_capsule: bundle.post_capsule,
+      thread_capsule: bundle.thread_capsule,
+      reading_guide: bundle.reading_guide,
+      forest: bundle.forest,
       perceived_slice: perceivedSlice,
       runtime_context: runtimeContext,
       evidence_window_turns: evidenceWindowTurns,
-      orchestration_policy: readBundle.orchestration_policy,
+      orchestration_policy: orchestrationPolicy,
       debug_compare: input.compare_debug
         ? {
           compare_debug_enabled: true,
         }
         : null,
     }
+  }
+
+  async buildRuntimeContextPreview(input: {
+    post_id: string
+    thread_id?: string | null
+    focus_turn_id?: string | null
+    agent_id?: string | null
+    compare_debug?: boolean
+  }, viewerUserId?: string): Promise<RuntimeContextPreview> {
+    return this.buildRuntimeContextPreviewWithOptions(input, viewerUserId, {
+      allow_runtime_root_visibility: false,
+      allow_runtime_thread_visibility: false,
+    })
+  }
+
+  async buildRuntimeContextPreviewInternal(input: {
+    post_id: string
+    thread_id?: string | null
+    focus_turn_id?: string | null
+    agent_id?: string | null
+    compare_debug?: boolean
+  }, viewerUserId?: string): Promise<RuntimeContextPreview> {
+    return this.buildRuntimeContextPreviewWithOptions(input, viewerUserId, {
+      allow_runtime_root_visibility: true,
+      allow_runtime_thread_visibility: true,
+    })
   }
 
   async getCommunityParticipationContract(communityId: string): Promise<ParticipationContract> {

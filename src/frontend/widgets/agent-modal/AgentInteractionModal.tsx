@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -28,12 +29,6 @@ import {
   Square,
   X,
 } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/shared/utils/get-initials'
 import { resolveUserAvatarSrc } from '@/shared/utils/preset-avatars'
@@ -117,6 +112,7 @@ const MIN_W_MANAGE = 832
 const MIN_H = 510
 const MAX_W = 1440
 const VIEWPORT_MARGIN = 12
+const NARROW_VIEWPORT_WIDTH = 768
 const DEFAULT_WIDTH_RATIO_READONLY = 0.48
 const DEFAULT_HEIGHT_RATIO_READONLY = 0.78
 const DEFAULT_WIDTH_RATIO_MANAGE = 0.65
@@ -141,10 +137,15 @@ function ModalPanelFallback({ scrollable = false }: { scrollable?: boolean }) {
 function centeredRect(viewMode: 'manage' | 'readonly') {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const isNarrowViewport = vw < NARROW_VIEWPORT_WIDTH
   const widthRatio =
-    viewMode === 'readonly' ? DEFAULT_WIDTH_RATIO_READONLY : DEFAULT_WIDTH_RATIO_MANAGE
+    isNarrowViewport
+      ? 1
+      : (viewMode === 'readonly' ? DEFAULT_WIDTH_RATIO_READONLY : DEFAULT_WIDTH_RATIO_MANAGE)
   const heightRatio =
-    viewMode === 'readonly' ? DEFAULT_HEIGHT_RATIO_READONLY : DEFAULT_HEIGHT_RATIO_MANAGE
+    isNarrowViewport
+      ? 1
+      : (viewMode === 'readonly' ? DEFAULT_HEIGHT_RATIO_READONLY : DEFAULT_HEIGHT_RATIO_MANAGE)
   const w = Math.round(vw * widthRatio)
   const h = Math.round(vh * heightRatio)
   return { x: Math.round((vw - w) / 2), y: Math.round((vh - h) / 2), w, h }
@@ -426,11 +427,16 @@ export function AgentInteractionModal() {
   const readonlyLayoutVersion = useAgentModalStore((state) => state.readonlyLayoutVersion)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const screenshotResolverRef = useRef<((file: File | null) => void) | null>(null)
+  const geometryMenuRef = useRef<HTMLDivElement | null>(null)
+  const geometryMenuTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const geometryCenterButtonRef = useRef<HTMLButtonElement | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [screenshotDraft, setScreenshotDraft] = useState<ScreenshotDraft | null>(null)
   const [screenshotErrorMessage, setScreenshotErrorMessage] = useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteConfirmValue, setDeleteConfirmValue] = useState('')
+  const [geometryMenuOpen, setGeometryMenuOpen] = useState(false)
+  const [geometryMenuPosition, setGeometryMenuPosition] = useState<{ top: number; left: number } | null>(null)
   const persistedRect =
     lastModalRect
     && lastModalRectMode === viewMode
@@ -487,13 +493,42 @@ export function AgentInteractionModal() {
   const handleModalClose = useCallback(() => {
     setWizardOpen(false)
     closeDeleteConfirmPanel()
+    setGeometryMenuOpen(false)
+    setGeometryMenuPosition(null)
     closeModal()
   }, [closeDeleteConfirmPanel, closeModal])
+
+  const closeGeometryMenu = useCallback((restoreFocus = false) => {
+    setGeometryMenuOpen(false)
+    setGeometryMenuPosition(null)
+    if (restoreFocus) {
+      geometryMenuTriggerRef.current?.focus()
+    }
+  }, [])
+
+  const toggleGeometryMenu = useCallback(() => {
+    if (geometryMenuOpen) {
+      closeGeometryMenu(true)
+      return
+    }
+
+    const trigger = geometryMenuTriggerRef.current
+    if (!trigger) return
+
+    const rect = trigger.getBoundingClientRect()
+    setGeometryMenuPosition({
+      top: Math.round(rect.bottom + 6),
+      left: Math.round(rect.right),
+    })
+    setGeometryMenuOpen(true)
+  }, [closeGeometryMenu, geometryMenuOpen])
 
   useEffect(() => {
     if (!isOpen) {
       setWizardOpen(false)
       closeDeleteConfirmPanel()
+      setGeometryMenuOpen(false)
+      setGeometryMenuPosition(null)
       screenshotResolverRef.current?.(null)
       screenshotResolverRef.current = null
       setScreenshotDraft(null)
@@ -510,6 +545,59 @@ export function AgentInteractionModal() {
     if (!isOpen) return
     preloadCaptureDisplayFrame()
   }, [isOpen])
+
+  useEffect(() => {
+    if (!geometryMenuOpen || typeof document === 'undefined') return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (target && geometryMenuRef.current?.contains(target)) return
+      if (target && geometryMenuTriggerRef.current?.contains(target)) return
+      closeGeometryMenu()
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeGeometryMenu(true)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [closeGeometryMenu, geometryMenuOpen])
+
+  useEffect(() => {
+    if (!geometryMenuOpen || typeof window === 'undefined') return
+
+    const updateGeometryMenuPosition = () => {
+      const trigger = geometryMenuTriggerRef.current
+      if (!trigger) return
+      const rect = trigger.getBoundingClientRect()
+      setGeometryMenuPosition({
+        top: Math.round(rect.bottom + 6),
+        left: Math.round(rect.right),
+      })
+    }
+
+    updateGeometryMenuPosition()
+    window.addEventListener('resize', updateGeometryMenuPosition)
+    window.addEventListener('scroll', updateGeometryMenuPosition, true)
+
+    return () => {
+      window.removeEventListener('resize', updateGeometryMenuPosition)
+      window.removeEventListener('scroll', updateGeometryMenuPosition, true)
+    }
+  }, [geometryMenuOpen])
+
+  useEffect(() => {
+    if (!geometryMenuOpen) return
+    geometryCenterButtonRef.current?.focus()
+  }, [geometryMenuOpen])
 
   useEffect(() => {
     if (!validActiveAgentId) return
@@ -686,37 +774,23 @@ export function AgentInteractionModal() {
                 )}
               </div>
 
-              <div className="z-20 flex items-center gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="更多操作"
-                      title="更多操作"
-                      data-testid="agent-modal-more-button"
-                      onPointerDown={(event) => event.stopPropagation()}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    >
-                      <Ellipsis className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" sideOffset={6}>
-                    <DropdownMenuItem
-                      data-testid="agent-modal-center-button"
-                      onClick={centerCurrent}
-                    >
-                      <LocateFixed className="h-4 w-4" />
-                      视觉居中
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      data-testid="agent-modal-restore-button"
-                      onClick={restoreDefaultSize}
-                    >
-                      <Square className="h-4 w-4" />
-                      恢复默认尺寸
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <div className="relative z-20 flex items-center gap-1">
+                <button
+                  ref={geometryMenuTriggerRef}
+                  type="button"
+                  id="agent-modal-geometry-trigger"
+                  aria-label="更多操作"
+                  aria-haspopup="menu"
+                  aria-expanded={geometryMenuOpen}
+                  aria-controls={geometryMenuOpen ? 'agent-modal-geometry-menu' : undefined}
+                  title="更多操作"
+                  data-testid="agent-modal-more-button"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={toggleGeometryMenu}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Ellipsis className="h-4 w-4" />
+                </button>
                 <button
                   type="button"
                   aria-label="关闭弹窗"
@@ -1023,16 +1097,83 @@ export function AgentInteractionModal() {
         />
       </DialogContent>
     </Dialog>
-      {screenshotDraft ? (
-        <Suspense fallback={null}>
-          <LazyScreenshotCropper
-            draft={screenshotDraft}
-            open={Boolean(screenshotDraft)}
-            onCancel={() => resolveScreenshotDraft(null)}
-            onConfirm={(file) => resolveScreenshotDraft(file)}
-          />
-        </Suspense>
-      ) : null}
+    {geometryMenuOpen && geometryMenuPosition && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={geometryMenuRef}
+            id="agent-modal-geometry-menu"
+            role="menu"
+            aria-labelledby="agent-modal-geometry-trigger"
+            data-testid="agent-modal-geometry-menu"
+            className="pointer-events-auto fixed z-[90] min-w-[8rem] -translate-x-full overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+            style={{
+              top: geometryMenuPosition.top,
+              left: geometryMenuPosition.left,
+            }}
+            onKeyDown={(event) => {
+              const items = Array.from(
+                geometryMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+              )
+              const currentIndex = items.findIndex((item) => item === document.activeElement)
+
+              if (event.key === 'ArrowDown') {
+                event.preventDefault()
+                items[(currentIndex + 1 + items.length) % items.length]?.focus()
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault()
+                items[(currentIndex - 1 + items.length) % items.length]?.focus()
+              } else if (event.key === 'Home') {
+                event.preventDefault()
+                items[0]?.focus()
+              } else if (event.key === 'End') {
+                event.preventDefault()
+                items[items.length - 1]?.focus()
+              }
+            }}
+          >
+            <button
+              ref={geometryCenterButtonRef}
+              type="button"
+              role="menuitem"
+              data-testid="agent-modal-center-button"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-foreground outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                centerCurrent()
+                closeGeometryMenu(true)
+              }}
+            >
+              <LocateFixed className="h-4 w-4 text-muted-foreground" />
+              视觉居中
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-testid="agent-modal-restore-button"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-foreground outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                restoreDefaultSize()
+                closeGeometryMenu(true)
+              }}
+            >
+              <Square className="h-4 w-4 text-muted-foreground" />
+              恢复默认尺寸
+            </button>
+          </div>,
+          document.body,
+        )
+      : null}
+    {screenshotDraft ? (
+      <Suspense fallback={null}>
+        <LazyScreenshotCropper
+          draft={screenshotDraft}
+          open={Boolean(screenshotDraft)}
+          onCancel={() => resolveScreenshotDraft(null)}
+          onConfirm={(file) => resolveScreenshotDraft(file)}
+        />
+      </Suspense>
+    ) : null}
     </>
   )
 }

@@ -172,8 +172,7 @@ describe('PostCompact', () => {
     renderPost(buildPost())
 
     expect(screen.getByLabelText('展开帖子')).toBeTruthy()
-    expect(screen.getByText('关注帖子')).toBeTruthy()
-    expect(screen.getByText('关注 Agent')).toBeTruthy()
+    expect(screen.getByText('关注')).toBeTruthy()
     expect(screen.getByText('隐藏')).toBeTruthy()
     expect(screen.getByText('举报')).toBeTruthy()
     expect(screen.queryByLabelText('更多操作')).toBeNull()

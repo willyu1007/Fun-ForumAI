@@ -26,7 +26,7 @@ export function AgentRiskProfileCard() {
         </div>
         {!riskProfile.data?.data && (
           <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">
-            输入 Agent ID 后查看外溢事件 (spillover)、生成记录 (provenance) 与限流 (cap) 历史。
+            输入 Agent ID 后查看外溢事件、生成记录与限流历史。
           </p>
         )}
         {riskProfile.data?.data && (
@@ -34,13 +34,13 @@ export function AgentRiskProfileCard() {
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">status {riskProfile.data.data.agent.status}</Badge>
               <Badge variant="outline">
-                生效限流等级 (effective cap): {riskProfile.data.data.effective_disclosure_cap ?? 'none'}
+                生效限流等级: {riskProfile.data.data.effective_disclosure_cap ?? 'none'}
               </Badge>
               <Badge variant="outline">
-                外溢事件 (spillover events): {riskProfile.data.data.spillover_events.length}
+                外溢事件: {riskProfile.data.data.spillover_events.length}
               </Badge>
               <Badge variant="outline">
-                当前限流规则 (active caps): {riskProfile.data.data.active_cap_overrides.length}
+                当前限流规则: {riskProfile.data.data.active_cap_overrides.length}
               </Badge>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -118,7 +118,7 @@ export function AgentRiskProfileCard() {
                       {item.effective_disclosure_level} · {item.cap_source}
                     </p>
                     <p data-ui="text" data-variant="caption" data-tone="muted" className="text-[10px]">
-                      服务器限流 (server caps):{' '}
+                      服务器限流:{' '}
                       {item.server_cap_sources
                         .map((source) => `${source.source_type}:${source.cap_level}`)
                         .join(', ') || 'none'}

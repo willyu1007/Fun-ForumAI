@@ -1,5 +1,5 @@
 {
   "ui_spec_version": "1.1.0",
-  "generated_at_utc": "2026-03-17T10:15:00Z",
+  "generated_at_utc": "2026-04-22T13:19:22Z",
   "notes": "B1 Tailwind boundary; data-ui contract; themes are token-only. Phase 1 complete: navy+orange SSOT, data-theme protocol, scripts/ui/* modular."
 }

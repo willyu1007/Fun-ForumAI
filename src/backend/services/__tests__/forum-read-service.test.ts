@@ -1232,6 +1232,101 @@ describe('ForumReadService', () => {
       )
     })
 
+    it('allows runtime-only previews for fresh gray pending root posts without widening public preview reads', async () => {
+      attachProjectionDeps(ctx)
+      const community = ctx.communityRepo.create({
+        name: 'Runtime Preview Pending',
+        slug: 'runtime-preview-pending',
+      })
+      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-pending', display_name: 'Pending Root' })
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        title: 'Pending target',
+        body: 'Fresh post body should still seed runtime context.',
+        visibility: 'GRAY',
+        state: 'PENDING',
+      })
+
+      await expect(ctx.svc.buildRuntimeContextPreview({
+        post_id: post.id,
+        agent_id: rootAuthor.id,
+      })).rejects.toThrow('not found')
+
+      const preview = await ctx.svc.buildRuntimeContextPreviewInternal({
+        post_id: post.id,
+        agent_id: rootAuthor.id,
+      })
+
+      expect(preview.post_capsule).toMatchObject({
+        post_id: post.id,
+        schema_version: expect.any(String),
+      })
+      expect(preview.runtime_context).toMatchObject({
+        post_id: post.id,
+        thread_id: null,
+        schema_version: expect.any(String),
+      })
+      expect(preview.thread_capsule).toBeNull()
+    })
+
+    it('allows runtime-only previews for fresh gray pending threads without widening public thread reads', async () => {
+      attachProjectionDeps(ctx)
+      const community = ctx.communityRepo.create({
+        name: 'Runtime Preview Pending Thread',
+        slug: 'runtime-preview-pending-thread',
+      })
+      const rootAuthor = ctx.agentRepo.create({ owner_id: 'owner-pending-thread', display_name: 'Pending Root Thread' })
+      const threadAuthor = ctx.agentRepo.create({ owner_id: 'owner-pending-thread-2', display_name: 'Pending Thread Author' })
+      const post = await ctx.postRepo.create({
+        community_id: community.id,
+        author_agent_id: rootAuthor.id,
+        title: 'Pending thread target',
+        body: 'Fresh post body should still seed runtime thread context.',
+        visibility: 'GRAY',
+        state: 'PENDING',
+      })
+      const thread = await ctx.publicStageThreadRepo.create({
+        post_id: post.id,
+        community_id: community.id,
+        author_agent_id: threadAuthor.id,
+        body: 'Fresh thread body should still seed runtime context.',
+        visibility: 'GRAY',
+        state: 'PENDING',
+      })
+
+      await expect(ctx.svc.getThread(thread.id)).rejects.toThrow('not found')
+
+      const runtimeThread = await ctx.svc.getRuntimeThread(thread.id)
+      expect(runtimeThread).toMatchObject({
+        id: thread.id,
+        post_id: post.id,
+        body: 'Fresh thread body should still seed runtime context.',
+      })
+
+      await expect(ctx.svc.buildRuntimeContextPreview({
+        post_id: post.id,
+        thread_id: thread.id,
+        agent_id: threadAuthor.id,
+      })).rejects.toThrow('not found')
+
+      const preview = await ctx.svc.buildRuntimeContextPreviewInternal({
+        post_id: post.id,
+        thread_id: thread.id,
+        agent_id: threadAuthor.id,
+      })
+
+      expect(preview.thread_capsule).toMatchObject({
+        thread_id: thread.id,
+        schema_version: expect.any(String),
+      })
+      expect(preview.runtime_context).toMatchObject({
+        post_id: post.id,
+        thread_id: thread.id,
+        schema_version: expect.any(String),
+      })
+    })
+
     it('keeps lifecycle writeability consistent across summaries, detail, forest, and runtime preview', async () => {
       attachProjectionDeps(ctx)
       const community = ctx.communityRepo.create({

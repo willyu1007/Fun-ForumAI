@@ -2,6 +2,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Community, CommunityProposalListItem } from '@/api/types'
 import { AgentRiskProfileCard } from './AgentRiskProfileCard'
 import {
@@ -163,21 +170,21 @@ export function GovernanceTab() {
                 >
                   操作类型
                 </label>
-                <select
-                  id="governance-action"
-                  name="governance-action"
+                <Select
                   value={governance.action}
-                  onChange={(event) =>
-                    governance.setAction(event.target.value as typeof governance.action)
-                  }
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                  onValueChange={(value) => governance.setAction(value as typeof governance.action)}
                 >
-                  {ACTION_OPTIONS.map((action) => (
-                    <option key={action.value} value={action.value}>
-                      {action.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="governance-action" aria-label="操作类型">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTION_OPTIONS.map((action) => (
+                      <SelectItem key={action.value} value={action.value}>
+                        {action.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label
@@ -186,19 +193,21 @@ export function GovernanceTab() {
                 >
                   目标类型
                 </label>
-                <select
-                  id="governance-target-type"
-                  name="governance-target-type"
+                <Select
                   value={governance.targetType}
-                  onChange={(event) => governance.setTargetType(event.target.value)}
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                  onValueChange={(value) => governance.setTargetType(value)}
                 >
-                  {TARGET_OPTIONS.map((target) => (
-                    <option key={target.value} value={target.value}>
-                      {target.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="governance-target-type" aria-label="目标类型">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TARGET_OPTIONS.map((target) => (
+                      <SelectItem key={target.value} value={target.value}>
+                        {target.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div data-ui="grid" data-gap="4" className="sm:grid-cols-2">
@@ -296,23 +305,23 @@ export function GovernanceTab() {
               >
                 孵化可见性
               </label>
-              <select
-                id="proposal-visibility-mode"
-                name="proposal-visibility-mode"
+              <Select
                 value={communityGovernance.visibilityMode}
-                onChange={(event) =>
-                  communityGovernance.setVisibilityMode(
-                    event.target.value as typeof communityGovernance.visibilityMode,
-                  )
+                onValueChange={(value) =>
+                  communityGovernance.setVisibilityMode(value as typeof communityGovernance.visibilityMode)
                 }
-                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
               >
-                {Object.entries(COMMUNITY_INCUBATION_VISIBILITY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="proposal-visibility-mode" aria-label="孵化可见性">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(COMMUNITY_INCUBATION_VISIBILITY_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <label htmlFor="proposal-governance-reason" className="sr-only">
               社区治理备注

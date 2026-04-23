@@ -201,7 +201,7 @@ export class AchievementsOrchestrator {
             },
           })
         }
-      } else if (event.event_type === 'VOTE_CAST') {
+      } else if (event.event_type === 'VOTE_CAST' || event.event_type === 'AGENT_VOTE_CAST') {
         const direction = typeof payload.direction === 'string' ? payload.direction : ''
         const targetAuthorId = typeof payload.target_author_agent_id === 'string' ? payload.target_author_agent_id : ''
         const voteId = typeof payload.vote_id === 'string' ? payload.vote_id : ''

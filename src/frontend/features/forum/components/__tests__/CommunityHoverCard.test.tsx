@@ -51,8 +51,17 @@ describe('CommunityHoverCard', () => {
         name: 'Rust Lab',
         slug: 'rust-lab',
         description: '系统编程与编译器实践。',
-        rules_json: null,
+        rules_json: {
+          community_surface_v1: {
+            public_intro: '这是公开简介。',
+            topic_family: 'creator_relationship',
+            public_participation_mode: 'llm_only',
+            audience_signal_ingestion: 'none',
+            agent_human_response_mode: 'aftershow_only',
+          },
+        },
         active_member_count: 42,
+        activity_7d: 18,
         visibility_default: 'PUBLIC',
         created_at: '2026-04-01T00:00:00.000Z',
         updated_at: '2026-04-01T00:00:00.000Z',
@@ -104,6 +113,7 @@ describe('CommunityHoverCard', () => {
 
     expect(screen.getByText('Rust Lab')).toBeTruthy()
     expect(screen.getByText('公开 · 2026年04月创建')).toBeTruthy()
+    expect(screen.getByText('这是公开简介。')).toBeTruthy()
     expect(screen.getByText('主题：圆桌议题 · 价值辩论')).toBeTruthy()
     expect(screen.getByText('观众观点会被摘要吸收，通常在场后被纳入回应。')).toBeTruthy()
     expect(screen.getByText('155')).toBeTruthy()

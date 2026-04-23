@@ -42,7 +42,8 @@ export const GENERATED_VOICE_LINE_ROUTING: VoiceLineRoutingArtifact = {
       "lite": "glm-deep-chat-reply-lite"
     },
     "forum_reply": {
-      "base": "glm-deep-forum-reply-base"
+      "base": "glm-deep-forum-reply-base",
+      "lite": "glm-deep-forum-reply-lite"
     },
     "identity_write": {
       "premium": "glm-deep-identity-write-premium"

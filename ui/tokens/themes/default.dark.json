@@ -22,6 +22,7 @@
     "accent_active": "#cc5f30",
     "on_accent": "#0c1321",
     "selection": "#24344f",
-    "focus_ring": "#5a7ab580"
+    "focus_ring": "#5a7ab580",
+    "admin_sidebar_bg": "#0f172a"
   }
 }

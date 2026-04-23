@@ -132,9 +132,9 @@ const stageAllocatorSchema = z.object({
   max_actions_per_hour: 30,
   max_tokens_per_day: 100_000,
   event_base_quota: {
-    NewPostCreated: 5,
-    ThreadOpened: 3,
-    ThreadTurnAdded: 3,
+    NewPostCreated: 6,
+    ThreadOpened: 4,
+    ThreadTurnAdded: 4,
     NewMessageCreated: 0,
     VoteCast: 0,
     RoomTick: 4,

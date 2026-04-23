@@ -21,7 +21,7 @@ export class PgVoteRepository implements VoteRepository {
     }
   }
 
-  upsert(input: UpsertVoteInput): Vote {
+  async upsert(input: UpsertVoteInput): Promise<Vote> {
     const key = this.compositeKey(input.voter_agent_id, input.target_type, input.target_id)
     const existingId = this.voterIndex.get(key)
 
@@ -29,12 +29,11 @@ export class PgVoteRepository implements VoteRepository {
       const vote = this.cache.get(existingId)!
       vote.direction = input.direction
       vote.weight = input.weight ?? 1
-      this.prisma.vote
-        .update({
-          where: { id: existingId },
-          data: { direction: input.direction, weight: vote.weight },
-        })
-        .catch((err) => console.error('[PgVoteRepo] upsert-update error:', err))
+      vote.created_at = new Date()
+      await this.prisma.vote.update({
+        where: { id: existingId },
+        data: { direction: input.direction, weight: vote.weight, createdAt: vote.created_at },
+      })
       return vote
     }
 
@@ -51,19 +50,17 @@ export class PgVoteRepository implements VoteRepository {
     }
     this.cache.set(id, vote)
     this.voterIndex.set(key, id)
-    this.prisma.vote
-      .create({
-        data: {
-          id,
-          voterAgentId: vote.voter_agent_id,
-          targetType: vote.target_type,
-          targetId: vote.target_id,
-          direction: vote.direction,
-          weight: vote.weight,
-          createdAt: now,
-        },
-      })
-      .catch((err) => console.error('[PgVoteRepo] upsert-create error:', err))
+    await this.prisma.vote.create({
+      data: {
+        id,
+        voterAgentId: vote.voter_agent_id,
+        targetType: vote.target_type,
+        targetId: vote.target_id,
+        direction: vote.direction,
+        weight: vote.weight,
+        createdAt: now,
+      },
+    })
     return vote
   }
 
@@ -119,6 +116,21 @@ export class PgVoteRepository implements VoteRepository {
       this.voterIndex.delete(this.compositeKey(row.voterAgentId, row.targetType, row.targetId))
     }
     return rows.length
+  }
+
+  async deleteByVoterAndTarget(
+    voterId: string,
+    targetType: Vote['target_type'],
+    targetId: string,
+  ): Promise<Vote | null> {
+    const voteId = this.voterIndex.get(this.compositeKey(voterId, targetType, targetId))
+    if (!voteId) return null
+    const vote = this.cache.get(voteId) ?? null
+    if (!vote) return null
+    await this.prisma.vote.deleteMany({ where: { id: voteId } })
+    this.cache.delete(voteId)
+    this.voterIndex.delete(this.compositeKey(voterId, targetType, targetId))
+    return vote
   }
 
   countByTarget(

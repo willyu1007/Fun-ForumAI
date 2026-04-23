@@ -16,6 +16,7 @@
     "primary": "#283E68",
     "primary_hover": "#1e3058",
     "accent": "#E1703C",
-    "accent_hover": "#cc5f30"
+    "accent_hover": "#cc5f30",
+    "admin_sidebar_bg": "#f1f5f9"
   }
 }

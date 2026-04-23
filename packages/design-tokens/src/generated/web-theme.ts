@@ -52,7 +52,9 @@ export const BASE_TOKENS = {
     "overlay": "#000000",
     "on_overlay": "#ffffff",
     "sentiment_negative": "#BC8F8F",
-    "sentiment_positive": "#70A985"
+    "sentiment_positive": "#70A985",
+    "admin_sidebar_bg": "#1e293b",
+    "danger_action": "#ef4444"
   },
   "typography": {
     "font_family": {
@@ -178,7 +180,9 @@ export const THEMES = {
       "overlay": "#000000",
       "on_overlay": "#ffffff",
       "sentiment_negative": "#BC8F8F",
-      "sentiment_positive": "#70A985"
+      "sentiment_positive": "#70A985",
+      "admin_sidebar_bg": "#0f172a",
+      "danger_action": "#ef4444"
     },
     "typography": {
       "font_family": {
@@ -302,7 +306,9 @@ export const THEMES = {
       "overlay": "#000000",
       "on_overlay": "#ffffff",
       "sentiment_negative": "#BC8F8F",
-      "sentiment_positive": "#70A985"
+      "sentiment_positive": "#70A985",
+      "admin_sidebar_bg": "#f1f5f9",
+      "danger_action": "#ef4444"
     },
     "typography": {
       "font_family": {

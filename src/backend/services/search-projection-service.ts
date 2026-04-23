@@ -901,7 +901,12 @@ export class SearchProjectionService {
       return
     }
 
-    if (event.event_type === 'VOTE_CAST' || event.event_type === 'AGENT_VOTE_CAST') {
+    if (
+      event.event_type === 'VOTE_CAST'
+      || event.event_type === 'AGENT_VOTE_CAST'
+      || event.event_type === 'VOTE_CLEARED'
+      || event.event_type === 'AGENT_VOTE_CLEARED'
+    ) {
       const targetType = typeof payload.target_type === 'string' ? payload.target_type : null
       const targetId = typeof payload.target_id === 'string' ? payload.target_id : null
       if ((targetType === 'POST' || targetType === 'THREAD' || targetType === 'TURN') && targetId) {

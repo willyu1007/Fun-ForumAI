@@ -122,7 +122,6 @@ describe('DevAuthToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
 
     expect(screen.getByText('加载 Mock')).toBeTruthy()
-    expect(screen.getByText('加载 Smoke')).toBeTruthy()
     expect(screen.getByText('VITE 功能门')).toBeTruthy()
     expect(screen.getByText('引导内容调试')).toBeTruthy()
     expect(screen.getByText('勋章调试')).toBeTruthy()
@@ -187,6 +186,5 @@ describe('DevAuthToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: '开发工具' }))
 
     expect(screen.getByText('加载 Mock').closest('button')?.disabled).toBe(true)
-    expect(screen.getByText('加载 Smoke').closest('button')?.disabled).toBe(true)
   })
 })

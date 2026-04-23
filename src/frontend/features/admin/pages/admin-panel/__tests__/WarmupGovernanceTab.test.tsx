@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { WarmupGovernanceTab } from '../WarmupGovernanceTab'
+import * as hooks from '../use-warmup-controller'
+
+vi.mock('../use-warmup-controller')
 
 function createWarmupState() {
   return {
@@ -196,12 +199,12 @@ function createWarmupState() {
 }
 
 describe('WarmupGovernanceTab', () => {
-  it('renders kickoff, warmup run, and verifier state on the simplified control plane', () => {
+  it('renders kickoff, warmup run, and verifier state on the simplified control plane', async () => {
     const warmup = createWarmupState()
+    vi.mocked(hooks.useWarmupController).mockReturnValue(warmup as unknown as ReturnType<typeof hooks.useWarmupController>)
+    render(<WarmupGovernanceTab />)
 
-    render(<WarmupGovernanceTab warmup={warmup as never} />)
-
-    expect(screen.getByText('Kickoff Baseline')).toBeTruthy()
+    expect(screen.getByText('启动基线数据')).toBeTruthy()
     expect(screen.getByText('kickoff-v1')).toBeTruthy()
     expect(screen.getByText('Selected Run')).toBeTruthy()
     expect(screen.getByText('search 没有命中 probe 内容。')).toBeTruthy()
@@ -210,6 +213,8 @@ describe('WarmupGovernanceTab', () => {
     expect(warmup.handleRunVerifier).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Rollback Selected Run' }))
+    const confirmButton = await screen.findByRole('button', { name: 'Confirm Rollback' })
+    fireEvent.click(confirmButton)
     expect(warmup.handleRollbackWarmupRun).toHaveBeenCalledTimes(1)
   })
 
@@ -235,7 +240,8 @@ describe('WarmupGovernanceTab', () => {
       triggered: 0,
     }
 
-    render(<WarmupGovernanceTab warmup={warmup as never} />)
+    vi.mocked(hooks.useWarmupController).mockReturnValue(warmup as unknown as ReturnType<typeof hooks.useWarmupController>)
+    render(<WarmupGovernanceTab />)
 
     expect(screen.getByRole('button', { name: 'Start Warmup' }).hasAttribute('disabled')).toBe(true)
     expect(screen.getByRole('button', { name: 'Run Verifier' }).hasAttribute('disabled')).toBe(true)
@@ -262,7 +268,8 @@ describe('WarmupGovernanceTab', () => {
       stop_reason: 'rolled_back',
     }
 
-    render(<WarmupGovernanceTab warmup={warmup as never} />)
+    vi.mocked(hooks.useWarmupController).mockReturnValue(warmup as unknown as ReturnType<typeof hooks.useWarmupController>)
+    render(<WarmupGovernanceTab />)
 
     expect(screen.getByRole('button', { name: 'Rollback Selected Run' }).hasAttribute('disabled')).toBe(true)
   })

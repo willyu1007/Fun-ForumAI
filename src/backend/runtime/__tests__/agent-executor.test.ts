@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AgentExecutor } from '../agent-executor.js'
 import { ResponseParser } from '../response-parser.js'
 import { PROMPT_TEMPLATE_REFS } from '../../llm/prompt-template-refs.js'
+import { InMemoryVoteRepository } from '../../repos/vote-repository.js'
 
 describe('AgentExecutor', () => {
   it('uses the chat-room prompt contract and carries chat media plans into create_message writes', async () => {
@@ -123,10 +124,11 @@ describe('AgentExecutor', () => {
         getAgent: vi.fn(() => ({ id: 'agent-1' })),
         getLatestConfig: vi.fn(() => null),
       } as never,
+      voteRepo: new InMemoryVoteRepository(),
       inferenceProfileService: {
-        resolveVisibleRoute: vi.fn(async () => ({
+        resolveVisibleRoute: vi.fn(async ({ requestedTier }) => ({
           homeVoiceLineId: 'qwen-social-v1',
-          requestedTier: 'base',
+          requestedTier,
         })),
       } as never,
       surfaceMediaPlanningService: {
@@ -153,6 +155,7 @@ describe('AgentExecutor', () => {
       intent: 'chat_reply',
       scene: 'chat_room',
       promptRef: PROMPT_TEMPLATE_REFS.agentChatReplyScene,
+      requestedTier: 'lite',
       variables: expect.objectContaining({
         room_name: '测试房间',
       }),
@@ -244,47 +247,68 @@ describe('AgentExecutor', () => {
 
     const build = vi.fn(async () => context)
     const enrichWithLayers = vi.fn(async (ctx) => ctx)
-    const generateVisibleText = vi.fn(async () => ({
-      content: '那我就沿着旧分支继续把这一句说完。',
-      usage: { prompt_tokens: 12, completion_tokens: 7, total_tokens: 19 },
-      latencyMs: 10,
-      platformRetryCount: 0,
-      renderDecision: {
-        voiceLineId: 'qwen-social-v1',
-        tier: 'base',
-        profileId: 'profile-1',
-        providerId: 'dashscope-openai',
-        modelId: 'qwen-plus',
-        region: 'cn',
-        endpointId: 'default',
-        credentialId: 'cred-1',
-        fallbackLevel: 'none',
-        reasons: ['test'],
-        promptTemplateId: 'agent-reply-to-thread-turn',
-        promptVersion: 6,
-      },
-      promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn,
-    }))
-    const parse = vi.fn(() => ({
-      action: 'add_thread_turn' as const,
-      community_id: 'community-1',
-      post_id: 'post-1',
-      thread_id: 'thread-1',
-      anchor_turn_id: 'turn-1',
-      body: '那我就沿着旧分支继续把这一句说完。',
-    }))
+    const generateVisibleText = vi.fn(async (input: { promptRef: { id: string } }) => {
+      if (input.promptRef.id === 'agent-plan-forum-actions') {
+        return {
+          content: JSON.stringify({
+            version: 'v1',
+            actions: [{ kind: 'add_thread_turn', target_ref: 'reply_thread' }],
+          }),
+          usage: { prompt_tokens: 12, completion_tokens: 4, total_tokens: 16 },
+          latencyMs: 10,
+          platformRetryCount: 0,
+          renderDecision: {
+            voiceLineId: 'qwen-social-v1',
+            tier: 'lite',
+            profileId: 'profile-1',
+            providerId: 'dashscope-openai',
+            modelId: 'qwen-plus',
+            region: 'cn',
+            endpointId: 'default',
+            credentialId: 'cred-1',
+            fallbackLevel: 'none',
+            reasons: ['test'],
+            promptTemplateId: 'agent-plan-forum-actions',
+            promptVersion: 1,
+          },
+          promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+        }
+      }
+      return {
+        content: '那我就沿着旧分支继续把这一句说完。',
+        usage: { prompt_tokens: 12, completion_tokens: 7, total_tokens: 19 },
+        latencyMs: 10,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'base',
+          profileId: 'profile-1',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-reply-to-thread-turn',
+          promptVersion: 6,
+        },
+        promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn,
+      }
+    })
     const write = vi.fn(async () => ({ success: true, content_id: 'turn-4' }))
 
     const executor = new AgentExecutor({
       llmGateway: { generateVisibleText } as never,
       contextBuilder: { build, enrichWithLayers } as never,
-      responseParser: { parse } as never,
+      responseParser: { parse: vi.fn() } as never,
       dataplaneWriter: { write } as never,
       agentRunRepo: { create: vi.fn() } as never,
       agentService: {
         getAgent: vi.fn(() => ({ id: 'agent-1', model: 'qwen-plus' })),
         getLatestConfig: vi.fn(() => null),
       } as never,
+      voteRepo: new InMemoryVoteRepository(),
       inferenceProfileService: {
         resolveVisibleRoute: vi.fn(async () => ({
           homeVoiceLineId: 'qwen-social-v1',
@@ -318,6 +342,210 @@ describe('AgentExecutor', () => {
         }),
       }),
     }), 'agent-1', 'evt-thread-1', expect.anything(), expect.any(Number), 1, expect.anything())
+  })
+
+  it('writes the first follow-up turn without an anchor when add_thread_turn targets a fresh thread root', async () => {
+    const context = {
+      event: {
+        event_id: 'evt-thread-root-1',
+        event_type: 'ThreadOpened' as const,
+        idempotency_key: 'idem-thread-root-1',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        author_agent_id: 'agent-2',
+        created_at: new Date().toISOString(),
+      },
+      agent: {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+      persona: {
+        name: 'Thread Bot',
+        style: 'precise',
+        interests: ['forums'],
+        language: 'zh-CN',
+      },
+      community: {
+        id: 'community-1',
+        name: '测试社区',
+        description: '围绕 fresh thread root 的首条 turn 写入做验收',
+        rules: '',
+      },
+      post: {
+        id: 'post-1',
+        title: '帖子标题',
+        body: '帖子正文',
+        author_agent_id: 'agent-2',
+        author_name: 'Other Bot',
+      },
+      focusThreadTurn: {
+        id: 'thread-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        entry_kind: 'THREAD' as const,
+        anchor_turn_id: null,
+        body: '这是分支根节点。',
+        author_agent_id: 'agent-3',
+        author_name: 'Root Bot',
+      },
+      threadTurns: [
+        {
+          id: 'thread-1',
+          post_id: 'post-1',
+          thread_id: 'thread-1',
+          entry_kind: 'THREAD' as const,
+          anchor_turn_id: null,
+          body: '这是分支根节点。',
+          author_agent_id: 'agent-3',
+          author_name: 'Root Bot',
+        },
+      ],
+      forum_targeting: {
+        event_target_entry_id: 'thread-1',
+        event_target_thread_id: 'thread-1',
+        focus_turn_id: 'thread-1',
+        selected_anchor_turn_id: null,
+        actual_anchor_turn_id: null,
+        final_write_anchor_turn_id: null,
+        reply_thread_id: 'thread-1',
+        browse_reason: 'DIRECT_REPLY' as const,
+        allowed_actions: ['REPLY'] as const,
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      prompt_audit: null,
+    }
+
+    const build = vi.fn(async () => context)
+    const enrichWithLayers = vi.fn(async (ctx) => ctx)
+    const canServeRoute = vi.fn(() => true)
+    const generateVisibleText = vi
+      .fn()
+      .mockResolvedValueOnce({
+        content: JSON.stringify({
+          version: 'v1',
+          actions: [{ kind: 'add_thread_turn', target_ref: 'focus_turn' }],
+        }),
+        usage: { prompt_tokens: 12, completion_tokens: 4, total_tokens: 16 },
+        latencyMs: 10,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'lite',
+          profileId: 'profile-1',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-plan-forum-actions',
+          promptVersion: 1,
+        },
+        promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      })
+      .mockResolvedValueOnce({
+        content: '那我先接住这条新分支的第一句。',
+        usage: { prompt_tokens: 12, completion_tokens: 7, total_tokens: 19 },
+        latencyMs: 10,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'base',
+          profileId: 'profile-1',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-reply-to-thread-turn',
+          promptVersion: 6,
+        },
+        promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn,
+      })
+    const write = vi.fn(async () => ({ success: true, content_id: 'turn-2' }))
+
+    const executor = new AgentExecutor({
+      llmGateway: { generateVisibleText, canServeRoute } as never,
+      contextBuilder: { build, enrichWithLayers } as never,
+      responseParser: { parse: vi.fn() } as never,
+      dataplaneWriter: { write } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-1', model: 'qwen-plus' })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      voteRepo: new InMemoryVoteRepository(),
+      inferenceProfileService: {
+        resolveVisibleRoute: vi.fn(async ({ requestedTier }) => ({
+          homeVoiceLineId: 'qwen-social-v1',
+          preferredModelId: 'qwen-plus',
+          requestedTier,
+        })),
+      } as never,
+    })
+
+    const [result] = await executor.execute(context.event, {
+      event_id: 'evt-thread-root-1',
+      quota_applied: 1,
+      degradation_level: 'normal',
+      agents: [{ agent_id: 'agent-1', score: 1, priority: 1 }],
+      skipped_reasons: {},
+    })
+
+    expect(result?.success).toBe(true)
+    expect(canServeRoute).toHaveBeenCalledTimes(2)
+    expect(canServeRoute).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      responseMode: 'json_object',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    }))
+    expect(canServeRoute).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn,
+      responseMode: 'text',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    }))
+    expect(generateVisibleText).toHaveBeenCalledTimes(2)
+    expect(generateVisibleText.mock.calls[0]?.[0]).toMatchObject({
+      promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      responseMode: 'json_object',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    })
+    expect(generateVisibleText.mock.calls[1]?.[0]).toMatchObject({
+      promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn,
+      responseMode: 'text',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    })
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'add_thread_turn',
+      thread_id: 'thread-1',
+      body: '那我先接住这条新分支的第一句。',
+      audit_metadata: expect.objectContaining({
+        forum_targeting: expect.objectContaining({
+          event_target_entry_id: 'thread-1',
+          focus_turn_id: 'thread-1',
+          final_write_anchor_turn_id: null,
+          written_anchor_turn_id: null,
+        }),
+      }),
+    }), 'agent-1', 'evt-thread-root-1', expect.anything(), expect.any(Number), 0, expect.anything())
+    expect(write.mock.calls[0]?.[0]).not.toHaveProperty('anchor_turn_id')
   })
 
   it('uses focus-thread semantics for forum media planning during branch revive', async () => {
@@ -461,6 +689,7 @@ describe('AgentExecutor', () => {
         getAgent: vi.fn(() => ({ id: 'agent-1', model: 'qwen-plus' })),
         getLatestConfig: vi.fn(() => null),
       } as never,
+      voteRepo: new InMemoryVoteRepository(),
       inferenceProfileService: {
         resolveVisibleRoute: vi.fn(async () => ({
           homeVoiceLineId: 'qwen-social-v1',
@@ -630,6 +859,7 @@ describe('AgentExecutor', () => {
         getAgent: vi.fn(() => ({ id: 'agent-1', model: 'qwen-plus' })),
         getLatestConfig: vi.fn(() => null),
       } as never,
+      voteRepo: new InMemoryVoteRepository(),
       inferenceProfileService: {
         resolveVisibleRoute: vi.fn(async () => ({
           homeVoiceLineId: 'qwen-social-v1',
@@ -1037,6 +1267,32 @@ describe('AgentExecutor', () => {
           promptRef: PROMPT_TEMPLATE_REFS.agentSelectForumArrival,
         }
       }
+      if (input.promptRef.id === 'agent-plan-forum-actions') {
+        return {
+          content: JSON.stringify({
+            version: 'v1',
+            actions: [{ kind: 'open_thread' }],
+          }),
+          usage: { prompt_tokens: 6, completion_tokens: 3, total_tokens: 9 },
+          latencyMs: 5,
+          platformRetryCount: 0,
+          renderDecision: {
+            voiceLineId: 'qwen-social-v1',
+            tier: 'lite',
+            profileId: 'profile-lite',
+            providerId: 'dashscope-openai',
+            modelId: 'qwen-plus',
+            region: 'cn',
+            endpointId: 'default',
+            credentialId: 'cred-1',
+            fallbackLevel: 'none',
+            reasons: ['test'],
+            promptTemplateId: 'agent-plan-forum-actions',
+            promptVersion: 1,
+          },
+          promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+        }
+      }
       return {
         content: '那我开一条并列分支，单独把这个问题拆开。',
         usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
@@ -1071,6 +1327,7 @@ describe('AgentExecutor', () => {
         getAgent: vi.fn(() => ({ id: 'agent-1', display_name: 'Roaming Bot', model: 'qwen-plus' })),
         getLatestConfig: vi.fn(() => null),
       } as never,
+      voteRepo: new InMemoryVoteRepository(),
       inferenceProfileService: {
         resolveVisibleRoute: vi.fn(async ({ requestedTier }) => ({
           homeVoiceLineId: 'qwen-social-v1',
@@ -1088,17 +1345,32 @@ describe('AgentExecutor', () => {
     })
 
     expect(result?.success).toBe(true)
-    expect(generateVisibleText).toHaveBeenCalledTimes(2)
+    expect(generateVisibleText).toHaveBeenCalledTimes(3)
     expect(generateVisibleText.mock.calls[0]?.[0]).toMatchObject({
       responseMode: 'json_object',
       promptRef: PROMPT_TEMPLATE_REFS.agentSelectForumArrival,
+      requestedTier: 'lite',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
       localOverrides: {
         executionPolicyId: 'visible-forum_reply-selection-lite',
       },
     })
     expect(generateVisibleText.mock.calls[1]?.[0]).toMatchObject({
+      responseMode: 'json_object',
+      promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      requestedTier: 'lite',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+      localOverrides: {
+        executionPolicyId: 'visible-forum_reply-action-plan-lite',
+      },
+    })
+    expect(generateVisibleText.mock.calls[2]?.[0]).toMatchObject({
       responseMode: 'text',
       promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurnScene,
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
     })
     expect(write).toHaveBeenCalledWith(expect.objectContaining({
       action: 'open_thread',
@@ -1113,7 +1385,7 @@ describe('AgentExecutor', () => {
           }),
         }),
       }),
-    }), 'agent-1', 'evt-thread-roam', expect.objectContaining({ total_tokens: 30 }), expect.any(Number), 1, expect.anything())
+    }), 'agent-1', 'evt-thread-roam', expect.objectContaining({ total_tokens: 39 }), expect.any(Number), 1, expect.anything())
     expect(enrichWithLayers).toHaveBeenCalledTimes(2)
     expect(retargetForumThreadContext).toHaveBeenCalledTimes(1)
   })
@@ -1321,8 +1593,8 @@ describe('AgentExecutor', () => {
           participation_contract: {
             stage_open_reply: {
               enabled: true,
-              new_thread_enabled: true,
-              turn_reply_enabled: true,
+              new_thread_enabled: false,
+              turn_reply_enabled: false,
             },
             audience_lane: {
               enabled: false,
@@ -1384,27 +1656,55 @@ describe('AgentExecutor', () => {
 
     const build = vi.fn(async () => context)
     const enrichWithLayers = vi.fn(async (ctx) => ctx)
-    const generateVisibleText = vi.fn(async () => ({
-      content: '{"candidate_id":"branch:thread-1","action":"observe_only"}',
-      usage: { prompt_tokens: 8, completion_tokens: 2, total_tokens: 10 },
-      latencyMs: 5,
-      platformRetryCount: 0,
-      renderDecision: {
-        voiceLineId: 'qwen-social-v1',
-        tier: 'lite',
-        profileId: 'profile-lite',
-        providerId: 'dashscope-openai',
-        modelId: 'qwen-plus',
-        region: 'cn',
-        endpointId: 'default',
-        credentialId: 'cred-1',
-        fallbackLevel: 'none',
-        reasons: ['test'],
-        promptTemplateId: 'agent-select-forum-arrival',
-        promptVersion: 1,
-      },
-      promptRef: PROMPT_TEMPLATE_REFS.agentSelectForumArrival,
-    }))
+    const generateVisibleText = vi.fn(async (input: { promptRef: { id: string } }) => {
+      if (input.promptRef.id === 'agent-select-forum-arrival') {
+        return {
+          content: '{"candidate_id":"branch:thread-1","action":"observe_only"}',
+          usage: { prompt_tokens: 8, completion_tokens: 2, total_tokens: 10 },
+          latencyMs: 5,
+          platformRetryCount: 0,
+          renderDecision: {
+            voiceLineId: 'qwen-social-v1',
+            tier: 'lite',
+            profileId: 'profile-lite',
+            providerId: 'dashscope-openai',
+            modelId: 'qwen-plus',
+            region: 'cn',
+            endpointId: 'default',
+            credentialId: 'cred-1',
+            fallbackLevel: 'none',
+            reasons: ['test'],
+            promptTemplateId: 'agent-select-forum-arrival',
+            promptVersion: 1,
+          },
+          promptRef: PROMPT_TEMPLATE_REFS.agentSelectForumArrival,
+        }
+      }
+      return {
+        content: JSON.stringify({
+          version: 'v1',
+          actions: [{ kind: 'no_write', reason: 'observe_only' }],
+        }),
+        usage: { prompt_tokens: 7, completion_tokens: 3, total_tokens: 10 },
+        latencyMs: 5,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'lite',
+          profileId: 'profile-lite',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-plan-forum-actions',
+          promptVersion: 1,
+        },
+        promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      }
+    })
     const agentRunCreate = vi.fn()
     const write = vi.fn(async () => ({ success: true, content_id: 'ignored' }))
 
@@ -1418,6 +1718,7 @@ describe('AgentExecutor', () => {
         getAgent: vi.fn(() => ({ id: 'agent-1', display_name: 'Roaming Bot', model: 'qwen-plus' })),
         getLatestConfig: vi.fn(() => null),
       } as never,
+      voteRepo: new InMemoryVoteRepository(),
       inferenceProfileService: {
         resolveVisibleRoute: vi.fn(async ({ requestedTier }) => ({
           homeVoiceLineId: 'qwen-social-v1',
@@ -1436,6 +1737,7 @@ describe('AgentExecutor', () => {
 
     expect(result?.success).toBe(true)
     expect(result?.write_instruction).toBeUndefined()
+    expect(generateVisibleText).not.toHaveBeenCalled()
     expect(write).not.toHaveBeenCalled()
     expect(agentRunCreate).toHaveBeenCalledWith(expect.objectContaining({
       input_digest: expect.stringContaining('no_write'),
@@ -1448,12 +1750,487 @@ describe('AgentExecutor', () => {
             }),
             resolved_execution_plan: expect.objectContaining({
               write_action: 'no_write',
+              validation_status: 'observe_only',
             }),
           }),
         }),
       }),
-      token_cost: 10,
+      token_cost: 0,
     }))
+  })
+
+  it('degrades to no-write when the forum action-plan route is not serviceable', async () => {
+    const context = {
+      event: {
+        event_id: 'evt-route-unavailable-1',
+        event_type: 'NewPostCreated' as const,
+        idempotency_key: 'idem-route-unavailable-1',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        author_agent_id: 'agent-2',
+        created_at: new Date().toISOString(),
+      },
+      agent: {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+      persona: {
+        name: 'Guarded Bot',
+        style: 'precise',
+        interests: ['forums'],
+        language: 'zh-CN',
+      },
+      community: {
+        id: 'community-1',
+        name: '测试社区',
+        description: '验证 route serviceability 降级',
+        rules: '',
+      },
+      post: {
+        id: 'post-1',
+        title: '帖子标题',
+        body: '帖子正文',
+        author_agent_id: 'agent-2',
+        author_name: 'Other Bot',
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      prompt_audit: null,
+    }
+
+    const build = vi.fn(async () => context)
+    const enrichWithLayers = vi.fn(async (ctx) => ctx)
+    const canServeRoute = vi.fn(() => false)
+    const generateVisibleText = vi.fn()
+    const agentRunCreate = vi.fn()
+    const write = vi.fn(async () => ({ success: true, content_id: 'ignored' }))
+
+    const executor = new AgentExecutor({
+      llmGateway: { generateVisibleText, canServeRoute } as never,
+      contextBuilder: { build, enrichWithLayers } as never,
+      responseParser: { parse: vi.fn() } as never,
+      dataplaneWriter: { write } as never,
+      agentRunRepo: { create: agentRunCreate } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-1', display_name: 'Guarded Bot', model: 'qwen-plus' })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      voteRepo: new InMemoryVoteRepository(),
+      inferenceProfileService: {
+        resolveVisibleRoute: vi.fn(async ({ requestedTier }) => ({
+          homeVoiceLineId: 'doubao-deep-v1',
+          requestedTier,
+        })),
+      } as never,
+    })
+
+    const [result] = await executor.execute(context.event, {
+      event_id: 'evt-route-unavailable-1',
+      quota_applied: 1,
+      degradation_level: 'normal',
+      agents: [{ agent_id: 'agent-1', score: 1, priority: 1 }],
+      skipped_reasons: {},
+    })
+
+    expect(result?.success).toBe(true)
+    expect(canServeRoute).toHaveBeenCalledWith(expect.objectContaining({
+      intent: 'forum_reply',
+      scene: 'forum_post',
+      responseMode: 'json_object',
+      promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      requestedTier: 'lite',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+      localOverrides: {
+        executionPolicyId: 'visible-forum_reply-action-plan-lite',
+      },
+    }))
+    expect(generateVisibleText).not.toHaveBeenCalled()
+    expect(write).not.toHaveBeenCalled()
+    expect(agentRunCreate).toHaveBeenCalledWith(expect.objectContaining({
+      input_digest: expect.stringContaining('reason:route_unavailable'),
+      output_json: expect.objectContaining({
+        no_write: true,
+        reason: 'route_unavailable',
+      }),
+      token_cost: 0,
+    }))
+  })
+
+  it('degrades to no-write when the forum action-plan call throws a credential resolution error after route preflight passes', async () => {
+    const context = {
+      event: {
+        event_id: 'evt-route-unavailable-1b',
+        event_type: 'NewPostCreated' as const,
+        idempotency_key: 'idem-route-unavailable-1b',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        author_agent_id: 'agent-2',
+        created_at: new Date().toISOString(),
+      },
+      agent: {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+      persona: {
+        name: 'Guarded Bot',
+        style: 'precise',
+        interests: ['forums'],
+        language: 'zh-CN',
+      },
+      community: {
+        id: 'community-1',
+        name: '测试社区',
+        description: '验证 action-plan 调用阶段的 route degrade',
+        rules: '',
+      },
+      post: {
+        id: 'post-1',
+        title: '帖子标题',
+        body: '帖子正文',
+        author_agent_id: 'agent-2',
+        author_name: 'Other Bot',
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      prompt_audit: null,
+    }
+
+    const build = vi.fn(async () => context)
+    const enrichWithLayers = vi.fn(async (ctx) => ctx)
+    const canServeRoute = vi.fn(() => true)
+    const generateVisibleText = vi.fn(async () => {
+      throw new Error('Failed to resolve any credential for ark-openai/doubao-seed-2-0-lite-260215')
+    })
+    const agentRunCreate = vi.fn()
+    const write = vi.fn(async () => ({ success: true, content_id: 'ignored' }))
+
+    const executor = new AgentExecutor({
+      llmGateway: { generateVisibleText, canServeRoute } as never,
+      contextBuilder: { build, enrichWithLayers } as never,
+      responseParser: { parse: vi.fn() } as never,
+      dataplaneWriter: { write } as never,
+      agentRunRepo: { create: agentRunCreate } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-1', display_name: 'Guarded Bot', model: 'qwen-plus' })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      voteRepo: new InMemoryVoteRepository(),
+      inferenceProfileService: {
+        resolveVisibleRoute: vi.fn(async ({ requestedTier }) => ({
+          homeVoiceLineId: 'qwen-social-v1',
+          requestedTier,
+        })),
+      } as never,
+    })
+
+    const [result] = await executor.execute(context.event, {
+      event_id: 'evt-route-unavailable-1b',
+      quota_applied: 1,
+      degradation_level: 'normal',
+      agents: [{ agent_id: 'agent-1', score: 1, priority: 1 }],
+      skipped_reasons: {},
+    })
+
+    expect(result?.success).toBe(true)
+    expect(canServeRoute).toHaveBeenCalledOnce()
+    expect(generateVisibleText).toHaveBeenCalledOnce()
+    expect(write).not.toHaveBeenCalled()
+    expect(agentRunCreate).toHaveBeenCalledWith(expect.objectContaining({
+      input_digest: expect.stringContaining('reason:route_unavailable'),
+      output_json: expect.objectContaining({
+        no_write: true,
+        reason: 'route_unavailable',
+      }),
+      token_cost: 0,
+    }))
+  })
+
+  it('keeps a vote-only write when the forum body route is not serviceable', async () => {
+    const context = {
+      event: {
+        event_id: 'evt-route-unavailable-2',
+        event_type: 'NewPostCreated' as const,
+        idempotency_key: 'idem-route-unavailable-2',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        author_agent_id: 'agent-2',
+        created_at: new Date().toISOString(),
+      },
+      agent: {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+      persona: {
+        name: 'Voting Bot',
+        style: 'precise',
+        interests: ['forums'],
+        language: 'zh-CN',
+      },
+      community: {
+        id: 'community-1',
+        name: '测试社区',
+        description: '验证 body route 不可用时的 vote-only 降级',
+        rules: '',
+      },
+      post: {
+        id: 'post-1',
+        title: '帖子标题',
+        body: '帖子正文',
+        author_agent_id: 'agent-2',
+        author_name: 'Other Bot',
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      prompt_audit: null,
+    }
+
+    const build = vi.fn(async () => context)
+    const enrichWithLayers = vi.fn(async (ctx) => ctx)
+    const canServeRoute = vi
+      .fn()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false)
+    const generateVisibleText = vi.fn(async () => ({
+      content: JSON.stringify({
+        version: 'v1',
+        actions: [
+          { kind: 'vote', target_ref: 'event_post', direction: 'UP', confidence: 0.9, rationale_code: 'agree' },
+          { kind: 'open_thread' },
+        ],
+      }),
+      usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      latencyMs: 8,
+      platformRetryCount: 0,
+      renderDecision: {
+        voiceLineId: 'qwen-social-v1',
+        tier: 'lite',
+        profileId: 'profile-lite',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+        region: 'cn',
+        endpointId: 'default',
+        credentialId: 'cred-1',
+        fallbackLevel: 'none',
+        reasons: ['test'],
+        promptTemplateId: 'agent-plan-forum-actions',
+        promptVersion: 1,
+      },
+      promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+    }))
+    const write = vi.fn(async () => ({ success: true, content_id: 'vote-1' }))
+
+    const executor = new AgentExecutor({
+      llmGateway: { generateVisibleText, canServeRoute } as never,
+      contextBuilder: { build, enrichWithLayers } as never,
+      responseParser: { parse: vi.fn() } as never,
+      dataplaneWriter: { write } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-1', display_name: 'Voting Bot', model: 'qwen-plus' })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      voteRepo: new InMemoryVoteRepository(),
+      inferenceProfileService: {
+        resolveVisibleRoute: vi.fn(async ({ requestedTier }) => ({
+          homeVoiceLineId: 'qwen-social-v1',
+          requestedTier,
+        })),
+      } as never,
+    })
+
+    const [result] = await executor.execute(context.event, {
+      event_id: 'evt-route-unavailable-2',
+      quota_applied: 1,
+      degradation_level: 'normal',
+      agents: [{ agent_id: 'agent-1', score: 1, priority: 1 }],
+      skipped_reasons: {},
+    })
+
+    expect(result?.success).toBe(true)
+    expect(canServeRoute).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      responseMode: 'json_object',
+      requestedTier: 'lite',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    }))
+    expect(canServeRoute).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      promptRef: PROMPT_TEMPLATE_REFS.agentReplyToPost,
+      responseMode: 'text',
+      requestedTier: 'base',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+    }))
+    expect(generateVisibleText).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'vote',
+      target_type: 'POST',
+      target_id: 'post-1',
+      direction: 'UP',
+      audit_metadata: expect.objectContaining({
+        body_generation_degradation: 'route_unavailable_vote_retained',
+      }),
+    }), 'agent-1', 'evt-route-unavailable-2', expect.objectContaining({ total_tokens: 14 }), expect.any(Number), 0, null)
+    expect(result?.write_instruction).toMatchObject({
+      action: 'vote',
+      target_type: 'POST',
+      target_id: 'post-1',
+      direction: 'UP',
+    })
+  })
+
+  it('keeps a vote-only write when the forum body call throws a credential resolution error after route preflight passes', async () => {
+    const context = {
+      event: {
+        event_id: 'evt-route-unavailable-2b',
+        event_type: 'NewPostCreated' as const,
+        idempotency_key: 'idem-route-unavailable-2b',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        author_agent_id: 'agent-2',
+        created_at: new Date().toISOString(),
+      },
+      agent: {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+      persona: {
+        name: 'Voting Bot',
+        style: 'precise',
+        interests: ['forums'],
+        language: 'zh-CN',
+      },
+      community: {
+        id: 'community-1',
+        name: '测试社区',
+        description: '验证 body 调用阶段的 vote-only degrade',
+        rules: '',
+      },
+      post: {
+        id: 'post-1',
+        title: '帖子标题',
+        body: '帖子正文',
+        author_agent_id: 'agent-2',
+        author_name: 'Other Bot',
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      prompt_audit: null,
+    }
+
+    const build = vi.fn(async () => context)
+    const enrichWithLayers = vi.fn(async (ctx) => ctx)
+    const canServeRoute = vi.fn(() => true)
+    const generateVisibleText = vi
+      .fn()
+      .mockResolvedValueOnce({
+        content: JSON.stringify({
+          version: 'v1',
+          actions: [
+            { kind: 'vote', target_ref: 'event_post', direction: 'UP', confidence: 0.9, rationale_code: 'agree' },
+            { kind: 'open_thread' },
+          ],
+        }),
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        latencyMs: 8,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'lite',
+          profileId: 'profile-lite',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-plan-forum-actions',
+          promptVersion: 1,
+        },
+        promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      })
+      .mockImplementationOnce(async () => {
+        throw new Error('Failed to resolve any credential for ark-openai/doubao-seed-2-0-lite-260215')
+      })
+    const write = vi.fn(async () => ({ success: true, content_id: 'vote-1' }))
+
+    const executor = new AgentExecutor({
+      llmGateway: { generateVisibleText, canServeRoute } as never,
+      contextBuilder: { build, enrichWithLayers } as never,
+      responseParser: { parse: vi.fn() } as never,
+      dataplaneWriter: { write } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-1', display_name: 'Voting Bot', model: 'qwen-plus' })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      voteRepo: new InMemoryVoteRepository(),
+      inferenceProfileService: {
+        resolveVisibleRoute: vi.fn(async ({ requestedTier }) => ({
+          homeVoiceLineId: 'qwen-social-v1',
+          requestedTier,
+        })),
+      } as never,
+    })
+
+    const [result] = await executor.execute(context.event, {
+      event_id: 'evt-route-unavailable-2b',
+      quota_applied: 1,
+      degradation_level: 'normal',
+      agents: [{ agent_id: 'agent-1', score: 1, priority: 1 }],
+      skipped_reasons: {},
+    })
+
+    expect(result?.success).toBe(true)
+    expect(canServeRoute).toHaveBeenCalledTimes(2)
+    expect(generateVisibleText).toHaveBeenCalledTimes(2)
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'vote',
+      target_type: 'POST',
+      target_id: 'post-1',
+      direction: 'UP',
+      audit_metadata: expect.objectContaining({
+        body_generation_degradation: 'route_unavailable_vote_retained',
+      }),
+    }), 'agent-1', 'evt-route-unavailable-2b', expect.objectContaining({ total_tokens: 14 }), expect.any(Number), 0, null)
+    expect(result?.write_instruction).toMatchObject({
+      action: 'vote',
+      target_type: 'POST',
+      target_id: 'post-1',
+      direction: 'UP',
+    })
   })
 
   it('propagates governed event lineage into runtime writes', async () => {
@@ -1506,45 +2283,68 @@ describe('AgentExecutor', () => {
 
     const build = vi.fn(async () => context)
     const enrichWithLayers = vi.fn(async (ctx) => ctx)
-    const generateVisibleText = vi.fn(async () => ({
-      content: '这条我先接成一个新 thread。',
-      usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
-      latencyMs: 8,
-      platformRetryCount: 0,
-      renderDecision: {
-        voiceLineId: 'qwen-social-v1',
-        tier: 'base',
-        profileId: 'profile-1',
-        providerId: 'dashscope-openai',
-        modelId: 'qwen-plus',
-        region: 'cn',
-        endpointId: 'default',
-        credentialId: 'cred-1',
-        fallbackLevel: 'none',
-        reasons: ['test'],
-        promptTemplateId: 'agent-reply-to-post',
-        promptVersion: 1,
-      },
-      promptRef: PROMPT_TEMPLATE_REFS.agentReplyToPostScene,
-    }))
-    const parse = vi.fn(() => ({
-      action: 'open_thread' as const,
-      community_id: 'community-1',
-      post_id: 'post-1',
-      body: '这条我先接成一个新 thread。',
-    }))
+    const generateVisibleText = vi.fn(async (input: { promptRef: { id: string } }) => {
+      if (input.promptRef.id === 'agent-plan-forum-actions') {
+        return {
+          content: JSON.stringify({
+            version: 'v1',
+            actions: [{ kind: 'open_thread' }],
+          }),
+          usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+          latencyMs: 8,
+          platformRetryCount: 0,
+          renderDecision: {
+            voiceLineId: 'qwen-social-v1',
+            tier: 'lite',
+            profileId: 'profile-1',
+            providerId: 'dashscope-openai',
+            modelId: 'qwen-plus',
+            region: 'cn',
+            endpointId: 'default',
+            credentialId: 'cred-1',
+            fallbackLevel: 'none',
+            reasons: ['test'],
+            promptTemplateId: 'agent-plan-forum-actions',
+            promptVersion: 1,
+          },
+          promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+        }
+      }
+      return {
+        content: '这条我先接成一个新 thread。',
+        usage: { prompt_tokens: 10, completion_tokens: 6, total_tokens: 16 },
+        latencyMs: 8,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'base',
+          profileId: 'profile-1',
+          providerId: 'dashscope-openai',
+          modelId: 'qwen-plus',
+          region: 'cn',
+          endpointId: 'default',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-reply-to-post',
+          promptVersion: 1,
+        },
+        promptRef: PROMPT_TEMPLATE_REFS.agentReplyToPostScene,
+      }
+    })
     const write = vi.fn(async () => ({ success: true, content_id: 'thread-1' }))
 
     const executor = new AgentExecutor({
       llmGateway: { generateVisibleText } as never,
       contextBuilder: { build, enrichWithLayers } as never,
-      responseParser: { parse } as never,
+      responseParser: { parse: vi.fn() } as never,
       dataplaneWriter: { write } as never,
       agentRunRepo: { create: vi.fn() } as never,
       agentService: {
         getAgent: vi.fn(() => ({ id: 'agent-1' })),
         getLatestConfig: vi.fn(() => null),
       } as never,
+      voteRepo: new InMemoryVoteRepository(),
       inferenceProfileService: {
         resolveVisibleRoute: vi.fn(async () => ({
           homeVoiceLineId: 'qwen-social-v1',

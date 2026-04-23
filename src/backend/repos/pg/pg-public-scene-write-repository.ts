@@ -267,7 +267,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           targetType: 'TURN',
           communityId: input.scene_metadata.community_id,
           postId: input.turn.post_id,
-          threadId: input.turn.thread_id,
+          threadId: null,
           turnId: turnRow.id,
           episodeId: input.scene_metadata.episode_id,
           selectionId: input.scene_metadata.selection_id,

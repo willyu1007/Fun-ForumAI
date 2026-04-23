@@ -5,17 +5,25 @@ import type { ContextBuilder } from './context-builder.js'
 import type { ResponseParser } from './response-parser.js'
 import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AllocationResult, EventPayload } from '../allocator/types.js'
-import type { AgentExecutionResult, ExecutionContext } from './types.js'
+import type { AgentExecutionResult, ExecutionContext, WriteInstruction } from './types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentService } from '../services/agent-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
 import type { SurfaceMediaPlanningService } from '../media/surface-media-planning-service.js'
+import type { StatsService } from '../services/stats-service.js'
+import type { VoteRepository } from '../repos/vote-repository.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
 import { runtimeFeatureMetrics } from './runtime-feature-metrics.js'
+import {
+  buildForumActionOptionsPayload,
+  parseForumActionPlan,
+} from './forum-action-plan-parser.js'
+import { buildForumActionOptions, resolveForumActionPlanToInstructions } from './forum-target-ref-resolver.js'
+import { evaluateVoteGuardrails } from './vote-guardrails.js'
 import {
   attachPersonaObservation,
   buildPersonaObservation,
@@ -37,6 +45,12 @@ export interface AgentExecutorDeps {
   surfaceMediaPlanningService?: SurfaceMediaPlanningService | null
   personaStateService?: PersonaStateService | null
   inferenceProfileService?: InferenceProfileService | null
+  statsService?: StatsService | null
+  voteRepo: VoteRepository
+}
+
+interface ExecuteOneResult extends AgentExecutionResult {
+  reply_budget_consumed?: boolean
 }
 
 function normalizeForumNoWriteReason(reason: string):
@@ -47,7 +61,8 @@ function normalizeForumNoWriteReason(reason: string):
   | 'target_invalid'
   | 'observe_only'
   | 'no_viable_candidates'
-  | 'audience_scope_excluded' {
+  | 'audience_scope_excluded'
+  | 'route_unavailable' {
   if (
     reason === 'decision_failed'
     || reason === 'candidate_missing'
@@ -57,6 +72,7 @@ function normalizeForumNoWriteReason(reason: string):
     || reason === 'observe_only'
     || reason === 'no_viable_candidates'
     || reason === 'audience_scope_excluded'
+    || reason === 'route_unavailable'
   ) {
     return reason
   }
@@ -71,10 +87,20 @@ export class AgentExecutor {
     allocation: AllocationResult,
   ): Promise<AgentExecutionResult[]> {
     const results: AgentExecutionResult[] = []
+    const agents = isForumRuntimeEvent(event)
+      ? [...allocation.agents].sort((left, right) =>
+        right.priority - left.priority || right.score - left.score)
+      : allocation.agents
+    let replyBudgetRemaining = isForumRuntimeEvent(event)
+      ? this.getForumTextReplyBudget(event.event_type)
+      : null
 
-    for (const agent of allocation.agents) {
-      const result = await this.executeOne(event, agent)
+    for (const agent of agents) {
+      const result = await this.executeOne(event, agent, replyBudgetRemaining)
       results.push(result)
+      if (typeof replyBudgetRemaining === 'number' && result.reply_budget_consumed) {
+        replyBudgetRemaining = Math.max(0, replyBudgetRemaining - 1)
+      }
     }
 
     return results
@@ -83,7 +109,8 @@ export class AgentExecutor {
   private async executeOne(
     event: EventPayload,
     agent: { agent_id: string; score: number; priority: number },
-  ): Promise<AgentExecutionResult> {
+    replyBudgetRemaining: number | null,
+  ): Promise<ExecuteOneResult> {
     const start = Date.now()
 
     try {
@@ -98,12 +125,23 @@ export class AgentExecutor {
         return this.recordSceneSkip(agent.agent_id, event, ctx.skip_reason, ctx, start)
       }
 
+      if (isForumRuntimeEvent(event) && !shouldUseForumRoaming) {
+        return this.executeForumActionPlan({
+          start,
+          event,
+          agent,
+          ctx,
+          replyBudgetRemaining,
+        })
+      }
+
       if (shouldUseForumRoaming) {
         return this.executeForumThreadWithRoaming({
           start,
           event,
           agent,
           ctx,
+          replyBudgetRemaining,
         })
       }
 
@@ -275,7 +313,8 @@ export class AgentExecutor {
     event: EventPayload
     agent: { agent_id: string; score: number; priority: number }
     ctx: ExecutionContext
-  }): Promise<AgentExecutionResult> {
+    replyBudgetRemaining: number | null
+  }): Promise<ExecuteOneResult> {
     const fallbackToBaseline = this.shouldFallbackToBaseline(input.ctx)
     const decisionIdentity = this.resolveDecisionIdentity(input.agent.agent_id)
     const preparation = buildForumRoamingPreparation({
@@ -310,11 +349,12 @@ export class AgentExecutor {
         })
         let baselineCtx = await this.prepareSurfaceMediaPlan(input.ctx, input.agent)
         baselineCtx = await this.deps.contextBuilder.enrichWithLayers(baselineCtx)
-        return this.executeVisibleWrite({
+        return this.executeForumActionPlan({
           start: input.start,
           event: input.event,
           agent: input.agent,
           ctx: baselineCtx,
+          replyBudgetRemaining: input.replyBudgetRemaining,
         })
       }
       return this.recordNoWriteDecision({
@@ -327,7 +367,43 @@ export class AgentExecutor {
       })
     }
 
-    const decisionRouting = await this.resolveVisibleRouting(input.agent.agent_id, 'lite', 'lite')
+    if (this.isDeterministicObserveOnlyRoaming(preparation.arrival_candidates)) {
+      const shortCircuitDecision = {
+        status: 'selected' as const,
+        candidate_id: preparation.arrival_candidates[0]?.candidate_id ?? null,
+        action: 'observe_only' as const,
+        raw_output: '[short_circuit:observe_only_candidates]',
+      }
+      const executionPlan = resolveForumExecutionPlan({
+        post_id: input.ctx.post?.id ?? input.event.post_id ?? 'unknown-post',
+        candidates: preparation.arrival_candidates,
+        decision_result: shortCircuitDecision,
+      })
+      input.ctx.forum_roaming = {
+        ...(input.ctx.forum_roaming ?? {
+          arrival_candidates: preparation.arrival_candidates,
+          decision_hint: preparation.decision_hint,
+          decision_prompt_input: preparation.decision_prompt_input,
+        }),
+        decision_result: shortCircuitDecision,
+        resolved_execution_plan: executionPlan,
+      }
+      return this.recordNoWriteDecision({
+        agentId: input.agent.agent_id,
+        event: input.event,
+        start: input.start,
+        ctx: input.ctx,
+        usage: null,
+        reason: 'observe_only',
+      })
+    }
+
+    const decisionRequestedTier = this.getForumDecisionRequestedTier('forum_thread')
+    const decisionRouting = await this.resolveVisibleRouting(
+      input.agent.agent_id,
+      decisionRequestedTier,
+      decisionRequestedTier,
+    )
     let decisionResponse: Awaited<ReturnType<LLMGateway['generateVisibleText']>>
     try {
       decisionResponse = await this.deps.llmGateway.generateVisibleText({
@@ -347,13 +423,23 @@ export class AgentExecutor {
           undefined,
         ),
         requestedTier: decisionRouting.requestedTier,
-        allowFallbackWithinLine: false,
+        allowFallbackWithinLine: true,
         allowCrossFamily: false,
         localOverrides: {
           executionPolicyId: 'visible-forum_reply-selection-lite',
         },
       })
     } catch (error) {
+      if (this.isRouteUnavailableLlmError(error) && !fallbackToBaseline) {
+        return this.recordNoWriteDecision({
+          agentId: input.agent.agent_id,
+          event: input.event,
+          start: input.start,
+          ctx: input.ctx,
+          usage: null,
+          reason: 'route_unavailable',
+        })
+      }
       if (fallbackToBaseline) {
         runtimeFeatureMetrics.recordForumBaselineFallback({
           stage: 'executor',
@@ -367,11 +453,12 @@ export class AgentExecutor {
         })
         let baselineCtx = await this.prepareSurfaceMediaPlan(input.ctx, input.agent)
         baselineCtx = await this.deps.contextBuilder.enrichWithLayers(baselineCtx)
-        return this.executeVisibleWrite({
+        return this.executeForumActionPlan({
           start: input.start,
           event: input.event,
           agent: input.agent,
           ctx: baselineCtx,
+          replyBudgetRemaining: input.replyBudgetRemaining,
         })
       }
       throw error
@@ -396,7 +483,7 @@ export class AgentExecutor {
       resolved_execution_plan: executionPlan,
     }
 
-    if (!executionPlan.requires_generation) {
+    if (!executionPlan.requires_generation && executionPlan.validation_status !== 'observe_only') {
       return this.recordNoWriteDecision({
         agentId: input.agent.agent_id,
         event: input.event,
@@ -404,6 +491,17 @@ export class AgentExecutor {
         ctx: input.ctx,
         usage: decisionResponse.usage,
         reason: executionPlan.validation_status,
+      })
+    }
+
+    if (!executionPlan.requires_generation) {
+      return this.executeForumActionPlan({
+        start: input.start,
+        event: input.event,
+        agent: input.agent,
+        ctx: input.ctx,
+        replyBudgetRemaining: input.replyBudgetRemaining,
+        extraUsage: decisionResponse.usage,
       })
     }
 
@@ -415,11 +513,12 @@ export class AgentExecutor {
     retargetedCtx = await this.prepareSurfaceMediaPlan(retargetedCtx, input.agent)
     retargetedCtx = await this.deps.contextBuilder.enrichWithLayers(retargetedCtx)
 
-    return this.executeVisibleWrite({
+    return this.executeForumActionPlan({
       start: input.start,
       event: input.event,
       agent: input.agent,
       ctx: retargetedCtx,
+      replyBudgetRemaining: input.replyBudgetRemaining,
       extraUsage: decisionResponse.usage,
     })
   }
@@ -562,9 +661,390 @@ export class AgentExecutor {
     }
   }
 
+  private async executeForumActionPlan(input: {
+    start: number
+    event: EventPayload
+    agent: { agent_id: string; score: number; priority: number }
+    ctx: ExecutionContext
+    replyBudgetRemaining: number | null
+    extraUsage?: LlmTokenUsage | null
+  }): Promise<ExecuteOneResult> {
+    const promptScene = this.pickScene(input.event, input.ctx)
+    const actionPlanRequestedTier = this.getForumDecisionRequestedTier(promptScene)
+    const routing = await this.resolveVisibleRouting(
+      input.agent.agent_id,
+      actionPlanRequestedTier,
+      actionPlanRequestedTier,
+    )
+    const identity = this.resolveObservationIdentity(input.agent.agent_id)
+    if (!this.canServeVisibleForumRoute({
+      agentId: input.agent.agent_id,
+      traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:action_plan:capability`,
+      scene: promptScene,
+      promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      homeVoiceLineId: routing.homeVoiceLineId,
+      requestedTier: routing.requestedTier,
+      responseMode: 'json_object',
+      localOverrides: {
+        executionPolicyId: 'visible-forum_reply-action-plan-lite',
+      },
+    })) {
+      return this.recordNoWriteDecision({
+        agentId: input.agent.agent_id,
+        event: input.event,
+        start: input.start,
+        ctx: input.ctx,
+        usage: input.extraUsage ?? null,
+        reason: 'route_unavailable',
+      })
+    }
+    let planResponse: Awaited<ReturnType<LLMGateway['generateVisibleText']>>
+    try {
+      planResponse = await this.deps.llmGateway.generateVisibleText({
+        intent: 'forum_reply',
+        scene: promptScene,
+        modality: 'text',
+        responseMode: 'json_object',
+        agentId: input.agent.agent_id,
+        homeVoiceLineId: routing.homeVoiceLineId,
+        promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+        variables: this.buildForumActionPlanVariables(
+          input.ctx,
+          identity?.persona_seed_code ?? 'scholar',
+          promptScene,
+        ),
+        budgetClass: 'visible_standard',
+        traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:action_plan`,
+        promptBudgetSummary: buildPromptBudgetSummary(
+          promptScene,
+          PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+          input.ctx.prompt_audit,
+        ),
+        requestedTier: routing.requestedTier,
+        allowFallbackWithinLine: true,
+        allowCrossFamily: false,
+        localOverrides: {
+          executionPolicyId: 'visible-forum_reply-action-plan-lite',
+        },
+      })
+    } catch (error) {
+      if (this.isRouteUnavailableLlmError(error)) {
+        return this.recordNoWriteDecision({
+          agentId: input.agent.agent_id,
+          event: input.event,
+          start: input.start,
+          ctx: input.ctx,
+          usage: input.extraUsage ?? null,
+          reason: 'route_unavailable',
+        })
+      }
+      throw error
+    }
+    const parsedPlan = parseForumActionPlan(planResponse.content)
+    if (parsedPlan.status !== 'ok') {
+      console.error(
+        '[DBG:dbg-20260424-141500-plan1] invalid_plan',
+        JSON.stringify({
+          event_id: input.event.event_id,
+          agent_id: input.agent.agent_id,
+          scene: promptScene,
+          reason: parsedPlan.reason,
+          profile_id: planResponse.renderDecision.profileId,
+          provider_id: planResponse.renderDecision.providerId,
+          model_id: planResponse.renderDecision.modelId,
+          raw_preview: planResponse.content.slice(0, 800),
+        }),
+      )
+      return this.recordNoWriteDecision({
+        agentId: input.agent.agent_id,
+        event: input.event,
+        start: input.start,
+        ctx: input.ctx,
+        usage: this.combineUsage(input.extraUsage ?? null, planResponse.usage),
+        reason: 'invalid_plan',
+      })
+    }
+    const resolved = resolveForumActionPlanToInstructions(input.ctx, parsedPlan.plan)
+    let instructions = resolved.resolved_instructions
+
+    if (instructions.length === 0) {
+      return this.recordNoWriteDecision({
+        agentId: input.agent.agent_id,
+        event: input.event,
+        start: input.start,
+        ctx: input.ctx,
+        usage: this.combineUsage(input.extraUsage ?? null, planResponse.usage),
+        reason: resolved.dropped_actions.length > 0 ? 'target_invalid' : 'no_write',
+      })
+    }
+
+    const voteInstruction = instructions.find((item) => item.action === 'vote') ?? null
+    const textInstruction = instructions.find(
+      (item) => item.action === 'open_thread' || item.action === 'add_thread_turn',
+    ) ?? null
+    let survivingVote: Extract<WriteInstruction, { action: 'vote' }> | null =
+      voteInstruction && voteInstruction.action === 'vote' ? voteInstruction : null
+    let survivingText: Extract<WriteInstruction, { action: 'open_thread' | 'add_thread_turn' }> | null =
+      textInstruction && (textInstruction.action === 'open_thread' || textInstruction.action === 'add_thread_turn')
+        ? textInstruction
+        : null
+
+    if (survivingVote) {
+      const decision = evaluateVoteGuardrails({
+        instruction: survivingVote,
+        agent_id: input.agent.agent_id,
+        voteRepo: this.deps.voteRepo,
+        agentRunRepo: this.deps.agentRunRepo,
+        statsService: this.deps.statsService ?? null,
+      })
+      if (decision.outcome === 'allow') {
+        survivingVote.idempotency_key = this.buildVoteIdempotencyKey({
+          sourceEventId: input.event.event_id,
+          agentId: input.agent.agent_id,
+          targetType: survivingVote.target_type,
+          targetId: survivingVote.target_id,
+          transition: decision.normalized_transition,
+        })
+        survivingVote.audit_metadata = {
+          ...(survivingVote.audit_metadata ?? {}),
+          vote_guardrail: {
+            outcome: decision.outcome,
+            normalized_transition: decision.normalized_transition,
+            existing_vote_direction: decision.existing_vote_direction ?? null,
+          },
+        }
+      } else {
+        survivingVote = null
+      }
+    }
+
+    if (survivingText && (input.replyBudgetRemaining ?? 0) <= 0) {
+      if (survivingVote) {
+        survivingVote.audit_metadata = {
+          ...(survivingVote.audit_metadata ?? {}),
+          reply_budget_degradation: 'reply_dropped_vote_retained',
+        }
+        survivingText = null
+      } else {
+        return this.recordNoWriteDecision({
+          agentId: input.agent.agent_id,
+          event: input.event,
+          start: input.start,
+          ctx: input.ctx,
+          usage: this.combineUsage(input.extraUsage ?? null, planResponse.usage),
+          reason: 'reply_budget_exceeded',
+        })
+      }
+    }
+
+    let textUsage: LlmTokenUsage | null = null
+    let observation: PersonaObservationV1 | null = null
+
+    if (survivingText) {
+      const templateId = this.pickTemplate(input.event, input.ctx)
+      const bodyRequestedTier = promptScene === 'chat_room' ? 'lite' : 'base'
+      if (!this.canServeVisibleForumRoute({
+        agentId: input.agent.agent_id,
+        traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body:capability`,
+        scene: promptScene,
+        promptRef: templateId,
+        homeVoiceLineId: routing.homeVoiceLineId,
+        requestedTier: bodyRequestedTier,
+        responseMode: 'text',
+      })) {
+        if (!survivingVote) {
+          return this.recordNoWriteDecision({
+            agentId: input.agent.agent_id,
+            event: input.event,
+            start: input.start,
+            ctx: input.ctx,
+            usage: this.combineUsage(input.extraUsage ?? null, planResponse.usage),
+            reason: 'route_unavailable',
+          })
+        }
+        survivingVote.audit_metadata = {
+          ...(survivingVote.audit_metadata ?? {}),
+          body_generation_degradation: 'route_unavailable_vote_retained',
+        }
+        survivingText = null
+      }
+    }
+
+    if (survivingText) {
+      const templateId = this.pickTemplate(input.event, input.ctx)
+      let bodyResponse: Awaited<ReturnType<LLMGateway['generateVisibleText']>>
+      try {
+        bodyResponse = await this.deps.llmGateway.generateVisibleText({
+          intent: 'forum_reply',
+          scene: promptScene,
+          modality: 'text',
+          responseMode: 'text',
+          agentId: input.agent.agent_id,
+          homeVoiceLineId: routing.homeVoiceLineId,
+          promptRef: templateId,
+          variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
+          budgetClass: 'visible_standard',
+          traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body`,
+          promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
+          requestedTier: promptScene === 'chat_room' ? 'lite' : 'base',
+          allowFallbackWithinLine: true,
+          allowCrossFamily: false,
+        })
+      } catch (error) {
+        if (!this.isRouteUnavailableLlmError(error)) {
+          throw error
+        }
+        if (!survivingVote) {
+          return this.recordNoWriteDecision({
+            agentId: input.agent.agent_id,
+            event: input.event,
+            start: input.start,
+            ctx: input.ctx,
+            usage: this.combineUsage(input.extraUsage ?? null, planResponse.usage),
+            reason: 'route_unavailable',
+          })
+        }
+        survivingVote.audit_metadata = {
+          ...(survivingVote.audit_metadata ?? {}),
+          body_generation_degradation: 'route_unavailable_vote_retained',
+        }
+        survivingText = null
+        bodyResponse = null as never
+      }
+      if (!survivingText) {
+        // Route-unavailable degradation retained a surviving vote-only action.
+      } else {
+      const body = bodyResponse.content.trim()
+      if (!body) {
+        if (!survivingVote) {
+          return this.recordNoWriteDecision({
+            agentId: input.agent.agent_id,
+            event: input.event,
+            start: input.start,
+            ctx: input.ctx,
+            usage: this.combineUsage(this.combineUsage(input.extraUsage ?? null, planResponse.usage), bodyResponse.usage),
+            reason: 'decision_failed',
+          })
+        }
+        survivingText = null
+      } else {
+        survivingText.body = body
+        const latencyMs = Date.now() - input.start
+        textUsage = bodyResponse.usage
+        observation = buildPersonaObservation({
+          sourceCallsiteId: promptScene === 'forum_thread'
+            ? 'agent-executor-forum-thread'
+            : 'agent-executor-forum-post',
+          scene: promptScene,
+          intent: 'forum_reply',
+          visibility: 'visible',
+          coverageStatus: 'visible_complete',
+          personaSeedCode: identity?.persona_seed_code,
+          homeVoiceLineId: identity?.home_voice_line_id,
+          promptRef: templateId,
+          requestedTier: bodyResponse.renderDecision.tier,
+          resolvedTier: bodyResponse.renderDecision.tier,
+          renderDecision: bodyResponse.renderDecision,
+          usage: bodyResponse.usage,
+          latencyMs,
+          parseSuccess: true,
+          promptAudit: input.ctx.prompt_audit ?? null,
+          llmProviderId: bodyResponse.renderDecision.providerId,
+          llmModelId: bodyResponse.renderDecision.modelId,
+        })
+      }
+      }
+    }
+
+    instructions = [
+      ...(survivingVote ? [survivingVote] : []),
+      ...(survivingText ? [survivingText] : []),
+    ]
+
+    if (instructions.length === 0) {
+      return this.recordNoWriteDecision({
+        agentId: input.agent.agent_id,
+        event: input.event,
+        start: input.start,
+        ctx: input.ctx,
+        usage: this.combineUsage(input.extraUsage ?? null, planResponse.usage),
+        reason: 'decision_failed',
+      })
+    }
+
+    for (const instruction of instructions) {
+      this.applyInstructionRuntimeMetadata(input.ctx, instruction)
+    }
+
+    const totalUsage = this.combineUsage(
+      this.combineUsage(input.extraUsage ?? null, planResponse.usage),
+      textUsage,
+    )
+    const zeroUsage: LlmTokenUsage = {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    }
+    const writeResults = []
+    for (const instruction of instructions) {
+      const usageForWrite = instruction.action === 'vote' && survivingText
+        ? zeroUsage
+        : totalUsage
+      const writeObservation = instruction.action === 'vote' ? null : observation
+      const writeResult = await this.deps.dataplaneWriter.write(
+        instruction,
+        input.agent.agent_id,
+        input.event.event_id,
+        usageForWrite,
+        Date.now() - input.start,
+        input.event.chain_depth,
+        writeObservation,
+      )
+      writeResults.push(writeResult)
+    }
+
+    if (
+      survivingText
+      && writeResults.some((result) => result.success)
+      && input.ctx.promptScene
+      && input.ctx.runtimeEnvelope?.renderTierDecision
+      && this.deps.personaStateService
+    ) {
+      await this.deps.personaStateService.recordVisibleRender({
+        agentId: input.agent.agent_id,
+        scene: input.ctx.promptScene,
+        renderDecision: input.ctx.runtimeEnvelope.renderTierDecision,
+        outputText: survivingText.body,
+      }).catch((err) => {
+        console.error('[AgentExecutor] persona runtime render record failed:', err)
+      })
+    }
+
+    const successfulWrites = writeResults.filter((result) => result.success)
+    const failedWrites = writeResults.filter((result) => !result.success)
+    return {
+      agent_id: input.agent.agent_id,
+      event_id: input.event.event_id,
+      success: failedWrites.length === 0 || successfulWrites.length > 0,
+      ...(instructions.length === 1 ? { write_instruction: instructions[0] } : {}),
+      write_instructions: instructions,
+      usage: totalUsage,
+      latency_ms: Date.now() - input.start,
+      ...(failedWrites.length > 0
+        ? {
+            error: failedWrites
+              .map((result) => result.error)
+              .filter((value): value is string => typeof value === 'string' && value.length > 0)
+              .join('; '),
+          }
+        : {}),
+      reply_budget_consumed: Boolean(survivingText),
+    }
+  }
+
   private applyInstructionRuntimeMetadata(
     ctx: ExecutionContext,
-    instruction: NonNullable<ReturnType<ResponseParser['parse']>>,
+    instruction: WriteInstruction,
   ): void {
     if (ctx.event.governance_batch_id && ctx.event.generation_mode) {
       instruction.governance_context = {
@@ -572,10 +1052,13 @@ export class AgentExecutor {
         generation_mode: ctx.event.generation_mode,
       }
     }
-    if (ctx.public_scene) {
+    if (ctx.public_scene && instruction.action !== 'vote') {
       instruction.public_scene = ctx.public_scene
     }
-    if (ctx.surface_media_plan) {
+    if (
+      ctx.surface_media_plan
+      && instruction.action !== 'vote'
+    ) {
       instruction.audit_metadata = {
         ...(instruction.audit_metadata ?? {}),
         surface_media: ctx.surface_media_plan.planning_audit,
@@ -609,6 +1092,19 @@ export class AgentExecutor {
           final_write_anchor_turn_id: ctx.forum_targeting.final_write_anchor_turn_id,
           written_anchor_turn_id: instruction.anchor_turn_id ?? null,
         })
+      }
+    }
+    if (ctx.forum_targeting && instruction.action === 'vote') {
+      instruction.audit_metadata = {
+        ...(instruction.audit_metadata ?? {}),
+        forum_targeting: {
+          event_target_entry_id: ctx.forum_targeting.event_target_entry_id,
+          event_target_thread_id: ctx.forum_targeting.event_target_thread_id,
+          focus_turn_id: ctx.forum_targeting.focus_turn_id,
+          reply_thread_id: ctx.forum_targeting.reply_thread_id,
+          browse_reason: ctx.forum_targeting.browse_reason,
+          allowed_actions: ctx.forum_targeting.allowed_actions,
+        },
       }
     }
     if (ctx.forum_roaming || ctx.agent.forum_attention_hint) {
@@ -733,6 +1229,37 @@ export class AgentExecutor {
     }
   }
 
+  private buildForumActionPlanVariables(
+    ctx: ExecutionContext,
+    personaSeedCode: import('../../shared/agent-persona-catalog.js').PersonaSeedCode,
+    scene: 'forum_post' | 'forum_thread',
+  ): Record<string, string> {
+    return {
+      ...this.buildVariables(ctx, personaSeedCode, scene),
+      forum_action_options_json: buildForumActionOptionsPayload({
+        event_type: ctx.event.event_type,
+        options: buildForumActionOptions(ctx),
+      }),
+    }
+  }
+
+  private buildVoteIdempotencyKey(input: {
+    sourceEventId: string
+    agentId: string
+    targetType: string
+    targetId: string
+    transition: 'CAST_UP' | 'CAST_DOWN' | 'CLEAR_UP' | 'CLEAR_DOWN'
+  }): string {
+    return [
+      'runtime-vote',
+      input.sourceEventId,
+      input.agentId,
+      input.targetType,
+      input.targetId,
+      input.transition,
+    ].join(':')
+  }
+
   private combineUsage(
     left: LlmTokenUsage | null | undefined,
     right: LlmTokenUsage | null | undefined,
@@ -798,8 +1325,35 @@ export class AgentExecutor {
     }
   }
 
+  private getForumTextReplyBudget(
+    eventType: 'NewPostCreated' | 'ThreadOpened' | 'ThreadTurnAdded',
+  ): number {
+    switch (eventType) {
+      case 'NewPostCreated':
+        return 2
+      case 'ThreadOpened':
+      case 'ThreadTurnAdded':
+        return 1
+    }
+  }
+
   private resolveForumPlanningFocusEntry(ctx: ExecutionContext): ExecutionContext['focusThreadTurn'] {
     return ctx.focusThreadTurn
+  }
+
+  private getForumDecisionRequestedTier(
+    scene: 'forum_post' | 'forum_thread' | 'chat_room',
+  ): import('../../shared/agent-persona-catalog.js').RenderTier {
+    return 'lite'
+  }
+
+  private isDeterministicObserveOnlyRoaming(
+    candidates: ExecutionContext['forum_roaming']['arrival_candidates'],
+  ): boolean {
+    return candidates.length > 0
+      && candidates.every(
+        (candidate) => candidate.allowed_actions.length === 1 && candidate.allowed_actions[0] === 'observe_only',
+      )
   }
 
   private async resolveVisibleRouting(
@@ -827,6 +1381,72 @@ export class AgentExecutor {
     }
   }
 
+  private canServeVisibleForumRoute(input: {
+    agentId: string
+    traceId: string
+    scene: 'forum_post' | 'forum_thread' | 'chat_room'
+    promptRef: PromptTemplateRef
+    homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+    responseMode: 'json_object' | 'text'
+    localOverrides?: { executionPolicyId: string }
+  }): boolean {
+    if (typeof this.deps.llmGateway.canServeRoute !== 'function') {
+      return true
+    }
+
+    return this.deps.llmGateway.canServeRoute({
+      agentId: input.agentId,
+      traceId: input.traceId,
+      intent: 'forum_reply',
+      visibility: 'visible',
+      scene: input.scene,
+      promptRef: input.promptRef,
+      homeVoiceLineId: input.homeVoiceLineId,
+      requestedTier: input.requestedTier,
+      modality: 'text',
+      responseMode: input.responseMode,
+      budgetClass: 'visible_standard',
+      allowFallbackWithinLine: true,
+      allowCrossFamily: false,
+      ...(input.localOverrides ? { localOverrides: input.localOverrides } : {}),
+    })
+  }
+
+  private isRouteUnavailableLlmError(error: unknown): boolean {
+    if (
+      typeof error === 'object'
+      && error !== null
+      && 'code' in error
+      && (
+        (error as { code?: unknown }).code === 'AuthError'
+        || (error as { code?: unknown }).code === 'RateLimitError'
+        || (error as { code?: unknown }).code === 'TimeoutError'
+        || (error as { code?: unknown }).code === 'TransientError'
+      )
+    ) {
+      return true
+    }
+
+    if (!(error instanceof Error)) {
+      return false
+    }
+
+    const message = error.message.toLowerCase()
+    return (
+      message.includes('failed to resolve any credential')
+      || message.includes('failed to resolve credential')
+      || message.includes('no credential pool available')
+      || message.includes('all credential pools are saturated')
+      || message.includes('credential resolution error')
+      || message.includes('rate limit')
+      || message.includes('timeout')
+      || message.includes('fetch failed')
+      || message.includes('econnreset')
+      || message.includes('etimedout')
+    )
+  }
+
   private resolveObservationIdentity(agentId: string): {
     persona_seed_code: import('../../shared/agent-persona-catalog.js').PersonaSeedCode
     home_voice_line_id: import('../../shared/agent-persona-catalog.js').VoiceLineId
@@ -843,4 +1463,14 @@ export class AgentExecutor {
       return null
     }
   }
+}
+
+function isForumRuntimeEvent(
+  event: EventPayload,
+): event is EventPayload & { event_type: 'NewPostCreated' | 'ThreadOpened' | 'ThreadTurnAdded' } {
+  return (
+    event.event_type === 'NewPostCreated'
+    || event.event_type === 'ThreadOpened'
+    || event.event_type === 'ThreadTurnAdded'
+  )
 }

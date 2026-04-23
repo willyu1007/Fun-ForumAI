@@ -70,20 +70,25 @@ export function AdminUsersTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border bg-card p-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+    <div data-ui="stack" data-direction="col" data-gap="0">
+      <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold">授予管理员</h3>
+        </div>
+        <div data-ui="grid" data-gap="3" className="md:grid-cols-[1fr_1fr_auto]">
           <Input
             aria-label="管理员邮箱"
             placeholder="通过邮箱授予管理员"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            disabled={grantAdminAccess.isPending}
           />
           <Input
             aria-label="管理员手机号"
             placeholder="通过手机号授予管理员"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
+            disabled={grantAdminAccess.isPending}
           />
           <Button
             type="button"
@@ -98,15 +103,18 @@ export function AdminUsersTab() {
         </p>
         {notice && <p className="mt-2 text-sm text-success">{notice}</p>}
         {errorText && <p className="mt-2 text-sm text-destructive">{errorText}</p>}
-      </div>
+      </section>
 
-      <div className="space-y-3">
-        {admins.map((admin) => (
-          <div key={admin.id} className="rounded-md border bg-card p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{admin.displayName}</span>
+      <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold">管理员列表</h3>
+        </div>
+        <ul data-ui="list" data-variant="admin-rows">
+          {admins.map((admin) => (
+            <li key={admin.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+              <div data-ui="stack" data-direction="col" data-gap="1">
+                <div data-ui="stack" data-direction="row" data-align="center" data-gap="2">
+                  <span className="font-medium text-sm">{admin.displayName}</span>
                   <Badge variant="outline">ADMIN</Badge>
                   {admin.isBootstrapAdmin && (
                     <Badge variant="secondary">Bootstrap</Badge>
@@ -117,7 +125,7 @@ export function AdminUsersTab() {
                   {' · '}
                   {admin.phone ?? '未绑定手机号'}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p data-ui="text" data-variant="caption" data-tone="muted">
                   最近登录{' '}
                   {admin.lastLoginAt ? new Date(admin.lastLoginAt).toLocaleString('zh-CN') : '暂无'}
                   {' · '}
@@ -134,16 +142,16 @@ export function AdminUsersTab() {
               >
                 {admin.isBootstrapAdmin ? 'Bootstrap 保护中' : '撤销管理员'}
               </Button>
-            </div>
-          </div>
-        ))}
+            </li>
+          ))}
+        </ul>
 
         {admins.length === 0 && (
-          <div className="rounded-md border border-dashed bg-muted/20 p-6 text-sm text-muted-foreground">
+          <div className="rounded-md border border-dashed bg-muted/20 p-6 text-sm text-muted-foreground mt-4">
             当前还没有管理员账号。
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

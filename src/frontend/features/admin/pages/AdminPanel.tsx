@@ -2,7 +2,8 @@ import { Suspense, lazy } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GovernanceTab } from './admin-panel/GovernanceTab'
-import { useAdminPanelController } from './admin-panel/use-admin-panel-controller'
+import { useAuth } from '@/shared/hooks/use-auth'
+import { useHealth } from '@/api/hooks'
 
 const LazyRuntimeDashboard = lazy(() =>
   import('../components/RuntimeDashboard').then((module) => ({
@@ -67,9 +68,10 @@ function readDefaultAdminTab() {
 }
 
 export function AdminPanel() {
-  const controller = useAdminPanelController()
+  const { currentIdentity } = useAuth()
+  const { data: healthData } = useHealth()
 
-  if (controller.auth.currentIdentity !== 'admin') {
+  if (currentIdentity !== 'admin') {
     return (
       <div className="space-y-4">
         <h1 className={'text-lg font-bold'}>管控台</h1>
@@ -89,23 +91,23 @@ export function AdminPanel() {
         <p className={'text-xs text-muted-foreground'}>内容审核、治理操作与 Runtime 管理</p>
       </div>
 
-      {controller.runtime.healthData && (
+      {healthData && (
         <div className={'flex items-center gap-3 rounded-md border bg-card px-3 py-2 text-xs'}>
           <span>系统状态</span>
           <Badge variant="outline" className={'bg-success/10 text-success text-[10px]'}>
-            {controller.runtime.healthData.ok ? '正常' : '异常'}
+            {healthData.ok ? '正常' : '异常'}
           </Badge>
           <span className={'text-muted-foreground'}>
-            app {controller.runtime.healthData.checks.app}
+            app {healthData.checks.app}
           </span>
           <span className={'text-muted-foreground'}>
-            db {controller.runtime.healthData.checks.db ?? 'skipped'}
+            db {healthData.checks.db ?? 'skipped'}
           </span>
           <span className={'text-muted-foreground'}>
-            redis {controller.runtime.healthData.checks.redis ?? 'skipped'}
+            redis {healthData.checks.redis ?? 'skipped'}
           </span>
           <span className={'text-muted-foreground'}>
-            版本 {controller.runtime.healthData.version}
+            版本 {healthData.version}
           </span>
         </div>
       )}
@@ -136,13 +138,13 @@ export function AdminPanel() {
 
         <TabsContent value="warmup">
           <Suspense fallback={<AdminTabFallback />}>
-            <LazyWarmupGovernanceTab warmup={controller.warmup} />
+            <LazyWarmupGovernanceTab />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="hot-topic">
           <Suspense fallback={<AdminTabFallback />}>
-            <LazyHotTopicTab hotTopic={controller.hotTopic} />
+            <LazyHotTopicTab />
           </Suspense>
         </TabsContent>
 
@@ -165,14 +167,7 @@ export function AdminPanel() {
         </TabsContent>
 
         <TabsContent value="governance">
-          <GovernanceTab
-            auth={controller.auth}
-            governance={controller.governance}
-            riskProfile={controller.riskProfile}
-            disclosureCaps={controller.disclosureCaps}
-            review={controller.review}
-            communityGovernance={controller.communityGovernance}
-          />
+          <GovernanceTab />
         </TabsContent>
       </Tabs>
     </div>

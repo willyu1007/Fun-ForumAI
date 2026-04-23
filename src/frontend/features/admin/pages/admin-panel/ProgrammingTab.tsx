@@ -38,10 +38,10 @@ function SectionCard({
   children: ReactNode
 }) {
   return (
-    <section className="space-y-3 rounded-2xl border border-border/60 bg-card p-4">
-      <div className="space-y-1">
+    <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+      <div className="mb-4 space-y-1">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p data-ui="text" data-variant="caption" data-tone="muted">{description}</p>
       </div>
       {children}
     </section>
@@ -77,20 +77,20 @@ export function ProgrammingTab() {
   }
 
   return (
-    <div className="space-y-4">
+    <div data-ui="stack" data-direction="col" data-gap="0">
       <SectionCard
         title="Daypart Baseline"
         description={`按 ${payload.timezone} 排班，当前激活时段：${payload.active_daypart_id ?? 'none'}`}
       >
-        <div className="grid gap-3 lg:grid-cols-2">
+        <ul data-ui="list" data-variant="admin-rows">
           {payload.dayparts.map((daypart) => {
             const readiness = payload.health.daypart_readiness.find(
               (item) => item.daypart_id === daypart.id,
             )
             return (
-              <div
+              <li
                 key={daypart.id}
-                className="rounded-xl border border-border/60 bg-background p-4"
+                className="py-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-sm font-medium text-foreground">{daypart.label}</h4>
@@ -110,21 +110,21 @@ export function ProgrammingTab() {
                       .join(' · ')}
                   </div>
                 </div>
-              </div>
+              </li>
             )
           })}
-        </div>
+        </ul>
       </SectionCard>
 
       <SectionCard
         title="Slot Recommendations"
         description="推荐排班只来自 contract 与 frozen roster，不代表人工确认写入。"
       >
-        <div className="space-y-3">
+        <ul data-ui="list" data-variant="admin-rows">
           {payload.slots.map((slot) => (
-            <div
+            <li
               key={slot.slot_name}
-              className="rounded-xl border border-border/60 bg-background p-4"
+              className="py-3"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <h4 className="text-sm font-medium text-foreground">{slot.slot_name}</h4>
@@ -167,17 +167,17 @@ export function ProgrammingTab() {
                   <div>{slot.expected_output_summary}</div>
                 </div>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </SectionCard>
 
       <SectionCard
         title="Release Health"
         description="按日供给、daypart readiness、visual ratio 和 aftershow pipeline 汇总首发状态。"
       >
-        <div className="grid gap-3 lg:grid-cols-3">
-          <div className="rounded-xl border border-border/60 bg-background p-4">
+        <ul data-ui="list" data-variant="admin-rows">
+          <li className="py-3">
             <div className="text-xs text-muted-foreground">visual ratio</div>
             <div className="mt-2 flex flex-wrap gap-2">
               <HealthBadge
@@ -194,9 +194,9 @@ export function ProgrammingTab() {
                 highlight {formatPercent(payload.observations.visual_ratio.highlight_visual_ratio)}
               </Badge>
             </div>
-          </div>
+          </li>
 
-          <div className="rounded-xl border border-border/60 bg-background p-4">
+          <li className="py-3">
             <div className="text-xs text-muted-foreground">aftershow pipeline</div>
             <div className="mt-2 flex flex-wrap gap-2">
               <HealthBadge
@@ -213,9 +213,9 @@ export function ProgrammingTab() {
               </Badge>
               <Badge variant="outline">{payload.observations.aftershow.length} candidates</Badge>
             </div>
-          </div>
+          </li>
 
-          <div className="rounded-xl border border-border/60 bg-background p-4">
+          <li className="py-3">
             <div className="text-xs text-muted-foreground">warning count</div>
             <div className="mt-2 flex flex-wrap gap-2">
               <Badge variant="outline">{payload.health.warning_count} warnings</Badge>
@@ -225,22 +225,24 @@ export function ProgrammingTab() {
                 </Badge>
               ) : null}
             </div>
-          </div>
-        </div>
+          </li>
+        </ul>
 
-        <div className="space-y-2 rounded-xl border border-border/60 bg-background p-4">
+        <div className="mt-4 space-y-2">
           <h4 className="text-sm font-medium text-foreground">Warnings</h4>
           {payload.health.warnings.length === 0 ? (
-            <p className="text-xs text-muted-foreground">当前没有触发 warning。</p>
+            <p data-ui="text" data-variant="caption" data-tone="muted">当前没有触发 warning。</p>
           ) : (
-            payload.health.warnings.map((warning) => (
-              <div
-                key={`${warning.code}-${warning.affected_community_slug ?? warning.affected_daypart ?? 'global'}`}
-                className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning"
-              >
-                {warning.message}
-              </div>
-            ))
+            <ul data-ui="list" data-variant="admin-rows">
+              {payload.health.warnings.map((warning) => (
+                <li
+                  key={`${warning.code}-${warning.affected_community_slug ?? warning.affected_daypart ?? 'global'}`}
+                  className="py-2 text-xs text-warning"
+                >
+                  {warning.message}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </SectionCard>
@@ -249,38 +251,38 @@ export function ProgrammingTab() {
         title="Visual / Highlight / Aftershow"
         description="只读观察 visual 比例、高光候选和 aftershow 触发状态。"
       >
-        <div className="grid gap-3 lg:grid-cols-3">
-          <div className="rounded-xl border border-border/60 bg-background p-4">
-            <h4 className="text-sm font-medium text-foreground">Visual Ratio</h4>
-            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-              <div>
+        <div data-ui="grid" data-gap="5" className="lg:grid-cols-3">
+          <div>
+            <h4 className="text-sm font-medium text-foreground">视觉内容占比</h4>
+            <ul data-ui="list" data-variant="admin-rows" className="mt-2 text-xs text-muted-foreground">
+              <li className="py-2">
                 root cover ratio：
                 {formatPercent(payload.observations.visual_ratio.root_cover_ratio)}
-              </div>
-              <div>
+              </li>
+              <li className="py-2">
                 note cover ratio：
                 {formatPercent(payload.observations.visual_ratio.note_cover_ratio)}
-              </div>
-              <div>
+              </li>
+              <li className="py-2">
                 highlight visual ratio：
                 {formatPercent(payload.observations.visual_ratio.highlight_visual_ratio)}
-              </div>
-              <div>
+              </li>
+              <li className="py-2">
                 reject reasons：
                 {Object.entries(payload.observations.visual_ratio.reject_reason_counts)
                   .map(([key, value]) => `${key}=${value}`)
                   .join(' · ') || 'none'}
-              </div>
-            </div>
+              </li>
+            </ul>
           </div>
 
-          <div className="rounded-xl border border-border/60 bg-background p-4">
-            <h4 className="text-sm font-medium text-foreground">Highlight Candidates</h4>
-            <div className="mt-2 space-y-2">
+          <div>
+            <h4 className="text-sm font-medium text-foreground">高光候选内容</h4>
+            <ul data-ui="list" data-variant="admin-rows" className="mt-2">
               {payload.observations.highlight_candidates.slice(0, 5).map((item) => (
-                <div
+                <li
                   key={item.candidate_post_id}
-                  className="rounded-lg border border-border/60 p-3 text-xs text-muted-foreground"
+                  className="py-2 text-xs text-muted-foreground"
                 >
                   <div className="font-medium text-foreground">{item.title}</div>
                   <div className="mt-1">
@@ -289,27 +291,27 @@ export function ProgrammingTab() {
                   <div className="mt-1">
                     {item.rejected_reason ?? item.hero_reason ?? 'candidate_watch'}
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
-          <div className="rounded-xl border border-border/60 bg-background p-4">
-            <h4 className="text-sm font-medium text-foreground">Aftershow</h4>
-            <div className="mt-2 space-y-2">
+          <div>
+            <h4 className="text-sm font-medium text-foreground">盘点与后日谈</h4>
+            <ul data-ui="list" data-variant="admin-rows" className="mt-2">
               {payload.observations.aftershow.slice(0, 5).map((item) => (
-                <div
+                <li
                   key={item.candidate_post_id}
-                  className="rounded-lg border border-border/60 p-3 text-xs text-muted-foreground"
+                  className="py-2 text-xs text-muted-foreground"
                 >
                   <div className="font-medium text-foreground">{item.title}</div>
                   <div className="mt-1">{item.community_name}</div>
                   <div className="mt-1">
                     {item.trigger_status} · {item.published_status} · {item.fallback_status}
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </SectionCard>
@@ -318,37 +320,37 @@ export function ProgrammingTab() {
         title="Governance / Rollback"
         description="这里只展示治理引用和 runbook，不复制现有治理写操作。"
       >
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className="rounded-xl border border-border/60 bg-background p-4">
-            <h4 className="text-sm font-medium text-foreground">Community Lifecycle</h4>
-            <div className="mt-2 space-y-2">
+        <div data-ui="grid" data-gap="5" className="lg:grid-cols-2">
+          <div>
+            <h4 className="text-sm font-medium text-foreground">社区生命周期</h4>
+            <ul data-ui="list" data-variant="admin-rows" className="mt-2">
               {payload.governance_references.communities.slice(0, 8).map((community) => (
-                <div
+                <li
                   key={community.community_slug}
-                  className="rounded-lg border border-border/60 p-3 text-xs text-muted-foreground"
+                  className="py-2 text-xs text-muted-foreground"
                 >
                   <div className="font-medium text-foreground">{community.community_name}</div>
                   <div className="mt-1">
                     {community.community_lifecycle_state} · wave {community.launch_wave ?? 'n/a'}
                   </div>
                   <div className="mt-1">headline priority {community.headline_priority}</div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
-          <div className="rounded-xl border border-border/60 bg-background p-4">
-            <h4 className="text-sm font-medium text-foreground">Incubation References</h4>
-            <div className="mt-2 space-y-2">
+          <div>
+            <h4 className="text-sm font-medium text-foreground">孵化参考数据</h4>
+            <ul data-ui="list" data-variant="admin-rows" className="mt-2">
               {payload.governance_references.incubation.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
+                <li className="py-2 text-xs text-muted-foreground">
                   当前没有 proposal / incubation 引用。
-                </p>
+                </li>
               ) : (
                 payload.governance_references.incubation.map((item) => (
-                  <div
+                  <li
                     key={item.proposal_id}
-                    className="rounded-lg border border-border/60 p-3 text-xs text-muted-foreground"
+                    className="py-2 text-xs text-muted-foreground"
                   >
                     <div className="font-medium text-foreground">{item.community_name}</div>
                     <div className="mt-1">{item.incubation_status}</div>
@@ -356,40 +358,40 @@ export function ProgrammingTab() {
                       {item.merge_recommendation ?? 'no merge recommendation'}
                     </div>
                     <div className="mt-1">{item.last_admin_action ?? 'no admin action yet'}</div>
-                  </div>
+                  </li>
                 ))
               )}
-            </div>
+            </ul>
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
-          <div className="rounded-xl border border-border/60 bg-background p-4">
-            <h4 className="text-sm font-medium text-foreground">Rollback Order</h4>
-            <div className="mt-2 space-y-2">
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div>
+            <h4 className="text-sm font-medium text-foreground">回滚指令</h4>
+            <ul data-ui="list" data-variant="admin-rows" className="mt-2">
               {payload.rollback_order.map((item) => (
-                <div
+                <li
                   key={item}
-                  className="rounded-lg border border-border/60 p-3 text-xs text-muted-foreground"
+                  className="py-2 text-xs text-muted-foreground"
                 >
                   {item}
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
-          <div className="rounded-xl border border-border/60 bg-background p-4">
-            <h4 className="text-sm font-medium text-foreground">Drill Checklist</h4>
-            <div className="mt-2 space-y-2">
+          <div>
+            <h4 className="text-sm font-medium text-foreground">演练检查清单</h4>
+            <ul data-ui="list" data-variant="admin-rows" className="mt-2">
               {payload.drill_checklist.map((item) => (
-                <div
+                <li
                   key={item}
-                  className="rounded-lg border border-border/60 p-3 text-xs text-muted-foreground"
+                  className="py-2 text-xs text-muted-foreground"
                 >
                   {item}
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </SectionCard>

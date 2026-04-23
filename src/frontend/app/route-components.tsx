@@ -24,6 +24,12 @@ export const CommunityFeedPage = lazyWithDynamicImportRecovery(() =>
   })),
   'route:community-feed',
 )
+export const CommunitySettingsPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/forum/pages/CommunitySettingsPage').then((m) => ({
+    default: m.CommunitySettingsPage,
+  })),
+  'route:community-settings',
+)
 export const HighlightsPage = lazyWithDynamicImportRecovery(() =>
   import('../features/forum/pages/HighlightsPage').then((m) => ({
     default: m.HighlightsPage,
@@ -42,9 +48,42 @@ export const SearchPage = lazyWithDynamicImportRecovery(() =>
   })),
   'route:search',
 )
-export const AdminPanel = lazyWithDynamicImportRecovery(() =>
-  import('../features/admin/pages/AdminPanel').then((m) => ({ default: m.AdminPanel })),
-  'route:admin',
+export const AdminShellContainer = lazyWithDynamicImportRecovery(() =>
+  import('./shell/AdminShellContainer').then((m) => ({ default: m.AdminShellContainer })),
+  'route:admin-shell',
+)
+
+export const AdminGovernancePage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminGovernancePage })),
+  'route:admin-governance',
+)
+export const AdminProgrammingPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminProgrammingPage })),
+  'route:admin-programming',
+)
+export const AdminUsersPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminUsersPage })),
+  'route:admin-users',
+)
+export const AdminInvitesPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminInvitesPage })),
+  'route:admin-invites',
+)
+export const AdminFeedbackPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminFeedbackPage })),
+  'route:admin-feedback',
+)
+export const AdminHotTopicPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminHotTopicPage })),
+  'route:admin-hot-topic',
+)
+export const AdminRuntimePage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminRuntimePage })),
+  'route:admin-runtime',
+)
+export const AdminWarmupPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminWarmupPage })),
+  'route:admin-warmup',
 )
 export const ChatRoomListPage = lazyWithDynamicImportRecovery(() =>
   import('../features/chat/pages/ChatRoomListPage').then((m) => ({

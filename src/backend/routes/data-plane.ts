@@ -74,7 +74,11 @@ dataPlaneRouter.post('/votes', requireServiceIdentity, validate(upsertVoteSchema
   const result = await forumWriteService.upsertVote(req.body)
   res.status(201).json({
     data: result.vote,
-    meta: { event_id: result.event.id },
+    meta: {
+      event_id: result.event?.id ?? null,
+      outcome: result.outcome,
+      ...(result.outcome === 'noop' ? { reason: result.reason } : {}),
+    },
   })
 })
 

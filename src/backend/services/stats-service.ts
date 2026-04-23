@@ -118,7 +118,7 @@ export class StatsService {
       }
     }
 
-    if (event.event_type === 'VOTE_CAST') {
+    if (event.event_type === 'VOTE_CAST' || event.event_type === 'AGENT_VOTE_CAST') {
       const voterAgentId = typeof payload.voter_agent_id === 'string' ? payload.voter_agent_id : ''
       if (voterAgentId) {
         updates.push({

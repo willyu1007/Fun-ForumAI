@@ -1,0 +1,104 @@
+import { useAuth } from '@/shared/hooks/use-auth'
+import { GovernanceTab } from './admin-panel/GovernanceTab'
+import { AdminUsersTab } from './admin-panel/AdminUsersTab'
+import { FeedbackInboxTab } from './admin-panel/FeedbackInboxTab'
+import { HotTopicTab } from './admin-panel/HotTopicTab'
+import { InviteCodesTab } from './admin-panel/InviteCodesTab'
+import { ProgrammingTab } from './admin-panel/ProgrammingTab'
+import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
+import { RuntimeDashboard } from '../components/RuntimeDashboard'
+import { ReactNode } from 'react'
+
+function AdminPageWrapper({ title, description, children }: { title: string, description?: string, children: ReactNode }) {
+  const { currentIdentity } = useAuth()
+
+  if (currentIdentity !== 'admin') {
+    return (
+      <div data-ui="stack" data-direction="col" data-gap="4">
+        <h1 data-ui="text" data-variant="h3">{title}</h1>
+        <div data-ui="card" data-variant="outlined" data-padding="lg" className="border-dashed text-center">
+          <p data-ui="text" data-variant="body" data-tone="muted">
+            请先通过下方工具栏切换为<strong>管理员</strong>身份。
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div data-ui="stack" data-direction="col" data-gap="5">
+      <div>
+        <h1 data-ui="text" data-variant="h2" className="tracking-tight">{title}</h1>
+        {description && <p data-ui="text" data-variant="body" data-tone="muted" className="mt-1">{description}</p>}
+      </div>
+
+      <div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export function AdminGovernancePage() {
+  return (
+    <AdminPageWrapper title="社区与内容治理" description="内容审核与治理操作">
+      <GovernanceTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminProgrammingPage() {
+  return (
+    <AdminPageWrapper title="内容编排与排期">
+      <ProgrammingTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminUsersPage() {
+  return (
+    <AdminPageWrapper title="管理员权限">
+      <AdminUsersTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminInvitesPage() {
+  return (
+    <AdminPageWrapper title="邀请码管理">
+      <InviteCodesTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminFeedbackPage() {
+  return (
+    <AdminPageWrapper title="意见箱">
+      <FeedbackInboxTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminHotTopicPage() {
+  return (
+    <AdminPageWrapper title="热门话题风控">
+      <HotTopicTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminRuntimePage() {
+  return (
+    <AdminPageWrapper title="系统运行状态">
+      <RuntimeDashboard />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminWarmupPage() {
+  return (
+    <AdminPageWrapper title="预热与启动">
+      <WarmupGovernanceTab />
+    </AdminPageWrapper>
+  )
+}

@@ -1,7 +1,7 @@
 import type { Vote, UpsertVoteInput } from './types.js'
 
 export interface VoteRepository {
-  upsert(input: UpsertVoteInput): Vote
+  upsert(input: UpsertVoteInput): Promise<Vote>
   findByTarget(targetType: Vote['target_type'], targetId: string): Vote[]
   findByTargetsFresh?(targets: Array<{
     target_type: Vote['target_type']
@@ -11,6 +11,11 @@ export interface VoteRepository {
     target_type: Vote['target_type']
     target_id: string
   }>): Promise<number>
+  deleteByVoterAndTarget(
+    voterId: string,
+    targetType: Vote['target_type'],
+    targetId: string,
+  ): Promise<Vote | null>
   countByTarget(targetType: Vote['target_type'], targetId: string): { up: number; down: number; score: number }
   findByVoterAndTarget(voterId: string, targetType: Vote['target_type'], targetId: string): Vote | null
 }
@@ -28,7 +33,7 @@ export class InMemoryVoteRepository implements VoteRepository {
     return `${voterId}:${targetType}:${targetId}`
   }
 
-  upsert(input: UpsertVoteInput): Vote {
+  async upsert(input: UpsertVoteInput): Promise<Vote> {
     const key = this.compositeKey(input.voter_agent_id, input.target_type, input.target_id)
     const existing = this.voterIndex.get(key)
 
@@ -36,6 +41,7 @@ export class InMemoryVoteRepository implements VoteRepository {
       const vote = this.store.get(existing)!
       vote.direction = input.direction
       vote.weight = input.weight ?? 1
+      vote.created_at = new Date()
       return vote
     }
 
@@ -80,6 +86,20 @@ export class InMemoryVoteRepository implements VoteRepository {
       deleted += 1
     }
     return deleted
+  }
+
+  async deleteByVoterAndTarget(
+    voterId: string,
+    targetType: Vote['target_type'],
+    targetId: string,
+  ): Promise<Vote | null> {
+    const key = this.compositeKey(voterId, targetType, targetId)
+    const voteId = this.voterIndex.get(key)
+    if (!voteId) return null
+    const vote = this.store.get(voteId) ?? null
+    this.voterIndex.delete(key)
+    this.store.delete(voteId)
+    return vote
   }
 
   countByTarget(

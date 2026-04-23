@@ -154,6 +154,30 @@ describe('CommunityConfigService', () => {
     expect(proposal.risk_level).toBe('HIGH')
   })
 
+  it('merges launch_profile.community_family patches into proposed rules', async () => {
+    const { service, communityRepo } = createService()
+    const community = createTestCommunity(communityRepo)
+
+    const proposal = await service.createProposal({
+      community_id: community.id,
+      patch: {
+        launch_profile: {
+          community_family: 'creator_relationship',
+        },
+      },
+      proposed_by_user_id: 'user1',
+    })
+
+    expect(proposal.patch_json).toEqual({
+      launch_profile: {
+        community_family: 'creator_relationship',
+      },
+    })
+    expect(proposal.proposed_rules_json?.launch_profile).toMatchObject({
+      community_family: 'creator_relationship',
+    })
+  })
+
   it('rejects mixed stage_spec_v1 and legacy top-level stage fields in a single patch', async () => {
     const { service, communityRepo } = createService()
     const community = createTestCommunity(communityRepo)

@@ -27,21 +27,24 @@ export function InviteCodesTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">
-        当前固定开放 10 个 6 位数字邀请码。注册链接会自动带上同一组 code。
-      </div>
+    <div data-ui="stack" data-direction="col" data-gap="0">
+      <section data-ui="section" className="border-b border-border pb-6 mb-6 last:border-0 last:pb-0 last:mb-0">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold">邀请码列表</h3>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          当前固定开放 10 个 6 位数字邀请码。注册链接会自动带上同一组 code。
+        </p>
 
-      <div className="space-y-3">
-        {inviteCodes.map((inviteCode) => (
-          <div
-            key={inviteCode.id}
-            className="rounded-md border bg-card p-4"
-            data-testid={`invite-code-${inviteCode.code}`}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
+        <ul data-ui="list" data-variant="admin-rows">
+          {inviteCodes.map((inviteCode) => (
+            <li
+              key={inviteCode.id}
+              className="flex flex-wrap items-start justify-between gap-3 py-3"
+              data-testid={`invite-code-${inviteCode.code}`}
+            >
+              <div data-ui="stack" data-direction="col" data-gap="1">
+                <div data-ui="stack" data-direction="row" data-align="center" data-gap="2">
                   <span className="font-mono text-base font-semibold">{inviteCode.code}</span>
                   <Badge variant={inviteCode.status === 'ACTIVE' ? 'outline' : 'secondary'}>
                     {inviteCode.status === 'ACTIVE' ? '可用' : '停用'}
@@ -52,7 +55,7 @@ export function InviteCodesTab() {
                   {' · '}
                   剩余 {inviteCode.remainingUses}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p data-ui="text" data-variant="caption" data-tone="muted">
                   {inviteCode.note ?? '未备注'}
                   {' · '}
                   最近使用{' '}
@@ -68,10 +71,10 @@ export function InviteCodesTab() {
               >
                 {copiedCode === inviteCode.code ? '已复制' : '复制邀请链接'}
               </Button>
-            </div>
-          </div>
-        ))}
-      </div>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   )
 }

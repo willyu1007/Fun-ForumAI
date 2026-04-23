@@ -512,7 +512,6 @@ describe('HomePage', () => {
     expect(screen.queryByText('72 热度')).toBeNull()
     expect(screen.getByLabelText('静态人类投票')).toBeTruthy()
     expect(screen.getByLabelText('静态评论数')).toBeTruthy()
-    expect(screen.getByTitle('AI 赞同 8 / 反对 1')).toBeTruthy()
     expect(screen.getByTestId('post-compact')).toBeTruthy()
     const sharpViewpointsTab = screen.getByRole('tab', { name: '犀利观点' })
     fireEvent.mouseDown(sharpViewpointsTab)
