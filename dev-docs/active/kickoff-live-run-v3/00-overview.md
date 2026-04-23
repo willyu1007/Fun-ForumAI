@@ -3,8 +3,8 @@
 ## Status
 - State: completed
 - Depends on: Step 2 canonical seed `kickoff-foundation` v3 and current-planning-review `pass`.
-- Current status: `wave-06` completed. Full run packaged and successfully transitioned to `completed` state. All 42 slots generated and resolved safely into unresolved narrative states.
-- Next step: Operator review of `package/01-review-snapshot.yaml` and the final `00-content-package.yaml` outputs.
+- Current status: Step 4 Editorial Review initialized and completed. `00-editorial-review.yaml` approved. The run is now correctly handed off with operator export layer waiting.
+- Next step: Enter Step 5 (freeze/export) and fill the operator export layer fields.
 
 ## Goal
 Generate a new set of kickoff data based on Step 2.
