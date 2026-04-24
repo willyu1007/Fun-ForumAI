@@ -1642,6 +1642,617 @@ describe('LLMGateway', () => {
     expect(response.executionPlan.policy.policy_id).toBe('visible-forum_reply-selection-lite')
   })
 
+  it('falls back to a same-line rescue profile for forum action planning when fast lite candidates saturate', async () => {
+    const bundle = buildBundle()
+    bundle.providers.providers.push({
+      provider_id: 'token-plan-openai',
+      display_name: 'Token Plan OpenAI',
+      gateway_kind: 'openai_compatible',
+      auth: {
+        type: 'api_key',
+        source: 'credential_pool',
+        auth_strategy: 'bearer_api_key',
+      },
+      routing: {
+        regions: ['cn-beijing'],
+        default_region: 'cn-beijing',
+      },
+      capabilities: {
+        chat: true,
+        json_mode: true,
+      },
+      defaults: {
+        timeout_ms: 30_000,
+        max_retries: 2,
+      },
+    })
+    bundle.modelProfiles.profiles.push({
+      profile_id: 'qwen-social-forum-reply-lite',
+      voice_line_id: 'qwen-social-v1',
+      tier: 'lite',
+      intent: 'forum_reply',
+      visibility: 'visible',
+      policy_id: 'visible-forum_reply-base',
+      candidates: [
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-flash-character',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 100,
+          quality_class: 'fast',
+        },
+      ],
+      fallback: [
+        {
+          level: 'same-line',
+          profile_id: 'qwen-social-forum-reply-lite-rescue',
+          reason: 'forum reply lite may raise to a balanced rescue lane when fast candidates saturate',
+        },
+      ],
+    })
+    bundle.modelProfiles.profiles.push({
+      profile_id: 'qwen-social-forum-reply-lite-rescue',
+      voice_line_id: 'qwen-social-v1',
+      tier: 'premium',
+      intent: 'forum_reply',
+      visibility: 'visible',
+      policy_id: 'visible-forum_reply-base',
+      candidates: [
+        {
+          provider_id: 'token-plan-openai',
+          model_id: 'qwen3.6-plus',
+          region: 'cn-beijing',
+          endpoint_id: 'token-plan-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 92,
+          quality_class: 'balanced',
+        },
+      ],
+      fallback: [],
+    })
+    bundle.routingPolicies.policies.push({
+      profile_id: 'qwen-social-forum-reply-lite',
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
+    })
+    bundle.routingPolicies.policies.push({
+      profile_id: 'qwen-social-forum-reply-lite-rescue',
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
+    })
+    bundle.executionPolicies.policies.push({
+      policy_id: 'visible-forum_reply-base',
+      lane: 'visible_forum_reply',
+      modality: 'text',
+      response_mode: 'text',
+      defaults: {
+        temperature: 0.75,
+        max_tokens: 720,
+        timeout_ms: 60_000,
+        max_retries: 2,
+      },
+      fallback: {
+        allow_fallback_within_line: false,
+        allow_cross_family: false,
+        allowed_fallback_levels: ['none'],
+      },
+      merge: {
+        allow_callsite_override_fields: ['executionPolicyId'],
+        allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
+      },
+    })
+    bundle.executionPolicies.policies.push({
+      policy_id: 'visible-forum_reply-action-plan-lite',
+      lane: 'visible_forum_reply',
+      modality: 'text',
+      response_mode: 'json_object',
+      defaults: {
+        temperature: 0.2,
+        max_tokens: 220,
+        timeout_ms: 30_000,
+        max_retries: 0,
+      },
+      fallback: {
+        allow_fallback_within_line: true,
+        allow_cross_family: false,
+        allowed_fallback_levels: ['none', 'same-line'],
+      },
+      merge: {
+        allow_callsite_override_fields: [],
+        allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
+      },
+    })
+    bundle.credentialPools.pools.push({
+      credential_id: 'dashscope-visible-lite',
+      provider_id: 'dashscope-openai',
+      region: 'cn-beijing',
+      endpoint_id: 'dashscope-cn-beijing',
+      endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      credential_ref: 'secret-ref:llm_api_default',
+      priority: 10,
+      health: 'healthy',
+      enabled: true,
+      scope_tags: ['visible'],
+      allowed_model_ids: ['qwen-flash-character'],
+    })
+    bundle.credentialPools.pools.push({
+      credential_id: 'token-plan-visible-lite-rescue',
+      provider_id: 'token-plan-openai',
+      region: 'cn-beijing',
+      endpoint_id: 'token-plan-cn-beijing',
+      endpoint: 'https://token-plan.invalid/v1',
+      credential_ref: 'secret-ref:token_plan_api_key',
+      priority: 10,
+      health: 'healthy',
+      enabled: true,
+      scope_tags: ['visible'],
+      allowed_model_ids: ['qwen3.6-plus'],
+    })
+    bundle.providerAdmission.pools[0]!.candidates.push({
+      provider_id: 'token-plan-openai',
+      model_id: 'qwen3.6-plus',
+      admission: 'admitted',
+    })
+    bundle.modelCapabilities.capabilities.push({
+      provider_id: 'token-plan-openai',
+      model_id: 'qwen3.6-plus',
+      input_window_tokens: 32_768,
+      max_output_tokens: 8_192,
+      recommended_operating_input_tokens: 24_576,
+      modalities: ['text'],
+      response_modes: ['text', 'json_object'],
+    })
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockImplementation(async (request) => {
+      if (request.model === 'qwen-flash-character') {
+        const error = new Error('All credential pools are saturated for dashscope-openai/qwen-flash-character')
+        ;(error as Error & { code?: string }).code = 'RateLimitError'
+        throw error
+      }
+      return {
+        content: '{"actions":[{"kind":"no_write"}]}',
+        usage: { prompt_tokens: 14, completion_tokens: 7, total_tokens: 21 },
+        model: 'qwen3.6-plus',
+        finish_reason: 'stop',
+      }
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: {
+          resolve: vi.fn((ref: string) => ref.includes('token_plan') ? 'token-secret' : 'dashscope-secret'),
+        } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      intent: 'forum_reply',
+      scene: 'forum_thread',
+      responseMode: 'json_object',
+      promptRef: { id: 'agent-plan-forum-actions', version: 1 },
+      promptMessages: [{ role: 'user', content: 'plan actions' }],
+      requestedTier: 'lite',
+      allowFallbackWithinLine: true,
+      localOverrides: {
+        executionPolicyId: 'visible-forum_reply-action-plan-lite',
+      },
+      traceId: 'trace-forum-action-plan-same-line',
+    }))
+
+    expect(chatSpy).toHaveBeenCalledTimes(2)
+    expect(response.renderDecision.profileId).toBe('qwen-social-forum-reply-lite-rescue')
+    expect(response.renderDecision.modelId).toBe('qwen3.6-plus')
+    expect(response.renderDecision.fallbackLevel).toBe('same-line')
+    expect(usageLedger.list().map((entry) => [entry.profile_id, entry.model_id, entry.success])).toEqual([
+      ['qwen-social-forum-reply-lite', 'qwen-flash-character', false],
+      ['qwen-social-forum-reply-lite-rescue', 'qwen3.6-plus', true],
+    ])
+  })
+
+  it('continues within the same forum lite profile when a fifth planner candidate is available', async () => {
+    const bundle = buildBundle()
+    bundle.providers.providers.push(
+      {
+        provider_id: 'ark-openai',
+        display_name: 'Ark',
+        gateway_kind: 'openai_compatible',
+        auth: {
+          type: 'api_key',
+          source: 'credential_pool',
+          auth_strategy: 'bearer_api_key',
+        },
+        routing: {
+          regions: ['cn'],
+          default_region: 'cn',
+        },
+        capabilities: {
+          chat: true,
+          json_mode: true,
+        },
+        defaults: {
+          timeout_ms: 30_000,
+          max_retries: 2,
+        },
+      },
+      {
+        provider_id: 'token-plan-openai',
+        display_name: 'Token Plan OpenAI',
+        gateway_kind: 'openai_compatible',
+        auth: {
+          type: 'api_key',
+          source: 'credential_pool',
+          auth_strategy: 'bearer_api_key',
+        },
+        routing: {
+          regions: ['cn-beijing'],
+          default_region: 'cn-beijing',
+        },
+        capabilities: {
+          chat: true,
+          json_mode: true,
+        },
+        defaults: {
+          timeout_ms: 30_000,
+          max_retries: 2,
+        },
+      },
+      {
+        provider_id: 'zai-openai',
+        display_name: 'ZAI OpenAI',
+        gateway_kind: 'openai_compatible',
+        auth: {
+          type: 'api_key',
+          source: 'credential_pool',
+          auth_strategy: 'bearer_api_key',
+        },
+        routing: {
+          regions: ['cn'],
+          default_region: 'cn',
+        },
+        capabilities: {
+          chat: true,
+          json_mode: true,
+        },
+        defaults: {
+          timeout_ms: 30_000,
+          max_retries: 2,
+        },
+      },
+    )
+    bundle.modelProfiles.profiles.push({
+      profile_id: 'qwen-social-forum-reply-lite',
+      voice_line_id: 'qwen-social-v1',
+      tier: 'lite',
+      intent: 'forum_reply',
+      visibility: 'visible',
+      policy_id: 'visible-forum_reply-base',
+      candidates: [
+        {
+          provider_id: 'ark-openai',
+          model_id: 'doubao-seed-2-0-lite-260215',
+          region: 'cn',
+          endpoint_id: 'ark-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 100,
+          quality_class: 'fast',
+        },
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen-flash-character',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 85,
+          quality_class: 'fast',
+        },
+        {
+          provider_id: 'token-plan-openai',
+          model_id: 'qwen3.6-plus',
+          region: 'cn-beijing',
+          endpoint_id: 'token-plan-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 72,
+          quality_class: 'balanced',
+        },
+        {
+          provider_id: 'dashscope-openai',
+          model_id: 'qwen3.5-plus',
+          region: 'cn-beijing',
+          endpoint_id: 'dashscope-cn-beijing',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 64,
+          quality_class: 'balanced',
+        },
+        {
+          provider_id: 'zai-openai',
+          model_id: 'glm-4.7-flash',
+          region: 'cn',
+          endpoint_id: 'zai-cn',
+          adapter_id: 'openai-chat-completions-v1',
+          weight: 56,
+          quality_class: 'balanced',
+        },
+      ],
+      fallback: [],
+    })
+    bundle.routingPolicies.policies.push({
+      profile_id: 'qwen-social-forum-reply-lite',
+      route_order: [
+        'intent_scene_fit',
+        'voice_line_tier',
+        'profile_candidates',
+        'region_policy',
+        'headroom',
+        'health',
+      ],
+    })
+    bundle.executionPolicies.policies.push({
+      policy_id: 'visible-forum_reply-base',
+      lane: 'visible_forum_reply',
+      modality: 'text',
+      response_mode: 'text',
+      defaults: {
+        temperature: 0.75,
+        max_tokens: 720,
+        timeout_ms: 60_000,
+        max_retries: 2,
+      },
+      fallback: {
+        allow_fallback_within_line: false,
+        allow_cross_family: false,
+        allowed_fallback_levels: ['none'],
+      },
+      merge: {
+        allow_callsite_override_fields: ['executionPolicyId'],
+        allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
+      },
+    })
+    bundle.executionPolicies.policies.push({
+      policy_id: 'visible-forum_reply-action-plan-lite',
+      lane: 'visible_forum_reply',
+      modality: 'text',
+      response_mode: 'json_object',
+      defaults: {
+        temperature: 0.2,
+        max_tokens: 220,
+        timeout_ms: 30_000,
+        max_retries: 0,
+      },
+      fallback: {
+        allow_fallback_within_line: true,
+        allow_cross_family: false,
+        allowed_fallback_levels: ['none', 'same-line'],
+      },
+      merge: {
+        allow_callsite_override_fields: [],
+        allow_debug_override_fields: ['timeoutMs', 'maxRetries', 'regionHint'],
+      },
+    })
+    bundle.credentialPools.pools.push(
+      {
+        credential_id: 'ark-visible-lite-direct',
+        provider_id: 'ark-openai',
+        region: 'cn',
+        endpoint_id: 'ark-cn-beijing',
+        endpoint: 'https://ark.invalid/v1',
+        credential_ref: 'secret-ref:ark_api_key',
+        priority: 10,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['doubao-seed-2-0-lite-260215'],
+      },
+      {
+        credential_id: 'dashscope-visible-lite-direct',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:llm_api_default',
+        priority: 10,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['qwen-flash-character'],
+      },
+      {
+        credential_id: 'token-plan-visible-lite-direct',
+        provider_id: 'token-plan-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'token-plan-cn-beijing',
+        endpoint: 'https://token-plan.invalid/v1',
+        credential_ref: 'secret-ref:token_plan_api_key',
+        priority: 10,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['qwen3.6-plus'],
+      },
+      {
+        credential_id: 'dashscope-visible-lite-plus-direct',
+        provider_id: 'dashscope-openai',
+        region: 'cn-beijing',
+        endpoint_id: 'dashscope-cn-beijing',
+        endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        credential_ref: 'secret-ref:llm_api_default',
+        priority: 20,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['qwen3.5-plus'],
+      },
+      {
+        credential_id: 'zai-visible-lite-direct',
+        provider_id: 'zai-openai',
+        region: 'cn',
+        endpoint_id: 'zai-cn',
+        endpoint: 'https://open.bigmodel.cn/api/paas/v4',
+        credential_ref: 'secret-ref:zai_api_key_secondary',
+        priority: 20,
+        health: 'healthy',
+        enabled: true,
+        scope_tags: ['visible'],
+        allowed_model_ids: ['glm-4.7-flash'],
+      },
+    )
+    bundle.providerAdmission.pools[0]!.candidates.push(
+      {
+        provider_id: 'ark-openai',
+        model_id: 'doubao-seed-2-0-lite-260215',
+        admission: 'admitted',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen3.5-plus',
+        admission: 'admitted',
+      },
+      {
+        provider_id: 'token-plan-openai',
+        model_id: 'qwen3.6-plus',
+        admission: 'admitted',
+      },
+      {
+        provider_id: 'zai-openai',
+        model_id: 'glm-4.7-flash',
+        admission: 'admitted',
+      },
+    )
+    bundle.modelCapabilities.capabilities.push(
+      {
+        provider_id: 'ark-openai',
+        model_id: 'doubao-seed-2-0-lite-260215',
+        input_window_tokens: 32_768,
+        max_output_tokens: 8_192,
+        recommended_operating_input_tokens: 24_576,
+        modalities: ['text'],
+        response_modes: ['text', 'json_object'],
+      },
+      {
+        provider_id: 'token-plan-openai',
+        model_id: 'qwen3.6-plus',
+        input_window_tokens: 32_768,
+        max_output_tokens: 8_192,
+        recommended_operating_input_tokens: 24_576,
+        modalities: ['text'],
+        response_modes: ['text', 'json_object'],
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen3.5-plus',
+        input_window_tokens: 131_072,
+        max_output_tokens: 16_384,
+        recommended_operating_input_tokens: 98_304,
+        modalities: ['text'],
+        response_modes: ['text', 'json_object'],
+      },
+      {
+        provider_id: 'zai-openai',
+        model_id: 'glm-4.7-flash',
+        input_window_tokens: 131_072,
+        max_output_tokens: 16_384,
+        recommended_operating_input_tokens: 98_304,
+        modalities: ['text'],
+        response_modes: ['text', 'json_object'],
+      },
+    )
+
+    const usageLedger = new UsageLedgerWriter()
+    const llmClient = buildLlmClient()
+    const chatSpy = vi.spyOn(llmClient, 'chat').mockImplementation(async (request) => {
+      if (request.model === 'doubao-seed-2-0-lite-260215') {
+        const error = new Error('All credential pools are saturated for ark-openai/doubao-seed-2-0-lite-260215')
+        ;(error as Error & { code?: string }).code = 'RateLimitError'
+        throw error
+      }
+      if (request.model === 'qwen-flash-character') {
+        const error = new Error('All credential pools are saturated for dashscope-openai/qwen-flash-character')
+        ;(error as Error & { code?: string }).code = 'RateLimitError'
+        throw error
+      }
+      if (request.model === 'qwen3.6-plus') {
+        const error = new Error('All credential pools are saturated for token-plan-openai/qwen3.6-plus')
+        ;(error as Error & { code?: string }).code = 'RateLimitError'
+        throw error
+      }
+      if (request.model === 'qwen3.5-plus') {
+        const error = new Error('All credential pools are saturated for dashscope-openai/qwen3.5-plus')
+        ;(error as Error & { code?: string }).code = 'RateLimitError'
+        throw error
+      }
+      return {
+        content: '{"actions":[{"kind":"no_write"}]}',
+        usage: { prompt_tokens: 16, completion_tokens: 8, total_tokens: 24 },
+        model: 'glm-4.7-flash',
+        finish_reason: 'stop',
+      }
+    })
+    const gateway = new LLMGateway({
+      bundle,
+      promptEngine: { render: vi.fn() } as never,
+      llmClient,
+      credentialBroker: new CredentialBroker({
+        bundle,
+        secretResolver: {
+          resolve: vi.fn((ref: string) => {
+            if (ref.includes('token_plan')) return 'token-secret'
+            if (ref.includes('ark')) return 'ark-secret'
+            if (ref.includes('zai')) return 'zai-secret'
+            return 'dashscope-secret'
+          }),
+        } as never,
+      }),
+      usageLedger,
+      budgetGuard: new BudgetGuard(),
+    })
+
+    const response = await gateway.generateVisibleText(buildVisibleTextRequest({
+      intent: 'forum_reply',
+      scene: 'forum_post',
+      responseMode: 'json_object',
+      promptRef: { id: 'agent-plan-forum-actions', version: 1 },
+      promptMessages: [{ role: 'user', content: 'plan actions' }],
+      requestedTier: 'lite',
+      allowFallbackWithinLine: true,
+      localOverrides: {
+        executionPolicyId: 'visible-forum_reply-action-plan-lite',
+      },
+      traceId: 'trace-forum-action-plan-direct-third',
+    }))
+
+    expect(chatSpy).toHaveBeenCalledTimes(5)
+    expect(response.renderDecision.profileId).toBe('qwen-social-forum-reply-lite')
+    expect(response.renderDecision.modelId).toBe('glm-4.7-flash')
+    expect(response.renderDecision.fallbackLevel).toBe('none')
+    expect(usageLedger.list().map((entry) => [entry.profile_id, entry.model_id, entry.success])).toEqual([
+      ['qwen-social-forum-reply-lite', 'doubao-seed-2-0-lite-260215', false],
+      ['qwen-social-forum-reply-lite', 'qwen-flash-character', false],
+      ['qwen-social-forum-reply-lite', 'qwen3.6-plus', false],
+      ['qwen-social-forum-reply-lite', 'qwen3.5-plus', false],
+      ['qwen-social-forum-reply-lite', 'glm-4.7-flash', true],
+    ])
+  })
+
   it('orders candidates by the registry route order without compatibility model hints', async () => {
     const bundle = buildBundle()
     bundle.credentialPools.pools[0]!.allowed_model_ids = [

@@ -659,6 +659,10 @@ export class ContextBuilder {
       return null
     }
 
+    if (threadMeta.writeability.preferred_action !== 'READ_ONLY') {
+      return null
+    }
+
     const reasonSuffix = threadMeta.writeability.reason_code
       .toLowerCase()
       .replace(/^thread_/, '')

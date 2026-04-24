@@ -15,6 +15,7 @@ import type {
   RoamingDecisionPromptInput,
   RoamingDecisionResult,
 } from './types.js'
+import { normalizeModelOutputText } from './model-output-normalization.js'
 
 interface DecisionIdentitySnapshot {
   agent_id: string
@@ -67,6 +68,11 @@ export function buildForumRoamingPreparation(input: {
     ctx: input.ctx,
     identity: input.identity,
   })
+  const skipReason = arrivalCandidates.candidates.length > 0
+    ? null
+    : arrivalCandidates.audience_scope_excluded
+      ? 'audience_scope_excluded'
+      : 'no_viable_candidates'
 
   return {
     arrival_candidates: arrivalCandidates.candidates,
@@ -81,11 +87,7 @@ export function buildForumRoamingPreparation(input: {
         2,
       ),
     },
-    skip_reason: arrivalCandidates.candidates.length > 0
-      ? null
-      : arrivalCandidates.audience_scope_excluded
-        ? 'audience_scope_excluded'
-        : 'no_viable_candidates',
+    skip_reason: skipReason,
   }
 }
 
@@ -128,7 +130,7 @@ export function parseRoamingDecision(
   rawOutput: string,
   candidates: RoamingArrivalCandidate[],
 ): RoamingDecisionResult {
-  const trimmed = rawOutput.trim()
+  const trimmed = normalizeModelOutputText(rawOutput).trim()
   if (!trimmed) {
     return {
       status: 'invalid_json',
@@ -421,6 +423,7 @@ function buildArrivalCandidates(ctx: ExecutionContext): {
   let audienceScopeExcluded = false
   const branchCandidates: RoamingArrivalCandidate[] = []
   const seenBranchRoots = new Set<string>()
+  const restrictThreadTurnBranches = ctx.event.event_type === 'ThreadTurnAdded' && Boolean(ctx.event.thread_id)
   for (const ranked of rankedThreads) {
     const candidate = buildBranchCandidate({
       ctx,
@@ -436,6 +439,17 @@ function buildArrivalCandidates(ctx: ExecutionContext): {
       continue
     }
     if (!candidate) continue
+    if (
+      restrictThreadTurnBranches
+      && !shouldKeepThreadTurnCandidate({
+        ctx,
+        attention_hint: attentionHint,
+        candidate,
+        thread: ranked.thread,
+      })
+    ) {
+      continue
+    }
     const dedupeKey = candidate.branch_root_turn_id ?? candidate.thread_id ?? candidate.candidate_id
     if (seenBranchRoots.has(dedupeKey)) {
       continue
@@ -445,21 +459,80 @@ function buildArrivalCandidates(ctx: ExecutionContext): {
     if (branchCandidates.length >= 3) break
   }
 
-  const siblingCandidate = buildSiblingThreadCandidate({
-    ctx,
-    forest,
-    current_thread_id: currentThreadId,
-    participation_contract: participationContract,
-    attention_hint: attentionHint,
-  })
+  const restrictToEventThread = ctx.event.event_type === 'ThreadOpened' && Boolean(ctx.event.thread_id)
+  const filteredBranchCandidates = restrictToEventThread
+    ? branchCandidates.filter((candidate) => candidate.thread_id === ctx.event.thread_id)
+    : branchCandidates
+  const siblingCandidate = restrictToEventThread
+    ? null
+    : buildSiblingThreadCandidate({
+        ctx,
+        forest,
+        current_thread_id: currentThreadId,
+        participation_contract: participationContract,
+        attention_hint: attentionHint,
+      })
 
   return {
     candidates: [
-      ...branchCandidates,
+      ...filteredBranchCandidates,
       ...(siblingCandidate ? [siblingCandidate] : []),
     ].slice(0, 5),
     audience_scope_excluded: audienceScopeExcluded,
   }
+}
+
+function shouldKeepThreadTurnCandidate(input: {
+  ctx: ExecutionContext
+  attention_hint: ExecutionContext['agent']['forum_attention_hint'] | null
+  candidate: RoamingArrivalCandidate
+  thread: ThreadCapsule
+}): boolean {
+  const eventThreadId = input.ctx.event.thread_id
+  if (!eventThreadId || input.ctx.event.event_type !== 'ThreadTurnAdded') {
+    return true
+  }
+
+  if (input.candidate.thread_id === eventThreadId) {
+    return true
+  }
+
+  const browseReason = input.attention_hint?.browse_reason
+    ?? input.ctx.perceived_context_slice?.browse_reason
+    ?? input.ctx.forum_targeting?.browse_reason
+    ?? null
+  if (browseReason === 'REVIVE') {
+    return true
+  }
+
+  const evidenceIds = new Set(
+    [
+      ...(input.attention_hint?.evidence_turn_ids ?? []),
+      ...(input.ctx.perceived_context_slice?.evidence_window_ids ?? []),
+      input.attention_hint?.selected_anchor_turn_id ?? null,
+      input.ctx.forum_targeting?.selected_anchor_turn_id ?? null,
+    ].filter((value): value is string => Boolean(value)),
+  )
+  if (evidenceIds.size === 0) {
+    return false
+  }
+
+  const candidateEvidenceIds = new Set(
+    [
+      input.thread.latest_turn_id,
+      ...input.thread.salient_turn_ids,
+      input.candidate.focus_turn_id,
+      input.candidate.anchor_turn_id,
+      input.candidate.branch_root_turn_id,
+    ].filter((value): value is string => Boolean(value)),
+  )
+  for (const evidenceId of evidenceIds) {
+    if (candidateEvidenceIds.has(evidenceId)) {
+      return true
+    }
+  }
+
+  return false
 }
 
 function buildBranchCandidate(input: {
@@ -484,7 +557,6 @@ function buildBranchCandidate(input: {
     input.evidence_turn_ids,
   )
   const replyAllowed = input.thread.lifecycle.writeability.reply_allowed
-    && (input.participation_contract?.stage_open_reply.turn_reply_enabled ?? true)
   const lateEntry = Boolean(
     focusNode?.is_late_entry
     || focusNode?.placement_reason === 'LATE_ENTRY_REATTACH'

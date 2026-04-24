@@ -875,6 +875,146 @@ describe('ContextBuilder prompt routing', () => {
     expect(continuityResolve).toHaveBeenCalledTimes(1)
   })
 
+  it('does not pre-skip thread followup when the lifecycle prefers follow-route even if reply_allowed is false', async () => {
+    const getThread = vi.fn(async () => ({
+      id: 'thread-handoff-soft-close',
+      post_id: 'post-1',
+      community_id: 'community-1',
+      author_agent_id: 'agent-2',
+      body: 'Soft-closed thread root',
+      visibility: 'PUBLIC',
+      state: 'APPROVED',
+      thread_state: 'HANDOFF_PENDING',
+      reply_budget: 3,
+      active_route: {
+        route_type: 'PRIVATE',
+        route_state: 'READY',
+      },
+      created_at: new Date('2026-03-01T00:00:00.000Z'),
+      updated_at: new Date('2026-03-01T00:00:00.000Z'),
+      author: {
+        id: 'agent-2',
+        display_name: 'Other Bot',
+        avatar_url: null,
+      },
+      vote_score: 0,
+      agent_vote_score: 0,
+      agent_vote_up: 0,
+      agent_vote_down: 0,
+      human_vote_score: 0,
+      human_vote_up: 0,
+      human_vote_down: 0,
+      weighted_vote_score: 0,
+      viewer_human_vote_direction: null,
+      ai_label: 'AI生成',
+      effective_moderation_label: 'PUBLIC',
+      topic_signals: null,
+      distribution_state: 'NORMAL',
+      attachments: [],
+      turn_count: 1,
+      participant_count: 1,
+      last_activity_at: new Date('2026-03-01T00:03:00.000Z'),
+      turns: [],
+    }))
+    const continuityResolve = vi.fn()
+
+    const builder = new ContextBuilder({
+      forumReadService: {
+        getCommunities: vi.fn(async () => ({
+          items: [{
+            id: 'community-1',
+            name: '社区',
+            description: '',
+            rules_json: null,
+          }],
+        })),
+        getPost: vi.fn(async () => ({
+          id: 'post-1',
+          title: '帖子标题',
+          body: '帖子正文',
+          author_agent_id: 'agent-2',
+          author: { id: 'agent-2', display_name: 'Other Bot', avatar_url: null },
+        })),
+        getThread,
+        getThreads: vi.fn(async () => ({
+          items: [],
+          next_cursor: null,
+        })),
+        getThreadLifecycle: vi.fn(async () => ({
+          thread_id: 'thread-handoff-soft-close',
+          thread_state: 'HANDOFF_PENDING',
+          reply_budget: {
+            hard_cap_turns: 3,
+            remaining_turns: 0,
+            limit: 3,
+            remaining: 0,
+          },
+          active_route: {
+            route_type: 'PRIVATE',
+            route_state: 'READY',
+          },
+          writeability: {
+            schema_version: 'forum-thread-writeability.v1',
+            thread_id: 'thread-handoff-soft-close',
+            reply_mode: 'SOFT_CLOSE',
+            reply_allowed: false,
+            preferred_action: 'FOLLOW_ROUTE',
+            reason_code: 'THREAD_HANDOFF_PENDING',
+          },
+        })),
+      } as unknown as ContextBuilderDeps['forumReadService'],
+      agentService: {
+        getAgent: vi.fn(() => ({ display_name: 'Layer Bot' })),
+        getLatestConfig: vi.fn(() => null),
+      } as unknown as ContextBuilderDeps['agentService'],
+      forumSceneContinuityService: {
+        resolve: continuityResolve,
+      } as unknown as ContextBuilderDeps['forumSceneContinuityService'],
+    })
+
+    const ctx = await builder.build(
+      {
+        event_id: 'evt-thread-handoff-soft-close',
+        event_type: 'ThreadTurnAdded',
+        idempotency_key: 'idem-thread-handoff-soft-close',
+        chain_depth: 2,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        thread_id: 'thread-handoff-soft-close',
+        turn_id: 'turn-1',
+        author_agent_id: 'agent-4',
+        created_at: new Date().toISOString(),
+      },
+      {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+    )
+
+    expect(getThread).toHaveBeenCalledWith('thread-handoff-soft-close')
+    expect(ctx.skip_reason).toBeUndefined()
+    expect(ctx.threadMeta).toEqual({
+      thread_id: 'thread-handoff-soft-close',
+      thread_state: 'HANDOFF_PENDING',
+      reply_budget: 3,
+      reply_budget_remaining: 0,
+      active_route: {
+        route_type: 'PRIVATE',
+        route_state: 'READY',
+      },
+      writeability: {
+        schema_version: 'forum-thread-writeability.v1',
+        thread_id: 'thread-handoff-soft-close',
+        reply_mode: 'SOFT_CLOSE',
+        reply_allowed: false,
+        preferred_action: 'FOLLOW_ROUTE',
+        reason_code: 'THREAD_HANDOFF_PENDING',
+      },
+    })
+    expect(continuityResolve).toHaveBeenCalledTimes(1)
+  })
+
   it('still skips forum thread followup when the resolved lifecycle is truly closed', async () => {
     const getThread = vi.fn(async () => ({
       id: 'thread-closed-hard',

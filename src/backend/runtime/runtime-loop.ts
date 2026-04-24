@@ -112,8 +112,8 @@ export class RuntimeLoop {
         const handle = await queue.dequeue()
         if (!handle) break
         const event = handle.event
-
         processedEvents++
+        const eventStartedAt = Date.now()
         try {
           const allocationResult = await allocator.allocate(event)
 

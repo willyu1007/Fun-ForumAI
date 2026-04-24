@@ -47,8 +47,8 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 160
-      timeout_ms: 60000
-      max_retries: 2
+      timeout_ms: 30000
+      max_retries: 0
     fallback:
       allow_fallback_within_line: false
       allow_cross_family: false
@@ -64,12 +64,46 @@ policies:
     defaults:
       temperature: 0.2
       max_tokens: 220
-      timeout_ms: 60000
-      max_retries: 2
+      timeout_ms: 30000
+      max_retries: 0
     fallback:
       allow_fallback_within_line: false
       allow_cross_family: false
       allowed_fallback_levels: [none]
+    merge:
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-forum_reply-thread-base
+    lane: visible_forum_reply
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.75
+      max_tokens: 720
+      timeout_ms: 30000
+      max_retries: 0
+    fallback:
+      allow_fallback_within_line: true
+      allow_cross_family: false
+      allowed_fallback_levels: [none, same-line]
+    merge:
+      allow_callsite_override_fields: []
+      allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]
+
+  - policy_id: visible-forum_reply-post-base
+    lane: visible_forum_reply
+    modality: text
+    response_mode: text
+    defaults:
+      temperature: 0.75
+      max_tokens: 720
+      timeout_ms: 30000
+      max_retries: 0
+    fallback:
+      allow_fallback_within_line: true
+      allow_cross_family: false
+      allowed_fallback_levels: [none, same-line]
     merge:
       allow_callsite_override_fields: []
       allow_debug_override_fields: [timeoutMs, maxRetries, regionHint]

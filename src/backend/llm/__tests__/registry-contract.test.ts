@@ -265,7 +265,7 @@ describe('LLM registry contract', () => {
     ).toBe(true)
   })
 
-  it('keeps qwen forum-reply lite bound to the flash-tier profile', () => {
+  it('keeps qwen forum-reply lite bound to a fast serviceable lane', () => {
     const bundle = loadLlmRegistryBundle()
     const profilesById = new Map(
       bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
@@ -274,9 +274,57 @@ describe('LLM registry contract', () => {
     expect(resolveVoiceLineTierProfileRef('qwen-social-v1', 'forum_reply', 'lite')).toBe(
       'qwen-social-forum-reply-lite',
     )
-    expect(profilesById.get('qwen-social-forum-reply-lite')?.candidates[0]?.model_id).toBe(
-      'qwen3.5-flash',
-    )
+    expect(profilesById.get('qwen-social-forum-reply-lite')?.candidates[0]).toMatchObject({
+      provider_id: 'ark-openai',
+      model_id: 'doubao-seed-2-0-lite-260215',
+    })
+    expect(
+      profilesById.get('qwen-social-forum-reply-lite')?.candidates.map((candidate) => ({
+        provider_id: candidate.provider_id,
+        model_id: candidate.model_id,
+      })),
+    ).toEqual([
+      {
+        provider_id: 'ark-openai',
+        model_id: 'doubao-seed-2-0-lite-260215',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen3.5-flash',
+      },
+      {
+        provider_id: 'token-plan-openai',
+        model_id: 'qwen3.6-plus',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen3.5-plus',
+      },
+      {
+        provider_id: 'zai-openai',
+        model_id: 'glm-4.7-flash',
+      },
+    ])
+    expect(profilesById.get('qwen-social-forum-reply-lite')?.fallback).toEqual([
+      {
+        level: 'same-line',
+        profile_id: 'qwen-social-forum-reply-lite-rescue',
+        reason: 'forum reply lite may raise to a balanced rescue lane when fast candidates saturate',
+      },
+    ])
+    expect(profilesById.get('qwen-social-forum-reply-lite-rescue')?.candidates.map((candidate) => ({
+      provider_id: candidate.provider_id,
+      model_id: candidate.model_id,
+    }))).toEqual([
+      {
+        provider_id: 'token-plan-openai',
+        model_id: 'qwen3.6-plus',
+      },
+      {
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen3.5-plus',
+      },
+    ])
     expect(profilesById.get('qwen-social-forum-reply-base')?.candidates[0]?.model_id).toBe(
       'qwen3.6-plus',
     )
@@ -295,6 +343,25 @@ describe('LLM registry contract', () => {
       provider_id: 'ark-openai',
       model_id: 'doubao-seed-2-0-lite-260215',
     })
+    expect(
+      profilesById.get('glm-deep-forum-reply-lite')?.candidates.map((candidate) => ({
+        provider_id: candidate.provider_id,
+        model_id: candidate.model_id,
+      })),
+    ).toEqual([
+      {
+        provider_id: 'ark-openai',
+        model_id: 'doubao-seed-2-0-lite-260215',
+      },
+      {
+        provider_id: 'zai-openai',
+        model_id: 'glm-4.7-flash',
+      },
+      {
+        provider_id: 'zai-openai',
+        model_id: 'glm-5.1',
+      },
+    ])
     expect(profilesById.get('glm-deep-forum-reply-base')?.candidates[0]?.model_id).toBe(
       'glm-5.1',
     )
@@ -483,6 +550,50 @@ describe('LLM registry contract', () => {
     expect(resolveIdentityWriteProfileRef('kimi-deep-v1', 'base')).toBe(
       'kimi-deep-identity-write-premium',
     )
+  })
+
+  it('keeps qwen forum-thread low-latency routes pinned to fast providers and a dedicated thread policy', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+    const executionPoliciesById = new Map(
+      bundle.executionPolicies.policies.map((entry) => [entry.policy_id, entry] as const),
+    )
+
+    expect(resolveVoiceLineTierProfileRef('qwen-social-v1', 'forum_reply', 'lite')).toBe(
+      'qwen-social-forum-reply-lite',
+    )
+    expect(profilesById.get('qwen-social-forum-reply-lite')?.candidates[0]).toMatchObject({
+      provider_id: 'ark-openai',
+      model_id: 'doubao-seed-2-0-lite-260215',
+    })
+    expect(profilesById.get('qwen-social-forum-reply-lite')?.candidates[2]).toMatchObject({
+      provider_id: 'token-plan-openai',
+      model_id: 'qwen3.6-plus',
+    })
+    expect(profilesById.get('qwen-social-forum-reply-lite')?.candidates[3]).toMatchObject({
+      provider_id: 'dashscope-openai',
+      model_id: 'qwen3.5-plus',
+    })
+    expect(executionPoliciesById.get('visible-forum_reply-selection-lite')?.defaults).toMatchObject({
+      timeout_ms: 30000,
+      max_retries: 0,
+    })
+    expect(executionPoliciesById.get('visible-forum_reply-action-plan-lite')?.defaults).toMatchObject({
+      timeout_ms: 30000,
+      max_retries: 0,
+    })
+    expect(executionPoliciesById.get('visible-forum_reply-thread-base')?.defaults).toMatchObject({
+      timeout_ms: 30000,
+      max_retries: 0,
+      max_tokens: 720,
+    })
+    expect(executionPoliciesById.get('visible-forum_reply-post-base')?.defaults).toMatchObject({
+      timeout_ms: 30000,
+      max_retries: 0,
+      max_tokens: 720,
+    })
   })
 
   it('keeps visible prompt refs registered in the prompt template registry', () => {
