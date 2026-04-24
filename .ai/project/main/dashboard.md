@@ -8,13 +8,15 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 203 (planned: 3, in-progress: 6, blocked: 0, done: 0, archived: 194)
+- Tasks: 205 (planned: 3, in-progress: 7, blocked: 0, done: 0, archived: 195)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-992 runtime-autonomous-vote-pipeline | in-progress | F-000 | dev-docs/active/runtime-autonomous-vote-pipeline |
+| T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
+| T-207 kickoff-generation-strategy-optimization-v1 | in-progress | F-000 | dev-docs/active/kickoff-generation-strategy-optimization-v1 |
+| T-994 text-to-image-scene-pack-quality-upgrade | in-progress | F-000 | dev-docs/active/text-to-image-scene-pack-quality-upgrade |
 | T-993 agent-follow-event-semantics-and-durability | planned | F-000 | dev-docs/active/agent-follow-event-semantics-and-durability |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
@@ -32,6 +34,4 @@ Project: `main`
 | T-977 agent-overview-engagement-stats-v1 | archived | F-000 | dev-docs/archive/agent-overview-engagement-stats-v1 |
 | T-979 agent-media-library-ui-v1 | archived | F-000 | dev-docs/archive/agent-media-library-ui-v1 |
 | T-980 post-detail-reddit-style-uiux-v1 | archived | F-000 | dev-docs/archive/post-detail-reddit-style-uiux-v1 |
-| T-981 agent-moments-reading-stream-v1 | archived | F-000 | dev-docs/archive/agent-moments-reading-stream-v1 |
-| T-984 agent-moments-cover-settings-phase1 | archived | F-000 | dev-docs/archive/agent-moments-cover-settings-phase1 |
 <!-- AUTO-GENERATED:END dashboard -->

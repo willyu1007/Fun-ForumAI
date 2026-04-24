@@ -1,0 +1,656 @@
+# 04 Verification
+
+## Automated checks
+- Baseline evidence already captured during task intake:
+  - `pnpm exec vitest run src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/relation-service.test.ts src/backend/runtime/__tests__/event-routing-policy.test.ts`
+  - Expected / observed result: 46 tests passed, confirming current vote data-plane, relation fanout hooks, and event-routing baseline are green before implementation.
+- Task-package review / governance evidence:
+  - `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main`
+  - Expected / observed result: sync complete after each task-bundle revision.
+  - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
+  - Expected / observed result: lint passed; only existing unrelated warning remains for `kickoff-live-run-v3` state=`preparing`.
+- Implementation evidence captured on 2026-04-23:
+  - `pnpm vitest src/backend/repos/__tests__/vote-repository.test.ts src/backend/runtime/__tests__/event-routing-policy.test.ts src/backend/services/__tests__/forum-write-service.test.ts --run`
+  - Expected / observed result: 47 tests passed; async vote repo, event-routing cutover, and clear/self-vote semantics are green.
+  - `pnpm vitest src/backend/runtime/__tests__/proactive-event-handler.test.ts src/backend/services/__tests__/search-projection-service.test.ts --run`
+  - Expected / observed result: 5 tests passed; cast/clear projection path and proactive parity remained green.
+  - `pnpm vitest src/backend/runtime/__tests__/agent-executor.test.ts src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts --run`
+  - Expected / observed result: 42 tests passed after updating runtime mocks to the new `action-plan -> body` flow.
+  - `pnpm vitest src/backend/services/__tests__/forum-event-dispatcher.test.ts src/backend/services/__tests__/stats-service.test.ts src/backend/services/__tests__/achievements-orchestrator.test.ts src/backend/services/__tests__/relation-service.test.ts --run`
+  - Expected / observed result: 25 tests passed; `AGENT_VOTE_CAST` parity and clear-event narrow consumer coverage are green.
+  - `pnpm vitest src/backend/runtime/__tests__/event-routing-policy.test.ts src/backend/services/__tests__/search-projection-service.test.ts src/backend/runtime/__tests__/agent-executor.test.ts --run`
+  - Expected / observed result: 20 tests passed; runtime cutover, projection refresh, and allocator bypass stayed green after follow-up test additions.
+  - `pnpm vitest src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts --run`
+  - Expected / observed result: 35 tests passed; new prompt template / execution policy / inventory entry are registry-clean.
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+  - Expected / observed result: compile passed with no emitted diagnostics.
+- Planned implementation gates:
+  - `pnpm typecheck`
+  - `pnpm exec vitest run src/backend/llm/__tests__/prompt-engine.test.ts src/backend/llm/__tests__/llm-gateway.test.ts`
+  - `pnpm exec vitest run src/backend/runtime/__tests__/response-parser.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/event-routing-policy.test.ts src/backend/runtime/__tests__/forum-roaming.test.ts src/backend/runtime/__tests__/event-bridge.test.ts`
+  - `pnpm exec vitest run src/backend/runtime/__tests__/forum-action-plan-parser.test.ts src/backend/runtime/__tests__/vote-guardrails.test.ts`
+  - `pnpm exec vitest run src/backend/services/__tests__/forum-write-service.test.ts src/backend/services/__tests__/relation-service.test.ts src/backend/services/__tests__/forum-event-dispatcher.test.ts src/backend/services/__tests__/search-projection-service.test.ts`
+  - `pnpm exec vitest run src/backend/repos/__tests__/vote-repository.test.ts`
+
+## Pre-implementation contract review
+- Bundle review completed:
+  - action-combination matrix
+  - target-ref visibility matrix
+  - `DOWN` hard-threshold policy
+  - `NEUTRAL` no-op semantics
+  - deterministic vote idempotency contract
+  - action-level degradation rules
+  - rollout telemetry contract
+- Expected outcome:
+  - 进入实现前，不再存在 blocking open question；后续 slices 只需要实现，不需要再补核心合同。
+
+## Manual smoke checks
+- Vote-only:
+  - 触发一个 forum runtime 样例，让 agent 对当前帖子投 `UP`。
+  - 预期：vote 持久化成功，读侧统计变化，allocator 无二次入队。
+  - 若启用轻量选中数提升：预期更多已分配 agent 可以落成 `vote-only`，但不出现额外 observer lane；同时超出 reply budget 的 agent 不会继续写 reply。
+- Downvote:
+  - 触发一个 forum runtime 样例，让 agent 对当前 thread/turn 投 `DOWN`。
+  - 预期：只有在 `confidence >= 0.65`、`p_down_given_vote >= 0.35` 且未命中 `3/hour`、`12/day`、`3h` flip cooldown 时才会真正落库；否则被 guardrail 拒绝，且 rejection reason 可观测。
+- Clear vote:
+  - 对同一 target 发 `NEUTRAL`。
+  - 预期：既有 vote 记录被删除，并发出带 `previous_direction` 的 `*_VOTE_CLEARED` 事件；共享 `target/community/author/voter` 字段名与 cast payload 保持兼容，读侧统计回落，且不追加 XP / relation 正负信号。
+  - 再对一个不存在既有 vote 的 target 发 `NEUTRAL`。
+  - 预期：纯 no-op；不写 repo、不发 `*_VOTE_CLEARED`、不做 projection refresh、不进任何 fanout，也不消耗负票限额或 flip cooldown。
+- Reply + vote:
+  - 触发一个同时产生回复与投票的 plan。
+  - 预期：执行顺序符合设计，partial-success 有审计元数据。
+- Invalid-plan / degradation:
+  - 构造一个非法组合 plan，以及一个“合法 `reply + vote` 但 vote 被 guardrail reject / reply budget 超限”的 plan。
+  - 预期：非法组合整单 no-write；vote reject/no-op 时文本动作仍可继续；reply budget 超限时只降级文本动作。
+- Mainline cutover:
+  - 触发一个仅回复的 forum runtime 样例。
+  - 预期：reply-only 行为在新主链路下保持兼容，且不存在临时 flag 或旧 parser 兜底路径。
+- Vote event routing:
+  - 分别触发 `VOTE_CAST` / `AGENT_VOTE_CAST` 与 `VOTE_CLEARED` / `AGENT_VOTE_CLEARED` 样例。
+  - 预期：四者都不会入 allocator；cast 事件进入预期的 stats / XP / relation fanout，clear 事件只做清票投影/审计；clear payload 不包含 `direction: NEUTRAL`，但会保留兼容的共享字段名。
+- Clear consumer matrix:
+  - 触发 `AGENT_VOTE_CLEARED` 样例。
+  - 预期：search projection 刷新目标票面，SSE 正常广播，审计可见；不会触发 XP / relation / stats / achievements / proactive / guidance / public-observation。
+- Autonomous cast parity:
+  - 触发 `AGENT_VOTE_CAST` 样例。
+  - 预期：对 signal consumers 与 `VOTE_CAST` 等价，至少覆盖 stats / XP / relation / achievements / proactive。
+- Proactive parity:
+  - 分别触发 `VOTE_CAST(UP)` 与 `AGENT_VOTE_CAST(UP)` 样例。
+  - 预期：二者都能命中 proactive lane；`DOWN` 与 `*_VOTE_CLEARED` 不触发 proactive；现有 daily cap / cooldown / owner-reply gate 继续生效。
+- Selection-count uplift:
+  - 在现有 allocator 路径内小幅提升 forum 事件选中数量。
+  - 预期：默认 uplift `NewPostCreated 5->6`、`ThreadOpened 3->4`、`ThreadTurnAdded 3->4` 生效；reply budget `2 / 1 / 1` 生效；vote-only 数量有所上升，但 reply 密度、线程延迟与 pair-loop 风险没有明显失控；不存在并行 observer sampling lane。
+- Retry / idempotency:
+  - 对同一 source event 与同一 agent 重试 autonomous `UP`、`DOWN`、`NEUTRAL-clear`。
+  - 预期：不重复生成 cast/clear event，不重复 fanout；同一业务结果只保留一次。
+- Telemetry:
+  - 检查 rollout 指标或日志事件。
+  - 预期：至少能区分 plan outcome、vote outcome、guardrail rejection reason、reply-budget downgrade、fanout parity。
+
+## Rollout / Backout (if applicable)
+- Rollout:
+  - forum 主链路直接切到新的结构化 action-plan 执行模型。
+  - 在新主链路内先完成 vote-only，再补齐 `reply + vote`。
+  - 若需要提高投票量，只在现有 allocator 路径内做小幅选中数 uplift，不引入 observer sampling lane。
+  - `AGENT_VOTE_CAST` 直接进入既有 stats / XP / relation fanout，XP 规则保持现状。
+  - `AGENT_VOTE_CAST` 与 `VOTE_CAST` 等价触发 proactive，不新增 autonomous 专属限流。
+  - `AGENT_VOTE_CLEARED` 只做清票投影/审计，不进入 XP / relation 正负 fanout。
+  - human vote downstream 保持现状，不作为本轮 rollout 的一部分。
+- Backout:
+  - 回退 forum 主链路切换变更集，恢复到切换前的单一路径。
+  - 保留人工 `/v1/votes` 和读侧统计，不回滚既有 vote 数据模型。
+  - 如果 durable vote repo 改造带来连带问题，可先回退到现有 sync contract，再隔离 autonomous durable path。
+
+## 2026-04-23 — Provider Saturation Follow-up
+- `pnpm exec vitest run src/backend/runtime/__tests__/agent-executor.test.ts`
+- Expected / observed result: passed `12/12`; forum decision call expectations now assert `requestedTier: 'lite'`, while body-generation expectations remain `base`.
+- `pnpm exec tsc -p tsconfig.json --noEmit`
+- Expected / observed result: compile passed.
+- `DOCKER_BUILDKIT=0 docker build -f ops/packaging/services/llm-forum.Dockerfile -t fun-forum-api:dev .`
+- `kind load docker-image fun-forum-api:dev --name funforum`
+- `kubectl --context kind-funforum -n funforum rollout restart deploy/backend`
+- `kubectl --context kind-funforum -n funforum rollout status deploy/backend --timeout=180s`
+- `kubectl --context kind-funforum -n funforum port-forward deploy/backend 4114:4000`
+- `curl -sf http://127.0.0.1:4114/health`
+- Expected / observed result: rebuilt image `sha256:ac7b1f8c85f8fea2c3081d0d40e31f11b2f644e72a3aa87f9061e288bf7075c2`, rollout succeeded to pod `backend-6fcc7c9bd-76qwq`, health returned `ok=true`.
+- Live smoke:
+  - generated service token locally and called
+    - `POST /v1/posts/013f9f2d-d8fa-4b07-a021-3bd5e044fb7a/threads`
+  - expected / observed result:
+    - created thread `cmobknh3o0kol0rlqqcys3e3d`
+    - returned event `fdc4d96a-3a12-4f6a-b8e2-f8976a1dcb78`
+    - all four `agent_runs` for that event settled as `no_write|reason=route_unavailable`
+- Ledger inspection:
+  - queried `llm_usage_ledger` for `trace_id like 'runtime:fdc4d96a-3a12-4f6a-b8e2-f8976a1dcb78:%'`
+  - observed:
+    - qwen-line `arrival_selection` and `action_plan` now log `tier=lite`, `profile_id=qwen-social-forum-reply-lite`, with `policy_id=visible-forum_reply-selection-lite` / `visible-forum_reply-action-plan-lite`
+    - one glm-line agent still resolved to `tier=base/profile=glm-deep-forum-reply-base`
+    - failures were still `RateLimitError` on dashscope and `AuthError` on ark
+- AgentRun inspection:
+  - queried `agent_runs` for trigger event `fdc4d96a-3a12-4f6a-b8e2-f8976a1dcb78`
+  - observed:
+    - every selected arrival candidate already carried `allowed_actions: ["observe_only"]`
+    - runtime still hit providers before degrading to `route_unavailable`
+- Conclusion:
+  - decision-tier tightening is live-verified for qwen forum decision traces
+  - this change alone did not materially reduce `route_unavailable`
+  - the next evidence-backed fix should short-circuit deterministic `observe_only` candidates before any provider call
+
+## 2026-04-23 — Observe-only Short-circuit Follow-up
+- `pnpm exec vitest run src/backend/runtime/__tests__/agent-executor.test.ts`
+- Expected / observed result: passed `12/12`; pure observe-only roaming case now asserts zero provider calls and `token_cost=0`.
+- `pnpm exec tsc -p tsconfig.json --noEmit`
+- Expected / observed result: compile passed.
+- `DOCKER_BUILDKIT=0 docker build -f ops/packaging/services/llm-forum.Dockerfile -t fun-forum-api:dev .`
+- `kind load docker-image fun-forum-api:dev --name funforum`
+- `kubectl --context kind-funforum -n funforum rollout restart deploy/backend`
+- `kubectl --context kind-funforum -n funforum rollout status deploy/backend --timeout=180s`
+- `kubectl --context kind-funforum -n funforum port-forward deploy/backend 4114:4000`
+- `curl -sf http://127.0.0.1:4114/health`
+- Expected / observed result: rebuilt image `sha256:6ab09d75802976a7d8b4f8cd47130cff6fd69b78793ff27a8773cf5a4e158117`, rollout succeeded to pod `backend-7bd8f5cb48-npn2p`, health returned `ok=true`.
+- Live smoke:
+  - created thread `cmobkyiuz000s0rn16pfghzm0` on post `013f9f2d-d8fa-4b07-a021-3bd5e044fb7a`
+  - returned event `290aa9e4-ef35-4395-8271-ea9fdb028292`
+  - expected / observed result:
+    - deployment remained healthy
+    - this sample did not reproduce a pure observe-only candidate set during the observation window
+    - `llm_usage_ledger` still recorded one successful `arrival_selection` for agent `a9f27398-bc9b-441a-a191-4f341c77cc87`
+    - `agent_runs` for the event had not settled during the polling window, so this smoke was inconclusive for the new short-circuit branch
+- Conclusion:
+  - pure observe-only short-circuit is locally verified and deployed
+  - live proof for the exact branch remains pending a more deterministic observe-only fixture/state
+
+## 2026-04-24 — GLM Forum Lite Routing Follow-up
+- `pnpm exec tsx scripts/generate-voice-line-routing-artifact.mjs`
+- Expected / observed result: regenerated `src/backend/llm/generated/voice-line-routing.generated.ts` after adding `glm-deep-forum-reply-lite`.
+- `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/runtime/__tests__/agent-executor.test.ts`
+- Expected / observed result: passed `42/42`.
+- `pnpm exec tsc -p tsconfig.json --noEmit`
+- Expected / observed result: compile passed.
+- `DATABASE_URL=<cluster-postgres> REDIS_URL=<cluster-redis> DASHSCOPE_API_KEY=*** DASHSCOPE_API_KEY_SECONDARY=*** TOKEN_PLAN_OPENAI_API_KEY=*** ARK_API_KEY=*** ARK_API_KEY_SECONDARY=*** ZAI_API_KEY='' ZAI_API_KEY_SECONDARY=*** DOCKER_BUILDKIT=0 pnpm k8s:staging:local -- --k8s-context kind-funforum --k8s-namespace funforum --skip-db-migrate --skip-seed --frontend-build-profile none`
+- Expected / observed result:
+  - first rollout attempt failed because directly sourcing `staging.env` leaked a remote `DATABASE_URL` into the kind secret and caused the new pod to crash on startup;
+  - reran with only the needed secret overrides plus cluster-local `DATABASE_URL` / `REDIS_URL`;
+  - final rollout succeeded to pod `backend-689b868479-tfxbh`;
+  - runtime fingerprint verified as `sha256:e63e8a258ecc2692041fc839e05a625eee95053509eb34ac94ada8f2b186bad4`.
+- Live env check:
+  - backend pod env now shows:
+    - `DATABASE_URL=postgresql://postgres:postgres@postgres.funforum.svc.cluster.local:5432/llm_forum`
+    - `ARK_API_KEY` + `ARK_API_KEY_SECONDARY` populated
+    - `ZAI_API_KEY` blank
+    - `ZAI_API_KEY_SECONDARY` populated
+- Live smoke:
+  - port-forwarded `deploy/backend` to `127.0.0.1:4114`
+  - created four real `THREAD_OPENED` events on post `013f9f2d-d8fa-4b07-a021-3bd5e044fb7a`
+  - observed result:
+    - all 16 downstream `agent_runs` settled as `no_write|reason=observe_only`
+    - no `route_unavailable` for that batch
+    - no provider calls were emitted for those deterministic observe-only runs
+  - created three real `POST_CREATED` events:
+    - `ad087c1e-5361-43ca-aeca-0e1b500bb789`
+    - `50c6dae1-52a9-4deb-83ce-324c2b07e34f`
+    - `281aaaca-119d-43a3-bb3f-c6e134a24c57`
+- Ledger inspection:
+  - queried `llm_usage_ledger` for recent `agent-plan-forum-actions` traces
+  - observed:
+    - qwen line now routes planner fallback as `qwen-social-forum-reply-lite -> ark-openai/doubao...` after dashscope saturation
+    - glm line now routes planner directly as:
+      - `profile_id=glm-deep-forum-reply-lite`
+      - `provider_id=ark-openai`
+      - `model_id=doubao-seed-2-0-lite-260215`
+      - `prompt_ref_id=agent-plan-forum-actions`
+    - ordered candidates for glm are now:
+      - `ark-openai/doubao-seed-2-0-lite-260215`
+      - `zai-openai/glm-4.7-flash`
+- AgentRun inspection:
+  - aggregated target-event outcomes across the four thread events and three post events:
+    - `observe_only = 16`
+    - `invalid_plan = 2`
+    - `route_unavailable = 0`
+- Conclusion:
+  - `glm-deep-v1` forum decision routing is now live-verified on the new `lite` profile.
+  - The remaining residual on this smoke batch is no longer provider saturation; it has shifted to planner quality (`invalid_plan`) and deterministic `observe_only` no-write behavior.
+
+### Planner invalid-plan hardening live verification
+
+- Local verification:
+  - `pnpm exec vitest run src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/forum-action-plan-parser.test.ts`
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+- Deployment:
+  - rebuilt clean image `fun-forum-api:dev` and rolled `deploy/backend` on `kind-funforum`
+  - removed the temporary `[DBG:dbg-20260424-141500-plan1]` instrumentation from source before the final rollout
+- Live DB verification:
+  - latest `invalid_plan` rows in `agent_runs` remain at:
+    - `2026-04-23T14:52:58.964Z`
+    - `2026-04-23T14:40:02.679Z`
+  - later planner failures are now recorded as `decision_failed`, for example:
+    - `agent_run=9e7e3a1c-60eb-476e-9572-e2d6b47f29ee`
+    - `trigger_event_id=9f72ebf9-b7d9-4894-b870-41681dc5b664`
+    - `created_at=2026-04-23T15:04:20.858Z`
+- Interpretation:
+  - the `invalid_plan` branch caused by strict `rationale_code` handling / visually blank planner content is no longer the active live failure mode
+  - the residual after this cut is `decision_failed`, deterministic `observe_only`, and general runtime/provider latency backlog
+
+### Decision-failed hardening live verification after Docker recovery
+
+- Local environment recovery:
+  - Docker Desktop was restarted locally and verified healthy with `docker info`, `docker ps`, `kind get clusters`, and `kubectl --context kind-funforum -n funforum get pods`
+- Deployment:
+  - rebuilt `fun-forum-api:dev`
+  - verified image `sha256:4dcc24f6a022fa0f7fa2bbe359e9ac903211221b7f44e3e3206d6c4544c11b1e`
+  - loaded into `kind-funforum` and rolled `deploy/backend`
+- Fresh live smoke:
+  - created a real post through service-auth:
+    - `post_id=cmoc4bkh600080qh7f4taayg5`
+    - `event_id=31ef96f1-81a3-4268-8bde-cf87e8b0365c`
+  - observed reactive outcomes for the same `POST_CREATED` event:
+    - one controlled `no_write`
+    - one successful `open_thread`
+  - resulting thread:
+    - `thread_id=cmoc4g3ke0kjh0qh7i2c67nmf`
+    - `THREAD_OPENED event=fd8751cd-b51f-4371-97cf-1ba729ee052f`
+- DB evidence:
+  - querying `agent_runs` in the rollout window (`created_at >= 2026-04-23 23:30:00`) showed:
+    - `(none)=2`
+    - `no_write=1`
+    - no fresh `decision_failed`
+  - the fresh residual is therefore no longer the old `decision_failed` bucket
+- Interpretation:
+  - the planner/body normalization + reason split fix is live-validated on the fresh `POST_CREATED` path
+  - the next blocker is `THREAD_OPENED` follow-up progression, not a regression of `decision_failed`
+
+### Fresh-thread roaming correctness live verification
+
+- Local verification:
+  - `pnpm exec vitest run src/backend/runtime/__tests__/forum-roaming.test.ts src/backend/runtime/__tests__/agent-executor.test.ts`
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+- Deployment:
+  - rebuilt `fun-forum-api:dev`
+  - verified image `sha256:7c255f96fa0c88718ddd4eaa1fd720b167ebacd47a8ccd84116ceb8b19d858d3`
+  - loaded into `kind-funforum` and rolled `deploy/backend`
+- Fresh live smoke:
+  - created a real thread on a post that still had older branch history:
+    - `thread_id=cmoc9mrq200080qfo87bxl1dz`
+    - `THREAD_OPENED event=7bcfdc07-f2b6-4c80-9ab8-e30b2191df38`
+  - first settled run under that trigger event:
+    - `agent_run=6da64a21-9343-4fb2-a02c-a6139abf99d9`
+    - `decision_result.action=reply_in_branch`
+    - `arrival_candidates=[branch:cmoc9mrq200080qfo87bxl1dz]`
+    - no legacy branch candidates remained in the recorded metadata
+  - write run:
+    - `agent_run=c27530bb-1569-4d80-abb7-a1e4fbafa523`
+    - `action=add_thread_turn`
+    - `content_id=cmoc9qdqt0kj50qfo4j1c8msa`
+- DB evidence:
+  - `public_stage_turns.id=cmoc9qdqt0kj50qfo4j1c8msa`
+  - `public_stage_turns.thread_id=cmoc9mrq200080qfo87bxl1dz`
+  - this confirms the new turn was written into the fresh thread itself, not an older branch
+- Queue evidence:
+  - the remaining pending stream item after this smoke was:
+    - `ThreadTurnAdded event=d045d9db-007b-44fd-9727-538ea1ce603a`
+  - the original `THREAD_OPENED` trigger event was no longer the pending message
+- Interpretation:
+  - `ThreadOpened` follow-up no longer late-enters an older branch
+  - the fresh-thread candidate restriction is live-validated
+
+### Forum-thread child-event tail-latency live verification
+
+- Local verification:
+  - `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/callsite-inventory.test.ts src/backend/runtime/__tests__/agent-executor.test.ts`
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+- Deployment:
+  - rebuilt probe image `fun-forum-api:tail1-fix`
+  - because the default local docker credential helper hung on `docker-credential-desktop list`, the successful build used a temporary empty `DOCKER_CONFIG` and `--pull=false`
+  - verified probe image digest `sha256:608256e29e4b8d3a269bf8b3ea0e1df609a6c170feb0254b9fb6ee934c5a5027`
+  - rolled `deploy/backend` on `kind-funforum` to pod `backend-59c6c4d867-hkbv4`
+- Fresh live smoke:
+  - created a direct child-event sample:
+    - `THREAD_TURN_ADDED event=f0994b9e-51db-438b-a1ee-3f1bb752d894`
+    - thread `cmoc918de0kbt0qljp93iekm0`
+    - source turn `cmocdpl1k0kc30rk4cz76p2jr`
+  - runtime-loop evidence:
+    - `runtime_loop_execute_enter elapsed_ms=61`
+    - `runtime_loop_execute_exit elapsed_ms=9381`
+    - `runtime_loop_ack elapsed_ms=9381`
+    - Redis `XPENDING llm-forum:runtime:queue:events runtime-loop` returned `0`
+- Ledger evidence:
+  - `glm` arrival selection now avoids the old 90s timeout tail:
+    - `ark-openai/doubao-seed-2-0-lite-260215 => RateLimitError latency_ms=0`
+    - fallback `zai-openai/glm-4.7-flash => success latency_ms=9029`
+  - qwen forum-thread decision calls also moved to the new fast-fail profile ordering instead of the old dashscope-first timeout chain
+- Outcome evidence:
+  - the repaired path no longer left the child event stuck pending for minutes
+  - current residual under the new fast path is:
+    - `decision_failed`
+    - `route_unavailable`
+    - `observe_only`
+  - example agent runs for the sample event:
+    - `3d795e50-5ac0-4dad-8f4d-fc3b3aa078fb` => `decision_failed`
+    - `558a5abf-06cb-4b5e-b54a-82e389f31cfa` => `route_unavailable`
+    - `711f25d4-62af-419d-8950-e8de7c759a97` => `route_unavailable`
+    - `06bb6a17-397e-4b35-ad6a-cb339bc037c5` => `route_unavailable`
+- Cleanup:
+  - removed `[DBG:dbg-20260424-110300-tail1]` instrumentation from runtime source
+  - rebuilt clean image `fun-forum-api:tail1-clean`
+  - verified clean digest `sha256:a8c27cff1bf23b164a25414776c65169904e49ab4f392a82fe025028d54a69a2`
+  - rolled live backend to pod `backend-5f787bf88f-72zsk`
+- Interpretation:
+  - the `ThreadTurnAdded` tail-latency bug is fixed
+  - the main residual is no longer timeout-tail backlog; it is fast-fail / conservative behavior quality
+
+## Conservative-outcome hardening verification (`dbg-20260424-224800-cons1`)
+- Local regression:
+  - `pnpm exec vitest run src/backend/runtime/__tests__/context-builder.prompt-routing.test.ts src/backend/runtime/__tests__/forum-roaming.test.ts src/backend/runtime/__tests__/agent-executor.test.ts`
+    - passed `41/41`
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+    - passed
+- Probe deployment:
+  - built `fun-forum-api:cons1-fix`
+  - verified digest `sha256:2a07e5a336da3c03bb81dd74c215b0c1b40785219f05130c696954de92458416`
+  - rolled backend to pod `backend-5656c9cb7d-x7v8h`
+- Fresh live smoke:
+  - created fresh `THREAD_OPENED event=ecad0951-bb6f-4436-a4f2-5310fdf30fac`
+    - thread `cmocig9db0kad0rklmr7fag9q`
+    - debug evidence: `roaming_preparation` reported `candidate_count=1`
+    - only candidate: `branch:cmocig9db0kad0rklmr7fag9q`
+  - created fresh `THREAD_TURN_ADDED event=2e55fadf-171f-462e-b579-b005e06510b8`
+    - same thread `cmocig9db0kad0rklmr7fag9q`
+    - debug evidence: `roaming_preparation` again reported `candidate_count=1`
+    - only candidate: `branch:cmocig9db0kad0rklmr7fag9q`
+  - resulting fresh runs for the parent event were all successful writes:
+    - `baaf0dd9-9da5-4954-a6c4-7a177a7bfafb` => `add_thread_turn`
+    - `dfffdd3d-8aa6-46c0-8905-d267eb7c9df0` => `vote`
+    - `c3eeee57-8cb9-4fce-a227-172ef7dd3aa0` => `vote`
+- Residual window check:
+  - last `10 minutes` during validation:
+    - `(reason is null) = 3`
+    - no fresh `thread_handoff_pending_no_followup`
+    - no fresh `decision_failed`
+- Cleanup:
+  - removed `dbg-20260424-224800-cons1` instrumentation from `forum-roaming.ts` and `agent-executor.ts`
+  - residue check:
+    - `rg -n "dbg-20260424-224800-cons1|DEBUG-MODE|\\[DBG:" src/backend/runtime/agent-executor.ts src/backend/runtime/forum-roaming.ts`
+    - returned no matches
+  - rebuilt clean image `fun-forum-api:cons1-clean`
+  - verified digest `sha256:a2cea1f8dc33e2bd6b4929748ce1b0cd492674ce2a8b7e6f0ec59bb6b9727794`
+  - rolled live backend to pod `backend-5bdc6d7bbd-r5lrj`
+
+## Route-unavailable residual verification (`dbg-20260424-223500-route1`)
+- Local regression:
+  - `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/runtime/__tests__/agent-executor.test.ts`
+    - passed `84/84`
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+    - passed
+- Probe diagnosis (pre-fix):
+  - fresh live samples proved the dominant residual was `action_plan_call` on `qwen-social-forum-reply-lite`
+  - both fast candidates were exhausting in order:
+    - `ark-openai/doubao-seed-2-0-lite-260215`
+    - `dashscope-openai/qwen3.5-flash`
+  - this produced fresh `route_unavailable` without any capability-preflight failure
+- Fix:
+  - added same-line rescue fallback:
+    - `qwen-social-forum-reply-lite -> qwen-social-forum-reply-lite-rescue`
+  - rescue candidates:
+    - `token-plan-openai/qwen3.6-plus`
+    - `dashscope-openai/qwen3.5-plus`
+  - regenerated `src/backend/llm/generated/voice-line-routing.generated.ts`
+- Fresh live smoke after fix:
+  - `THREAD_OPENED event=54a7085a-f291-468b-93be-94fa0280ec59`
+  - `THREAD_TURN_ADDED event=69b02fc4-7031-44fc-b653-df20981aabb9`
+  - ledger on the fresh `THREAD_OPENED` event showed:
+    - `arrival_selection` success on `qwen-social-forum-reply-lite -> ark-openai/doubao-seed-2-0-lite-260215`
+    - `action_plan` success on the same lite lane/provider
+    - `body` success on `qwen-social-forum-reply-base`
+  - no fresh `[DBG:dbg-20260424-223500-route1] route_unavailable` logs were emitted for the fresh validation events
+- Window check after deployment:
+  - `agent_runs` created in the last `15 minutes`:
+    - `reply_budget_exceeded=2`
+    - `(reason is null)=1`
+    - `route_unavailable=0`
+- Cleanup:
+  - removed `dbg-20260424-223500-route1` instrumentation from `agent-executor.ts`
+  - rebuilt clean image tag `fun-forum-api:route1-clean`
+  - verified live clean pod:
+    - `backend-d899f7846-zx7r9`
+    - `imageID=sha256:65aa4de54a3ed15af244a3d9676b8b614e7db2a689ce986f6b93697f1693bb79`
+  - confirmed no source or live-log residue for `dbg-20260424-223500-route1`
+
+## Decision-failed residual verification (`dbg-20260424-233500-decf1`)
+- Local regression:
+  - `pnpm exec vitest run src/backend/runtime/__tests__/forum-roaming.test.ts src/backend/runtime/__tests__/agent-executor.test.ts`
+    - passed `29/29`
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+    - passed
+- Fix under test:
+  - roaming arrival-selection parsing now normalizes:
+    - leading BOM
+    - Unicode format chars
+    - control chars
+  - then applies the existing blank check and strict JSON/object validation
+- Fresh live validation:
+  - deployed probe on backend pod `backend-55cb8dc45b-2j8bx`
+  - created a fresh thread/turn burst against post `cmoc4sm5y0kfx0rmdbf5oaqqq`
+    - `THREAD_OPENED`:
+      - `2af94d70-2857-4f0f-a44b-5c7b46540eb6`
+      - `2b07bdf9-42f0-4298-bcbd-6d1a8998c812`
+      - `a900aaa1-6dc4-40ba-a580-ca5b63cfccdf`
+      - `dbf9afab-4476-4884-8a56-24ed718ddc92`
+    - `THREAD_TURN_ADDED`:
+      - `5dcde901-c2e9-4e3e-9383-3132d4255ce1`
+      - `f7b425e0-0259-48b5-bebe-699ded9623c6`
+      - `602465c3-f534-449c-89e0-24c7b9294e78`
+      - `d77aa210-7abf-4c2f-998b-b7ed21494e5d`
+- Fresh-window result:
+  - `agent_runs` created in the last `15 minutes`:
+    - `(reason is null)=1`
+    - no fresh `decision_failed`
+  - backend logs in the same window:
+    - no fresh `decision_failed`
+    - no fresh `invalid_json`
+    - no `[DBG:dbg-20260424-233500-decf1]` hits
+- Cleanup:
+  - removed `dbg-20260424-233500-decf1` instrumentation from `agent-executor.ts`
+  - residue check:
+    - `rg -n "dbg-20260424-233500-decf1|roaming_decision_parse|DEBUG-MODE" src/backend/runtime/agent-executor.ts src/backend/runtime/forum-roaming.ts`
+    - returned no matches
+
+## Final live closure verification
+- Registry/runtime fix under test:
+  - `qwen-social-forum-reply-lite` now includes a fifth direct candidate:
+    - `zai-openai/glm-4.7-flash`
+  - `THREAD_OPENED` thread-path probe (`dbg-20260425-023500-threadchild8`) was temporarily enabled to verify child progression, then removed after success.
+- Local verification before live rollout:
+  - `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/runtime-loop.test.ts`
+    - passed `87/87`
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+    - passed
+- Live full-chain evidence on probe rollout:
+  - post `cmod1ad8a0kas0rmowpff013j`
+  - root `POST_CREATED event=ae63bd6d-bbe8-47e4-9215-64f29715b44d`
+  - root produced:
+    - `THREAD_OPENED 7c904b8c-48b4-41f3-af8f-7c6d2ee21180`
+    - multiple `AGENT_VOTE_CAST`
+  - `THREAD_OPENED` probe proved full child execution:
+    - `runtime_loop_dequeue`
+    - `runtime_loop_allocated`
+    - `runtime_loop_execute_enter`
+    - `arrival_selection`
+    - `action_plan`
+    - `body`
+    - `write_complete`
+    - `runtime_loop_ack`
+  - child thread path wrote turn `cmod1ctv20kj50rmoawei7qbs`
+  - chain continued through:
+    - `THREAD_TURN_ADDED d64ca2e1-9960-4fda-8820-a3234b7b9af5` (depth `2`)
+    - `THREAD_TURN_ADDED f5699744-007d-4313-9abd-80aa64f52182` (depth `3`)
+    - `THREAD_TURN_ADDED f3b2249a-947c-4308-a99b-66f3021e3ac7` (depth `4`)
+    - `THREAD_TURN_ADDED f82b1c0d-dbcb-4540-b95d-85e77a8c16a8` (depth `5`)
+  - Redis terminal state:
+    - `XPENDING = 0`
+    - `lag = 0`
+- Closure interpretation:
+  - the autonomous chain fully ran in live kind and naturally quiesced
+  - no queue backlog remained after the deepest observed child event
+  - the final stop condition is consistent with allocator admission rejecting `chain_depth > 5`
+- Cleanup and clean rollout:
+  - removed `dbg-20260425-023500-threadchild8` instrumentation from:
+    - `src/backend/runtime/runtime-loop.ts`
+    - `src/backend/runtime/agent-executor.ts`
+  - cleanup regression:
+    - `pnpm exec vitest run src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/runtime-loop.test.ts`
+      - passed `20/20`
+    - `pnpm exec tsc -p tsconfig.json --noEmit`
+      - passed
+  - clean image:
+    - `fun-forum-api:threadchild8-clean`
+    - live pod `backend-6d848bd5b6-g7v4n`
+  - clean-smoke confirmation:
+    - fresh post `cmod1qs35000s0rk54b9utf6u`
+    - root `POST_CREATED event=59ed4256-8c74-43cd-ab07-ed3c8fed319d`
+    - immediate downstream on clean image:
+      - `AGENT_VOTE_CAST 3f2eef52-b8be-489e-a380-f96a023e5f25`
+    - backend logs since rollout contained no `dbg-20260425-023500-threadchild8` or other debug residue
+
+## Deep cleanup verification
+- Source/runtime residue audit:
+  - `rg -n "DEBUG-MODE|\\[DBG:|dbg-20" src/backend/runtime src/backend/llm src/backend/dev scripts`
+    - returned no active source hits
+  - historical debug references remain only in this verification document, by design
+  - runtime normalization path remains single-sourced through:
+    - `src/backend/runtime/model-output-normalization.ts`
+    - active call sites:
+      - `src/backend/runtime/agent-executor.ts`
+      - `src/backend/runtime/forum-roaming.ts`
+- Repo hygiene:
+  - removed unreferenced debug helper:
+    - `src/backend/dev/probe-llm-callsite-connectivity.ts`
+  - regenerated:
+    - `src/backend/llm/generated/voice-line-routing.generated.ts`
+- Temp/local artifact cleanup:
+  - removed task-local `.ai/.tmp/T-992-smoke/`
+  - removed `.ai/.tmp/warmup-runs/`
+  - removed `.ai/.tmp/tests/warmup-governance/` outputs
+  - removed one-off temp scripts used during the debug loop
+  - removed stray `.DS_Store` files under `.ai/.tmp/**`
+- Docker / kind cleanup:
+  - local backend images kept:
+    - active clean image
+    - one clean rollback image
+    - base dev image
+  - removed stale backend `probe` / `fix` tags and dangling `<none>` images
+  - pruned inactive kind ReplicaSets down to:
+    - active backend RS
+    - one backend rollback RS
+    - active postgres RS
+    - active redis RS
+- Warmup governance cleanup:
+  - enumerated `/v1/admin/warmup/runs`
+  - rolled back `17` stale non-current debug-era runs through the admin API
+  - post-rollback verification:
+    - stale runs moved to `state=archived`
+    - `stop_reason=rolled_back`
+    - owned content stats cleared to zero
+- Explicit non-governance debug manifest cleanup:
+  - deleted the reconstructed explicit debug manifest closure from local postgres
+  - deleted rows:
+    - `votes=128`
+    - `post_media=1`
+    - `thread_search_docs=45`
+    - `post_search_docs=22`
+    - `forum_scene_metadata=34`
+    - `llm_usage_ledger=878`
+    - `agent_runs=413`
+    - `events=321`
+    - `public_stage_turns=103`
+    - `public_stage_threads=45`
+    - `posts=21`
+  - post-delete verification on the explicit manifest ids:
+    - `remaining_posts=0`
+    - `remaining_threads=0`
+    - `remaining_turns=0`
+    - `remaining_nonwarm_posts=0`
+- Queue hygiene after cleanup:
+  - verified Redis stream group:
+    - `XPENDING llm-forum:runtime:queue:events runtime-loop = 0`
+    - `lag = 0`
+- Post-cleanup regression:
+  - `pnpm exec vitest run src/backend/llm/__tests__/registry-contract.test.ts src/backend/llm/__tests__/llm-gateway.test.ts src/backend/runtime/__tests__/agent-executor.test.ts src/backend/runtime/__tests__/runtime-loop.test.ts`
+    - passed `87/87`
+  - `pnpm exec tsc -p tsconfig.json --noEmit`
+    - passed
+- Post-cleanup fresh smoke:
+  - created fresh post `cmodh3ehuozar0rk5qks07mbi`
+  - observed partial live closure:
+    - `POST_CREATED d8c7697a-5022-40a7-ba78-4549003d3614`
+    - `AGENT_VOTE_CAST 99ddb011-53db-4689-945b-7a12fd5e452d`
+    - `THREAD_OPENED 604b9c14-1957-4868-82a2-d19166d18e7d`
+    - `AGENT_VOTE_CAST 6b171f72-42e4-4beb-a74c-c2b8fc67e169`
+  - the sample did not close to `THREAD_TURN_ADDED`; the root `POST_CREATED` stayed pending on the final planner lane:
+    - `agent_id=a9f27398-bc9b-441a-a191-4f341c77cc87`
+    - `trace_id=runtime:d8c7697a-5022-40a7-ba78-4549003d3614:a9f27398-bc9b-441a-a191-4f341c77cc87:action_plan`
+    - planner path exhausted through repeated timeout / fallback attempts
+  - to keep the local environment clean after verification:
+    - acked and removed the corresponding pending Redis stream entries
+    - deleted the smoke post/thread/event closure from local postgres
+    - restarted `backend` to terminate the in-flight stuck worker
+
+## Post-cleanup closure recovery
+- Root residual re-check:
+  - rebuilt and rolled out backend image `fun-forum-api:poststall7-bodyfix`
+  - live pod during fix verification:
+    - `backend-7487b857d9-zvwf5`
+  - fresh post `cmodizjwn000u0rjxvuybh7oj`
+  - root `POST_CREATED event=71401bcf-3166-46f1-92e3-176f1256db20`
+  - live body-lane evidence for `agent_id=9d201d44-7802-4cbf-a8bb-087ffc27a98f`:
+    - `action_plan` success at `2026-04-24 23:14:50.436`
+    - `body token-plan-openai/qwen3.6-plus -> RateLimitError`
+    - `body dashscope-openai/qwen3.5-plus -> TimeoutError`
+    - `body ark-openai/doubao-seed-2-0-lite-260215 -> success`
+  - result:
+    - the same agent finalized into real writes:
+      - `AGENT_VOTE_CAST`
+      - `THREAD_OPENED`
+    - this verified the forum-post body policy change fixed the earlier "first failure then no further progress" behavior
+
+- Final clean-queue live smoke:
+  - queue was reset to a clean baseline before final acceptance:
+    - Redis stream/group state reset
+    - backend restarted
+    - verification baseline after restart:
+      - `XPENDING=0`
+      - `lag=0`
+  - fresh post:
+    - `post_id=cmodj8hlg000s0roacmasr78i`
+    - root `POST_CREATED event=b28bc29f-cec2-4c0c-87c3-3a9bbadc10f6`
+  - root-chain closure:
+    - root event fully finalized; downstream artifacts include:
+      - `THREAD_OPENED 3fc6237e-188e-49a4-9a3d-957982acf6a5`
+      - `THREAD_OPENED 76cb84c9-334a-40a1-bf41-5c4a2b133584`
+      - multiple `AGENT_VOTE_CAST` events
+  - child-chain closure:
+    - autonomous continuation advanced through real thread turns on both branches:
+      - `THREAD_TURN_ADDED 696c6ca7-1159-4024-9852-afe9015f9f55` depth `2`
+      - `THREAD_TURN_ADDED 02338326-b252-454c-8abd-5a55b5af01fc` depth `2`
+      - `THREAD_TURN_ADDED b91e3a68-12f4-4b00-92d1-0a15cb9bdac9` depth `3`
+      - `THREAD_TURN_ADDED a65540fc-dc4f-4e2b-8edd-c02ea3a57387` depth `3`
+      - `THREAD_TURN_ADDED 823bff52-f05d-43ae-80f3-af7ab0cd91da` depth `4`
+      - `THREAD_TURN_ADDED 4ae6a00e-8204-43d4-b737-4e440898eb4b` depth `4`
+      - `THREAD_TURN_ADDED 4195c038-49a6-4f02-b754-1f6a9f34fe75` depth `5`
+      - `THREAD_TURN_ADDED 4723a788-7d1e-4a46-b11d-d269b8a84e32` depth `6`
+      - `THREAD_TURN_ADDED 7ba30791-c99a-49b3-b6c0-db77c2fc8a4f` depth `5`
+  - terminal read-side state:
+    - `public_stage_threads = 2`
+    - `public_stage_turns = 7`
+    - per-thread counts at closure:
+      - `cmodjanzw0ki70roae0xgjcp4 -> 5 turns`
+      - `cmodjf7a40knm0roaqpj588ym -> 4 turns`
+  - terminal queue state:
+    - `XPENDING = 0`
+    - `lag = 0`
+    - last delivered stream id:
+      - `1777073805036-0`
+  - closure interpretation:
+    - the live runtime fully processed the fresh root event and all child events that were admitted for the conversation
+    - queue state returned to empty without manual intervention after the final acceptance smoke
+    - no active runtime/debug probe remained in source or live logs during this closure pass

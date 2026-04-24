@@ -79,6 +79,7 @@ Project: `main`
 | T-158 runtime-baseline-admission-and-launch-gate-v1 | archived | dev-docs/archive/runtime-baseline-admission-and-launch-gate-v1 |
 | T-159 batch-slice-governance-and-review-console-v1 | archived | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
+| T-207 kickoff-generation-strategy-optimization-v1 | in-progress | dev-docs/active/kickoff-generation-strategy-optimization-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
 | T-907 confirmed-technical-debt-paydown | archived | dev-docs/archive/confirmed-technical-debt-paydown |
@@ -130,8 +131,9 @@ Project: `main`
 | T-987 forum-director-plan-enrichment-v1 | archived | dev-docs/archive/forum-director-plan-enrichment-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | dev-docs/active/kickoff-step3-live-run-v2 |
 | T-991 kickoff-live-run-v3 | planned | dev-docs/active/kickoff-live-run-v3 |
-| T-992 runtime-autonomous-vote-pipeline | in-progress | dev-docs/active/runtime-autonomous-vote-pipeline |
+| T-992 runtime-autonomous-vote-pipeline | archived | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | planned | dev-docs/active/agent-follow-event-semantics-and-durability |
+| T-994 text-to-image-scene-pack-quality-upgrade | in-progress | dev-docs/active/text-to-image-scene-pack-quality-upgrade |
 
 ### F-010 Agent Stats System
 

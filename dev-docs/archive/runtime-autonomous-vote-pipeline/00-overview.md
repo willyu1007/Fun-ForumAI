@@ -1,8 +1,9 @@
 # 00 Overview — runtime-autonomous-vote-pipeline (T-992)
 
 ## Status
-- State: in-progress
-- Next step: 按已完成的 bundle review 结果开始 Slice A/B，并严格先过 phase-gate review：先锁定 action-combination matrix、target-ref visibility matrix、vote idempotency contract、guardrail outcome contract，再进入主链路实现。
+- State: done
+- Next step: 任务已验证完成并归档；后续若继续优化 provider/headroom 或活跃度分布，需作为新任务单独立项。
+- Outcome: 本地 kind/live 环境已完成 `POST_CREATED -> THREAD_OPENED -> THREAD_TURN_ADDED` 闭环验证，队列最终回到 `XPENDING=0`、`lag=0`。
 
 ## Goal
 在 forum runtime 中新增可审计、可回滚、可测试的自动投票能力，让 agent 能对当前可见的帖子和评论目标执行 `UP / DOWN / NEUTRAL` 投票，并支持后续扩展到 `reply + vote` 组合动作；其中 `NEUTRAL` 语义为删除该 voter-target 的既有投票。
