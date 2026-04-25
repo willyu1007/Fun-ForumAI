@@ -4528,3 +4528,382 @@ model PersonaObservabilityMetrics {
   @@index([runtimeKey])
   @@map("persona_observability_metrics")
 }
+
+// =============================================================================
+// T-209 cue-data-and-board — Public Discussion Cue programming layer
+// Owners: T-209 (schema), T-210 (admin editor), T-212 (worker), T-213 (load),
+//         T-214 (auto editor), T-215 (projection), T-216 (media policy)
+// Cross-domain references (community, asset, agent, post, user) use plain
+// string columns without Prisma relations to keep blast radius small on
+// existing models. Internal cue-domain relations are explicit.
+// =============================================================================
+
+enum CueScopeType {
+  GLOBAL
+  COMMUNITY
+  ROOM
+}
+
+enum CueScheduleStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ACTIVE
+  ARCHIVED
+  ROLLED_BACK
+}
+
+enum CueScheduleSource {
+  BASELINE
+  MANUAL
+  AUTOMATED
+  MIXED
+}
+
+enum CueSourceType {
+  MANUAL
+  AUTOMATED
+  BASELINE
+  SYSTEM
+}
+
+enum PublicDiscussionCueStatus {
+  DRAFT
+  VALIDATING
+  VALIDATED
+  SCHEDULED
+  PREWARMING
+  DUE
+  CLAIMED
+  EXECUTING
+  CONSUMED
+  DEFERRED
+  SKIPPED
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+enum CueLane {
+  PRIME
+  STANDARD
+  BACKGROUND
+}
+
+enum CueRiskLevel {
+  LOW
+  STANDARD
+  HIGH
+  STRICT_REVIEW
+}
+
+enum CueMediaRole {
+  CONTEXT_ANCHOR
+  MOOD_REFERENCE
+  EVIDENCE_CARD
+  VISUAL_SEED
+  COVER_CANDIDATE
+  CONTINUITY_ANCHOR
+}
+
+enum CueMediaUsageStrength {
+  OPTIONAL
+  PREFERRED
+  ANCHOR
+  SELECTED_ONLY_POOL
+}
+
+enum CueMediaUsePolicy {
+  RUNTIME_ONLY
+  PREFER_RUNTIME_CONTEXT
+  PREFER_PUBLIC_DISPLAY
+  ALLOW_GENERATED_DERIVATIVE
+  REQUIRE_PUBLIC_DISPLAY
+}
+
+enum CueMediaValidationStatus {
+  VALID
+  INVALID
+  BLOCKED
+  DEGRADED
+}
+
+enum CueMediaCreatedByType {
+  ADMIN
+  SYSTEM_LLM
+  BASELINE
+}
+
+enum CueChangeType {
+  CREATE_CUE
+  UPDATE_CUE
+  CANCEL_CUE
+  DEFER_CUE
+  MERGE_INTO_EXISTING_CUE
+  SPLIT_CUE
+  ATTACH_MEDIA
+  REMOVE_MEDIA
+  UPDATE_DISPATCH_POLICY
+  UPDATE_RISK_LEVEL
+  PUBLISH_SCHEDULE
+  ROLLBACK_SCHEDULE
+}
+
+enum CueChangeSource {
+  MANUAL
+  AUTOMATED
+  SYSTEM
+}
+
+enum CueChangeApprovalStatus {
+  PENDING
+  AUTO_APPLIED
+  APPROVED
+  REJECTED
+  ROLLED_BACK
+}
+
+enum CueChangeValidationStatus {
+  PENDING
+  PASSED
+  FAILED
+}
+
+enum CueExecutionAttemptStatus {
+  PENDING
+  ADMITTED
+  LEASED
+  ALLOCATING
+  COMPILING
+  EXECUTING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+  DELAYED
+  MISFIRED
+  CANCELLED
+}
+
+enum CueLoadState {
+  GREEN
+  YELLOW
+  RED
+}
+
+enum CueLoadSnapshotFreshness {
+  LIVE
+  CACHED
+}
+
+model PublicDiscussionCueSchedule {
+  id                      String            @id @default(cuid())
+  scopeType               CueScopeType      @default(GLOBAL) @map("scope_type")
+  communityId             String?           @map("community_id")
+  roomId                  String?           @map("room_id")
+  timezone                String            @default("Asia/Shanghai")
+  dateRangeStart          DateTime          @map("date_range_start")
+  dateRangeEnd            DateTime          @map("date_range_end")
+  baselineContractVersion String?           @map("baseline_contract_version")
+  status                  CueScheduleStatus @default(DRAFT)
+  source                  CueScheduleSource @default(MANUAL)
+  version                 Int               @default(1)
+  baseScheduleId          String?           @map("base_schedule_id")
+  rollbackFromScheduleId  String?           @map("rollback_from_schedule_id")
+  summary                 String?           @db.Text
+  createdByUserId         String?           @map("created_by_user_id")
+  createdBySystem         String?           @map("created_by_system")
+  publishedAt             DateTime?         @map("published_at")
+  approvedByUserId        String?           @map("approved_by_user_id")
+  approvedAt              DateTime?         @map("approved_at")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+
+  cues    PublicDiscussionCue[]
+  changes PublicDiscussionCueChange[]
+
+  @@index([status, dateRangeStart])
+  @@index([communityId, status])
+  @@map("public_discussion_cue_schedules")
+}
+
+model PublicDiscussionCue {
+  id                   String                    @id @default(cuid())
+  scheduleId           String                    @map("schedule_id")
+  sourceType           CueSourceType             @map("source_type")
+  status               PublicDiscussionCueStatus @default(DRAFT)
+  communityId          String?                   @map("community_id")
+  scopeJson            Json                      @default("{}") @map("scope_json")
+  triggerAt            DateTime                  @map("trigger_at")
+  timezone             String                    @default("Asia/Shanghai")
+  prewarmAt            DateTime?                 @map("prewarm_at")
+  latestStartAt        DateTime?                 @map("latest_start_at")
+  expireAt             DateTime?                 @map("expire_at")
+  priority             Int                       @default(50)
+  lane                 CueLane                   @default(STANDARD)
+  dispatchPolicyJson   Json                      @map("dispatch_policy_json")
+  admissionPolicyJson  Json?                     @map("admission_policy_json")
+  loadPolicyJson       Json?                     @map("load_policy_json")
+  themeIntentJson      Json                      @map("theme_intent_json")
+  sceneConstraintsJson Json                      @map("scene_constraints_json")
+  roleRequirementsJson Json                      @map("role_requirements_json")
+  mediaPolicyJson      Json?                     @map("media_policy_json")
+  safetyJson           Json?                     @map("safety_json")
+  lockedFieldsJson     Json                      @default("[]") @map("locked_fields_json")
+  riskLevel            CueRiskLevel              @default(STANDARD) @map("risk_level")
+  revision             Int                       @default(1)
+  idempotencyKey       String                    @unique @map("idempotency_key")
+  createdByUserId      String?                   @map("created_by_user_id")
+  createdBySystem      String?                   @map("created_by_system")
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+
+  schedule PublicDiscussionCueSchedule @relation(fields: [scheduleId], references: [id])
+  media    PublicDiscussionCueMedia[]
+  changes  PublicDiscussionCueChange[]
+  attempts CueExecutionAttempt[]
+
+  @@index([scheduleId, status])
+  @@index([status, triggerAt])
+  @@index([communityId, triggerAt])
+  @@map("public_discussion_cues")
+}
+
+model PublicDiscussionCueMedia {
+  id                 String                   @id @default(cuid())
+  cueId              String                   @map("cue_id")
+  assetId            String                   @map("asset_id")
+  semanticSnapshotId String?                  @map("semantic_snapshot_id")
+  role               CueMediaRole
+  usageStrength      CueMediaUsageStrength    @default(OPTIONAL) @map("usage_strength")
+  usePolicy          CueMediaUsePolicy        @default(PREFER_RUNTIME_CONTEXT) @map("use_policy")
+  displayPolicy      String                   @default("runtime_decides") @map("display_policy")
+  selectionNote      String?                  @map("selection_note") @db.Text
+  sortOrder          Int                      @default(0) @map("sort_order")
+  reuseLimit         Int?                     @map("reuse_limit")
+  validationStatus   CueMediaValidationStatus @default(VALID) @map("validation_status")
+  validationReason   String?                  @map("validation_reason") @db.Text
+  createdByType      CueMediaCreatedByType    @map("created_by_type")
+  createdById        String?                  @map("created_by_id")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+
+  cue PublicDiscussionCue @relation(fields: [cueId], references: [id])
+
+  @@index([cueId, sortOrder])
+  @@index([assetId])
+  @@map("public_discussion_cue_media")
+}
+
+model PublicDiscussionCueChange {
+  id               String                    @id @default(cuid())
+  scheduleId       String?                   @map("schedule_id")
+  cueId            String?                   @map("cue_id")
+  source           CueChangeSource
+  actorUserId      String?                   @map("actor_user_id")
+  actorSystem      String?                   @map("actor_system")
+  triggerId        String?                   @map("trigger_id")
+  triggerType      String?                   @map("trigger_type")
+  changeType       CueChangeType             @map("change_type")
+  baseRevision     Int?                      @map("base_revision")
+  patchJson        Json                      @map("patch_json")
+  diffJson         Json?                     @map("diff_json")
+  validationStatus CueChangeValidationStatus @default(PENDING) @map("validation_status")
+  validationJson   Json?                     @map("validation_json")
+  riskLevel        CueRiskLevel              @default(STANDARD) @map("risk_level")
+  approvalStatus   CueChangeApprovalStatus   @default(PENDING) @map("approval_status")
+  loadSnapshotJson Json?                     @map("load_snapshot_json")
+  reason           String?                   @db.Text
+  appliedAt        DateTime?                 @map("applied_at")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+
+  schedule PublicDiscussionCueSchedule? @relation(fields: [scheduleId], references: [id])
+  cue      PublicDiscussionCue?         @relation(fields: [cueId], references: [id])
+
+  @@index([cueId, createdAt])
+  @@index([scheduleId, createdAt])
+  @@index([approvalStatus, createdAt])
+  @@map("public_discussion_cue_changes")
+}
+
+model CueExecutionAttempt {
+  id                     String                    @id @default(cuid())
+  cueId                  String                    @map("cue_id")
+  attemptNo              Int                       @map("attempt_no")
+  scheduledTriggerAt     DateTime                  @map("scheduled_trigger_at")
+  actualClaimedAt        DateTime?                 @map("actual_claimed_at")
+  status                 CueExecutionAttemptStatus @default(PENDING)
+  leaseOwner             String?                   @map("lease_owner")
+  leaseExpiresAt         DateTime?                 @map("lease_expires_at")
+  idempotencyKey         String                    @unique @map("idempotency_key")
+  admissionResultJson    Json?                     @map("admission_result_json")
+  allocatorResultJson    Json?                     @map("allocator_result_json")
+  directorBriefJson      Json?                     @map("director_brief_json")
+  compiledPayloadRef     String?                   @map("compiled_payload_ref")
+  selectedCastJson       Json?                     @map("selected_cast_json")
+  selectedAgentIdsJson   Json?                     @map("selected_agent_ids_json")
+  postId                 String?                   @map("post_id")
+  threadId               String?                   @map("thread_id")
+  turnId                 String?                   @map("turn_id")
+  roomId                 String?                   @map("room_id")
+  roomProgramEventId     String?                   @map("room_program_event_id")
+  agentRunId             String?                   @map("agent_run_id")
+  forumSceneMetadataId   String?                   @map("forum_scene_metadata_id")
+  episodeId              String?                   @map("episode_id")
+  selectionId            String?                   @map("selection_id")
+  episodePlanId          String?                   @map("episode_plan_id")
+  localIntentId          String?                   @map("local_intent_id")
+  overlayId              String?                   @map("overlay_id")
+  directorSurface        String?                   @map("director_surface")
+  actorSurface           String?                   @map("actor_surface")
+  mediaUsageJson         Json?                     @map("media_usage_json")
+  displayAttributionJson Json?                     @map("display_attribution_json")
+  consumptionResultJson  Json?                     @map("consumption_result_json")
+  moderationResultJson   Json?                     @map("moderation_result_json")
+  loadSnapshotJson       Json?                     @map("load_snapshot_json")
+  queueLatencyMs         Int?                      @map("queue_latency_ms")
+  admissionLatencyMs     Int?                      @map("admission_latency_ms")
+  allocatorLatencyMs     Int?                      @map("allocator_latency_ms")
+  compileLatencyMs       Int?                      @map("compile_latency_ms")
+  llmLatencyMs           Int?                      @map("llm_latency_ms")
+  writeLatencyMs         Int?                      @map("write_latency_ms")
+  totalLatencyMs         Int?                      @map("total_latency_ms")
+  errorCode              String?                   @map("error_code")
+  errorText              String?                   @map("error_text") @db.Text
+  createdAt              DateTime                  @default(now()) @map("created_at")
+  startedAt              DateTime?                 @map("started_at")
+  finishedAt             DateTime?                 @map("finished_at")
+
+  cue PublicDiscussionCue @relation(fields: [cueId], references: [id])
+
+  @@unique([cueId, attemptNo])
+  @@index([cueId, status])
+  @@index([status, scheduledTriggerAt])
+  @@index([leaseOwner, leaseExpiresAt])
+  @@map("cue_execution_attempts")
+}
+
+model CommunityRuntimeLoadSnapshot {
+  id                        String                   @id @default(cuid())
+  communityId               String                   @map("community_id")
+  windowStart               DateTime                 @map("window_start")
+  windowEnd                 DateTime                 @map("window_end")
+  freshness                 CueLoadSnapshotFreshness @default(CACHED)
+  state                     CueLoadState             @default(GREEN)
+  globalState               CueLoadState             @default(GREEN) @map("global_state")
+  scheduledCueCount         Int                      @default(0) @map("scheduled_cue_count")
+  dueCueCount               Int                      @default(0) @map("due_cue_count")
+  executingCueCount         Int                      @default(0) @map("executing_cue_count")
+  recentRootPostCount       Int                      @default(0) @map("recent_root_post_count")
+  recentThreadFollowupCount Int                      @default(0) @map("recent_thread_followup_count")
+  activeSceneCount          Int                      @default(0) @map("active_scene_count")
+  hotThreadPressure         Float?                   @map("hot_thread_pressure")
+  visibleLlmQueueDepth      Int?                     @map("visible_llm_queue_depth")
+  mediaQueueDepth           Int?                     @map("media_queue_depth")
+  providerQueuePressure     Float?                   @map("provider_queue_pressure")
+  loadScore                 Float                    @default(0) @map("load_score")
+  capacityRemaining         Float                    @default(1) @map("capacity_remaining")
+  computedAt                DateTime                 @default(now()) @map("computed_at")
+
+  @@index([communityId, computedAt])
+  @@index([freshness, computedAt])
+  @@map("community_runtime_load_snapshots")
+}

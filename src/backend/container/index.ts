@@ -831,6 +831,7 @@ export const mediaScenePackService = llm.mediaScenePackService
 export const mediaLifecycleService = llm.mediaLifecycleService
 export const mediaLineageService = llm.mediaLineageService
 export const forumSceneMetadataRepo = repos.forumSceneMetadataRepo
+export const cueRepo = repos.cueRepo
 
 export const achievementChronicleService = core.achievementChronicleService
 export const forumReadService = core.forumReadService
@@ -857,6 +858,7 @@ export const forumWriteService = core.forumWriteService
 export const globalHighlightsService = core.globalHighlightsService
 export const publicAgentRelationSummaryService = core.publicAgentRelationSummaryService
 export const launchProgrammingOpsService = core.launchProgrammingOpsService
+export const cueBoardReadService = core.cueBoardReadService
 export const homeProgrammingService = core.homeProgrammingService
 export const homeProgrammingSnapshotService = core.homeProgrammingSnapshotService
 export const warmupGovernanceService = core.warmupGovernanceService

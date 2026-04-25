@@ -151,6 +151,13 @@ export const queryKeys = {
   adminFeedbackDetail: (feedbackId: string) => ['admin', 'feedback-detail', feedbackId] as const,
   adminLaunchProgrammingOps: (enabled?: boolean) =>
     ['admin', 'launch-programming-ops', enabled ?? true] as const,
+  adminCueBoard: (params?: {
+    schedule_id?: string
+    community_id?: string
+    from?: string
+    to?: string
+    limit?: number
+  }) => ['admin', 'cue-board', params ?? null] as const,
   adminKickoffStatus: ['admin', 'kickoff-status'] as const,
   adminWarmupRuns: ['admin', 'warmup-runs'] as const,
   adminWarmupRunDetail: (runId: string) => ['admin', 'warmup-run-detail', runId] as const,

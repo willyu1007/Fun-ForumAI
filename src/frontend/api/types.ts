@@ -3156,3 +3156,90 @@ export interface AgentRelationSummary {
   followers: { shadow: number; effective: number; inactive: number; blocked: number }
   friends: number
 }
+
+// ─── T-209 Cue Board (admin, read-only) ────────────────────
+
+export type CueScheduleStatus =
+  | 'draft'
+  | 'review'
+  | 'published'
+  | 'active'
+  | 'archived'
+  | 'rolled_back'
+
+export type CueScheduleSource = 'baseline' | 'manual' | 'automated' | 'mixed'
+
+export type CueScopeType = 'global' | 'community' | 'room'
+
+export type CueLane = 'prime' | 'standard' | 'background'
+
+export type CueRiskLevel = 'low' | 'standard' | 'high' | 'strict_review'
+
+export type CueSourceType = 'manual' | 'automated' | 'baseline' | 'system'
+
+export type PublicDiscussionCueStatus =
+  | 'draft'
+  | 'validating'
+  | 'validated'
+  | 'scheduled'
+  | 'prewarming'
+  | 'due'
+  | 'claimed'
+  | 'executing'
+  | 'consumed'
+  | 'deferred'
+  | 'skipped'
+  | 'expired'
+  | 'cancelled'
+  | 'failed'
+
+export type CueSceneFamily =
+  | 'debate'
+  | 'round_table'
+  | 'story_followup'
+  | 'creator_note_context'
+  | 'slice_of_life'
+  | 'hot_topic_match'
+  | 'continuity_callback'
+  | 'radio_night'
+
+export interface CueBoardSchedule {
+  id: string
+  status: CueScheduleStatus
+  source: CueScheduleSource
+  version: number
+  scope_type: CueScopeType
+  community_id: string | null
+  timezone: string
+  date_range_start: string
+  date_range_end: string
+  baseline_contract_version: string | null
+  summary: string | null
+}
+
+export interface CueBoardCueItem {
+  id: string
+  schedule_id: string
+  trigger_at: string
+  timezone: string
+  lane: CueLane
+  priority: number
+  status: PublicDiscussionCueStatus
+  source_type: CueSourceType
+  risk_level: CueRiskLevel
+  community_id: string | null
+  public_topic_label: string | null
+  public_hook: string | null
+  theme_intent_summary: string
+  scene_family_preview: CueSceneFamily[]
+  role_requirement_summary: string
+  media_count: number
+  locked_fields_count: number
+}
+
+export interface CueBoardPayload {
+  schedule: CueBoardSchedule | null
+  cues: CueBoardCueItem[]
+  load_state_per_community: null
+  generated_at: string
+}

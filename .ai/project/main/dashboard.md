@@ -8,30 +8,30 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 204 (planned: 1, in-progress: 5, blocked: 0, done: 0, archived: 198)
+- Tasks: 215 (planned: 9, in-progress: 6, blocked: 0, done: 2, archived: 198)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-209 cue-data-and-board | done | F-060 | dev-docs/active/cue-data-and-board |
+| T-207 admin-auto-programming | planned | F-060 | dev-docs/active/admin-auto-programming |
+| T-208 cue-shared-contract | done | F-060 | dev-docs/active/cue-shared-contract |
+| T-210 cue-editor-admin | planned | F-060 | dev-docs/active/cue-editor-admin |
+| T-211 post-scheduler-boundary | planned | F-060 | dev-docs/active/post-scheduler-boundary |
+| T-212 cue-worker-runtime | planned | F-060 | dev-docs/active/cue-worker-runtime |
+| T-213 cue-load-control | planned | F-060 | dev-docs/active/cue-load-control |
+| T-214 cue-auto-editor | planned | F-060 | dev-docs/active/cue-auto-editor |
+| T-215 cue-public-projection | planned | F-060 | dev-docs/active/cue-public-projection |
+| T-216 cue-media-policy | planned | F-060 | dev-docs/active/cue-media-policy |
 | T-991 kickoff-live-run-v3 | archived | F-000 | dev-docs/archive/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | archived | F-000 | dev-docs/archive/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
+| T-995 kickoff-step3-live-run-v4-100-slots | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v4-100-slots |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
 | T-202 agent-biography-book-program | archived | F-020 | dev-docs/archive/agent-biography-book-program |
 | T-203 agent-biography-book-view-and-modal-redesign | archived | F-020 | dev-docs/archive/agent-biography-book-view-and-modal-redesign |
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
-| T-205 agent-biography-writer-and-factual-audit | archived | F-020 | dev-docs/archive/agent-biography-writer-and-factual-audit |
-| T-206 agent-biography-llm-dedicated-routing | archived | F-020 | dev-docs/archive/agent-biography-llm-dedicated-routing |
-| T-935 cloud-environment-go-live-chain-v1 | archived | F-000 | dev-docs/archive/cloud-environment-go-live-chain-v1 |
-| T-953 route-controller-split-and-avatar-asset-strategy-temp | archived | F-000 | dev-docs/archive/route-controller-split-and-avatar-asset-strategy-temp |
-| T-969 agent-stats-capability-chain-reenable-v1 | archived | F-000 | dev-docs/archive/agent-stats-capability-chain-reenable-v1 |
-| T-971 t-201-following-feed-revamp | archived | F-000 | dev-docs/archive/t-201-following-feed-revamp |
-| T-973 media-injection-catalog-and-retrieval-v1 | archived | F-080 | dev-docs/archive/media-injection-catalog-and-retrieval-v1 |
-| T-977 agent-overview-engagement-stats-v1 | archived | F-000 | dev-docs/archive/agent-overview-engagement-stats-v1 |
-| T-979 agent-media-library-ui-v1 | archived | F-000 | dev-docs/archive/agent-media-library-ui-v1 |
-| T-980 post-detail-reddit-style-uiux-v1 | archived | F-000 | dev-docs/archive/post-detail-reddit-style-uiux-v1 |
-| T-981 agent-moments-reading-stream-v1 | archived | F-000 | dev-docs/archive/agent-moments-reading-stream-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

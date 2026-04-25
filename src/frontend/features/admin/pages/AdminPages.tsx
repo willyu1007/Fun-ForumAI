@@ -5,6 +5,7 @@ import { FeedbackInboxTab } from './admin-panel/FeedbackInboxTab'
 import { HotTopicTab } from './admin-panel/HotTopicTab'
 import { InviteCodesTab } from './admin-panel/InviteCodesTab'
 import { ProgrammingTab } from './admin-panel/ProgrammingTab'
+import { CueBoardTab } from './admin-panel/CueBoardTab'
 import { MediaPromptsTab } from './admin-panel/MediaPromptsTab'
 import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
 import { RuntimeDashboard } from '../components/RuntimeDashboard'
@@ -52,6 +53,17 @@ export function AdminProgrammingPage() {
   return (
     <AdminPageWrapper title="内容编排与排期">
       <ProgrammingTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminCueBoardPage() {
+  return (
+    <AdminPageWrapper
+      title="Cue Board"
+      description="公共讨论 cue 时间轴（只读）。T-209 phase；T-210 进入编辑能力。"
+    >
+      <CueBoardTab />
     </AdminPageWrapper>
   )
 }

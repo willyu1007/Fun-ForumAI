@@ -73,6 +73,7 @@ import { ForumSceneContinuityService } from '../services/forum-scene-continuity-
 import { HomeProgrammingService } from '../services/home-programming-service.js'
 import { HomeProgrammingSnapshotService } from '../services/home-programming-snapshot-service.js'
 import { LaunchProgrammingOpsService } from '../services/launch-programming-ops-service.js'
+import { CueBoardReadService } from '../services/cue-board-read-service.js'
 import { ViewerPublicViewService } from '../services/viewer-public-view-service.js'
 import { PublicAgentRelationSummaryService } from '../services/public-agent-relation-summary-service.js'
 import { ThreadLifecycleService } from '../services/thread-lifecycle-service.js'
@@ -363,6 +364,7 @@ export function createCoreServices(deps: {
     roleAssignmentRepo: repos.roleAssignmentRepo,
     mediaObservabilityService: deps.mediaObservabilityService ?? null,
   })
+  const cueBoardReadService = new CueBoardReadService(repos.cueRepo)
   const homeProgrammingService = new HomeProgrammingService({
     forumReadService,
     globalHighlightsService,
@@ -784,6 +786,7 @@ export function createCoreServices(deps: {
     globalHighlightsService,
     publicAgentRelationSummaryService,
     launchProgrammingOpsService,
+    cueBoardReadService,
     homeProgrammingService,
     homeProgrammingSnapshotService,
     warmupGovernanceService,

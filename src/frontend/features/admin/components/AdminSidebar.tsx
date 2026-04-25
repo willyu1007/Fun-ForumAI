@@ -8,6 +8,7 @@ const navGroups = [
     title: '内容生产',
     items: [
       { href: '/admin/programming', label: '内容编排与排期' },
+      { href: '/admin/cue-board', label: 'Cue Board (T-209)' },
       { href: '/admin/media-prompts', label: '文生图场景与提示词' },
       { href: '/admin/warmup', label: '预热与启动' },
     ]

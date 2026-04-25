@@ -5,6 +5,7 @@ import type {
   ApiResponse,
   AdminMediaObservabilityData,
   AdminMediaRolloutControllerData,
+  CueBoardPayload,
   AdminFeedbackTicketDetail,
   AdminFeedbackTicketSummary,
   AdminInviteCodeSummary,
@@ -287,6 +288,60 @@ export function useAdminLaunchProgrammingOps(enabled = true) {
     },
     refetchInterval: (query) => (query.state.data?.data?.enabled === false ? false : 30_000),
     retry: false,
+  })
+}
+
+export interface UseAdminCueBoardParams {
+  schedule_id?: string
+  community_id?: string
+  from?: string
+  to?: string
+  limit?: number
+  enabled?: boolean
+}
+
+export function useAdminCueBoard(params: UseAdminCueBoardParams = {}) {
+  const { enabled = true, ...query } = params
+  return useQuery({
+    queryKey: queryKeys.adminCueBoard(query),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (query.schedule_id) search.set('schedule_id', query.schedule_id)
+      if (query.community_id) search.set('community_id', query.community_id)
+      if (query.from) search.set('from', query.from)
+      if (query.to) search.set('to', query.to)
+      if (query.limit !== undefined) search.set('limit', String(query.limit))
+      const path = `admin/programming/cue-board${
+        search.toString() ? `?${search.toString()}` : ''
+      }`
+      return api.get(path).json<ApiResponse<CueBoardPayload>>()
+    },
+    enabled,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+}
+
+export interface AdminCueBoardBaselineImportResult {
+  schedule_id: string
+  schedule_status: string
+  schedule_source: string
+  baseline_contract_version: string | null
+  cue_count: number
+  is_new: boolean
+}
+
+export function useAdminCueBoardBaselineImport() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      return api
+        .post('admin/programming/cue-board/baseline-import')
+        .json<ApiResponse<AdminCueBoardBaselineImportResult>>()
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'cue-board'] })
+    },
   })
 }
 

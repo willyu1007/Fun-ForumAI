@@ -1,0 +1,417 @@
+import { useMemo, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { useAdminCueBoard, useAdminCueBoardBaselineImport } from '@/api/hooks'
+import type {
+  CueBoardCueItem,
+  CueBoardPayload,
+  CueLane,
+  CueRiskLevel,
+  PublicDiscussionCueStatus,
+} from '@/api/types'
+
+// =============================================================================
+// Visual helpers
+// =============================================================================
+
+const LANE_TONE: Record<CueLane, string> = {
+  prime: 'border-warning/40 bg-warning/10 text-warning',
+  standard: 'border-border bg-muted/30 text-foreground',
+  background: 'border-border/60 bg-muted/10 text-muted-foreground',
+}
+
+const RISK_TONE: Record<CueRiskLevel, string> = {
+  low: 'border-border/60 bg-muted/10 text-muted-foreground',
+  standard: 'border-border bg-muted/30 text-foreground',
+  high: 'border-destructive/40 bg-destructive/10 text-destructive',
+  strict_review: 'border-destructive/60 bg-destructive/20 text-destructive',
+}
+
+const STATUS_TONE: Partial<Record<PublicDiscussionCueStatus, string>> = {
+  draft: 'border-border/60 bg-muted/20 text-muted-foreground',
+  validated: 'border-border bg-muted/30 text-foreground',
+  scheduled: 'border-success/40 bg-success/10 text-success',
+  prewarming: 'border-warning/40 bg-warning/10 text-warning',
+  due: 'border-warning/40 bg-warning/10 text-warning',
+  claimed: 'border-warning/40 bg-warning/10 text-warning',
+  executing: 'border-warning/40 bg-warning/10 text-warning',
+  consumed: 'border-success/40 bg-success/10 text-success',
+  deferred: 'border-muted/40 bg-muted/20 text-muted-foreground',
+  skipped: 'border-muted/40 bg-muted/20 text-muted-foreground',
+  expired: 'border-destructive/40 bg-destructive/10 text-destructive',
+  cancelled: 'border-destructive/40 bg-destructive/10 text-destructive',
+  failed: 'border-destructive/40 bg-destructive/10 text-destructive',
+}
+
+function formatTriggerAt(iso: string, timezone: string): string {
+  // Use Intl.DateTimeFormat with explicit timeZone so the rendered time
+  // matches the schedule's canonical timezone, not the browser locale.
+  // Falls back gracefully if the runtime doesn't recognise the timezone string.
+  try {
+    const formatter = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+    return `${formatter.format(new Date(iso))} (${timezone})`
+  } catch {
+    return `${new Date(iso).toISOString()} (${timezone})`
+  }
+}
+
+function formatScheduleRange(startIso: string, endIso: string, timezone: string): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+    return `${formatter.format(new Date(startIso))} → ${formatter.format(new Date(endIso))}`
+  } catch {
+    return `${new Date(startIso).toISOString()} → ${new Date(endIso).toISOString()}`
+  }
+}
+
+// =============================================================================
+// Cue card
+// =============================================================================
+
+function CueCard({
+  cue,
+  selected,
+  onSelect,
+}: {
+  cue: CueBoardCueItem
+  selected: boolean
+  onSelect: () => void
+}) {
+  return (
+    <li
+      className={
+        'cursor-pointer border-l-2 py-3 pl-4 transition ' +
+        (selected ? 'border-primary bg-primary/5' : 'border-border/40 hover:bg-muted/20')
+      }
+      onClick={onSelect}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium text-foreground">
+          {formatTriggerAt(cue.trigger_at, cue.timezone)}
+        </span>
+        <Badge variant="outline" className={LANE_TONE[cue.lane]}>
+          lane:{cue.lane}
+        </Badge>
+        <Badge
+          variant="outline"
+          className={STATUS_TONE[cue.status] ?? 'border-border bg-muted/30 text-foreground'}
+        >
+          {cue.status}
+        </Badge>
+        <Badge variant="outline" className={RISK_TONE[cue.risk_level]}>
+          risk:{cue.risk_level}
+        </Badge>
+        <Badge variant="outline">priority:{cue.priority}</Badge>
+        {cue.community_id ? (
+          <Badge variant="outline">{cue.community_id}</Badge>
+        ) : null}
+        <Badge variant="outline">source:{cue.source_type}</Badge>
+      </div>
+
+      <p className="mt-2 text-sm text-foreground">
+        {cue.public_topic_label ?? cue.theme_intent_summary}
+      </p>
+      {cue.public_hook ? (
+        <p className="mt-1 text-xs text-muted-foreground">{cue.public_hook}</p>
+      ) : null}
+
+      <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span>roles: {cue.role_requirement_summary}</span>
+        {cue.scene_family_preview.length > 0 ? (
+          <span>scenes: {cue.scene_family_preview.join(' / ')}</span>
+        ) : null}
+        <span>media: {cue.media_count}</span>
+        {cue.locked_fields_count > 0 ? (
+          <span>🔒 {cue.locked_fields_count}</span>
+        ) : null}
+      </div>
+    </li>
+  )
+}
+
+// =============================================================================
+// Cue detail (read-only drawer)
+// =============================================================================
+
+function CueDetailDrawer({ cue }: { cue: CueBoardCueItem }) {
+  return (
+    <div
+      data-ui="card"
+      data-variant="outlined"
+      className="space-y-4 border-border/60 bg-muted/10 p-4 text-sm"
+    >
+      <div>
+        <h4 className="text-xs font-semibold text-muted-foreground">Identifier</h4>
+        <p className="font-mono text-xs">{cue.id}</p>
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold text-muted-foreground">Trigger</h4>
+        <p>{formatTriggerAt(cue.trigger_at, cue.timezone)}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          lane:{cue.lane} · priority:{cue.priority} · status:{cue.status}
+        </p>
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold text-muted-foreground">Theme intent</h4>
+        <p>{cue.theme_intent_summary}</p>
+        {cue.public_hook ? (
+          <p className="mt-1 text-xs text-muted-foreground">hook: {cue.public_hook}</p>
+        ) : null}
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold text-muted-foreground">Scene constraints</h4>
+        <p className="text-xs text-muted-foreground">
+          {cue.scene_family_preview.length > 0
+            ? `families: ${cue.scene_family_preview.join(' / ')}`
+            : '(no scene families specified)'}
+        </p>
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold text-muted-foreground">Role requirements</h4>
+        <p className="text-xs">{cue.role_requirement_summary}</p>
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold text-muted-foreground">Media</h4>
+        <p className="text-xs">{cue.media_count} attached</p>
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold text-muted-foreground">Governance</h4>
+        <p className="text-xs">
+          risk:{cue.risk_level} · locked fields: {cue.locked_fields_count}
+        </p>
+      </div>
+
+      <p className="border-t border-border/60 pt-3 text-xs text-muted-foreground">
+        Read-only view (T-209). The editable detail panel ships in T-210.
+      </p>
+    </div>
+  )
+}
+
+// =============================================================================
+// CueBoardTab
+// =============================================================================
+
+export function CueBoardTab() {
+  const query = useAdminCueBoard()
+  const importMutation = useAdminCueBoardBaselineImport()
+  const payload = query.data?.data
+  const [selectedCueId, setSelectedCueId] = useState<string | null>(null)
+
+  const selectedCue = useMemo(() => {
+    if (!payload || !selectedCueId) return null
+    return payload.cues.find((c) => c.id === selectedCueId) ?? null
+  }, [payload, selectedCueId])
+
+  if (query.isLoading) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card p-6 text-sm text-muted-foreground">
+        正在读取 cue board…
+      </div>
+    )
+  }
+
+  if (query.error) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card p-6 text-sm text-destructive">
+        <p>Cue board 加载失败：{(query.error as Error).message}</p>
+        <button
+          type="button"
+          className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs text-destructive hover:bg-destructive/20"
+          onClick={() => query.refetch()}
+        >
+          重试
+        </button>
+      </div>
+    )
+  }
+
+  if (!payload) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground">
+        Cue board 暂无数据。
+      </div>
+    )
+  }
+
+  return (
+    <CueBoardContent
+      payload={payload}
+      selectedCueId={selectedCueId}
+      onSelectCue={setSelectedCueId}
+      selectedCue={selectedCue}
+      onImportBaseline={() => importMutation.mutate()}
+      importInFlight={importMutation.isPending}
+      importError={importMutation.error as Error | null}
+    />
+  )
+}
+
+function CueBoardContent({
+  payload,
+  selectedCueId,
+  onSelectCue,
+  selectedCue,
+  onImportBaseline,
+  importInFlight,
+  importError,
+}: {
+  payload: CueBoardPayload
+  selectedCueId: string | null
+  onSelectCue: (id: string | null) => void
+  selectedCue: CueBoardCueItem | null
+  onImportBaseline: () => void
+  importInFlight: boolean
+  importError: Error | null
+}) {
+  if (!payload.schedule) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground">
+        <p>
+          当前还没有发布的 cue schedule。可以先从 baseline 配置导入一个草稿
+          schedule，编辑器准备好后再切换到人工创建。
+        </p>
+        <button
+          type="button"
+          className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1 text-xs text-primary hover:bg-primary/20 disabled:opacity-50"
+          onClick={onImportBaseline}
+          disabled={importInFlight}
+        >
+          {importInFlight ? '导入中…' : '从 baseline 配置导入草稿'}
+        </button>
+        {importError ? (
+          <p className="text-xs text-destructive">
+            导入失败：{importError.message}
+          </p>
+        ) : null}
+      </div>
+    )
+  }
+
+  return (
+    <div data-ui="stack" data-direction="col" data-gap="5">
+      <ScheduleHeader
+        payload={payload}
+        onImportBaseline={onImportBaseline}
+        importInFlight={importInFlight}
+        importError={importError}
+      />
+      <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,360px)]">
+        <ul data-ui="list" data-variant="admin-rows" className="space-y-1">
+          {payload.cues.length === 0 ? (
+            <li className="py-6 text-center text-sm text-muted-foreground">
+              当前 schedule 还没有 cue。
+            </li>
+          ) : (
+            payload.cues.map((cue) => (
+              <CueCard
+                key={cue.id}
+                cue={cue}
+                selected={selectedCueId === cue.id}
+                onSelect={() =>
+                  onSelectCue(selectedCueId === cue.id ? null : cue.id)
+                }
+              />
+            ))
+          )}
+        </ul>
+        <aside>
+          {selectedCue ? (
+            <CueDetailDrawer cue={selectedCue} />
+          ) : (
+            <div
+              data-ui="card"
+              data-variant="outlined"
+              className="border-dashed border-border/60 p-4 text-xs text-muted-foreground"
+            >
+              点击左侧 cue 查看只读详情。
+            </div>
+          )}
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function ScheduleHeader({
+  payload,
+  onImportBaseline,
+  importInFlight,
+  importError,
+}: {
+  payload: CueBoardPayload
+  onImportBaseline: () => void
+  importInFlight: boolean
+  importError: Error | null
+}) {
+  const s = payload.schedule!
+  return (
+    <div data-ui="card" data-variant="outlined" className="p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground">
+            Schedule {s.id}
+          </h3>
+          <Badge variant="outline">status:{s.status}</Badge>
+          <Badge variant="outline">source:{s.source}</Badge>
+          <Badge variant="outline">v{s.version}</Badge>
+          {s.scope_type !== 'global' ? (
+            <Badge variant="outline">scope:{s.scope_type}</Badge>
+          ) : null}
+          {s.baseline_contract_version ? (
+            <Badge variant="outline">baseline:{s.baseline_contract_version}</Badge>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="rounded-md border border-border bg-muted/30 px-3 py-1 text-xs hover:bg-muted/50 disabled:opacity-50"
+          onClick={onImportBaseline}
+          disabled={importInFlight}
+          title="重新从 launch_programming_schedule.v1.yaml 导入；若 baseline 版本已存在则只会复用既有 schedule。"
+        >
+          {importInFlight ? '导入中…' : '同步 baseline'}
+        </button>
+      </div>
+      {s.summary ? (
+        <p className="mt-2 text-xs text-muted-foreground">{s.summary}</p>
+      ) : null}
+      <p className="mt-2 text-xs text-muted-foreground">
+        {formatScheduleRange(s.date_range_start, s.date_range_end, s.timezone)} ·
+        cues: {payload.cues.length} · generated:{' '}
+        {new Intl.DateTimeFormat('zh-CN', {
+          timeZone: s.timezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        }).format(new Date(payload.generated_at))}
+      </p>
+      {importError ? (
+        <p className="mt-2 text-xs text-destructive">
+          baseline 同步失败：{importError.message}
+        </p>
+      ) : null}
+    </div>
+  )
+}

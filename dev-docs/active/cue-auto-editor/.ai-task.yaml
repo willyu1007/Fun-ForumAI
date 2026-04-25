@@ -1,0 +1,13 @@
+version: 1
+task_id: T-214
+project: main
+slug: cue-auto-editor
+status: planned
+updated: "2026-04-25"
+keywords:
+  - auto-editor
+  - trigger-detector
+  - load-gate
+  - llm-patch
+  - auto-patch-inbox
+  - phase-5

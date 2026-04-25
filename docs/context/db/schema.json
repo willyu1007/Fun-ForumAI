@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-24T14:16:13.647Z",
+  "updatedAt": "2026-04-25T14:26:16.030Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -262,6 +262,182 @@
         "FORUM_THREAD",
         "CHAT_ROOM_WINDOW",
         "NIGHTLY_COMPACTION"
+      ]
+    },
+    {
+      "name": "CueChangeApprovalStatus",
+      "values": [
+        "PENDING",
+        "AUTO_APPLIED",
+        "APPROVED",
+        "REJECTED",
+        "ROLLED_BACK"
+      ]
+    },
+    {
+      "name": "CueChangeSource",
+      "values": [
+        "MANUAL",
+        "AUTOMATED",
+        "SYSTEM"
+      ]
+    },
+    {
+      "name": "CueChangeType",
+      "values": [
+        "CREATE_CUE",
+        "UPDATE_CUE",
+        "CANCEL_CUE",
+        "DEFER_CUE",
+        "MERGE_INTO_EXISTING_CUE",
+        "SPLIT_CUE",
+        "ATTACH_MEDIA",
+        "REMOVE_MEDIA",
+        "UPDATE_DISPATCH_POLICY",
+        "UPDATE_RISK_LEVEL",
+        "PUBLISH_SCHEDULE",
+        "ROLLBACK_SCHEDULE"
+      ]
+    },
+    {
+      "name": "CueChangeValidationStatus",
+      "values": [
+        "PENDING",
+        "PASSED",
+        "FAILED"
+      ]
+    },
+    {
+      "name": "CueExecutionAttemptStatus",
+      "values": [
+        "PENDING",
+        "ADMITTED",
+        "LEASED",
+        "ALLOCATING",
+        "COMPILING",
+        "EXECUTING",
+        "SUCCEEDED",
+        "FAILED",
+        "SKIPPED",
+        "DELAYED",
+        "MISFIRED",
+        "CANCELLED"
+      ]
+    },
+    {
+      "name": "CueLane",
+      "values": [
+        "PRIME",
+        "STANDARD",
+        "BACKGROUND"
+      ]
+    },
+    {
+      "name": "CueLoadSnapshotFreshness",
+      "values": [
+        "LIVE",
+        "CACHED"
+      ]
+    },
+    {
+      "name": "CueLoadState",
+      "values": [
+        "GREEN",
+        "YELLOW",
+        "RED"
+      ]
+    },
+    {
+      "name": "CueMediaCreatedByType",
+      "values": [
+        "ADMIN",
+        "SYSTEM_LLM",
+        "BASELINE"
+      ]
+    },
+    {
+      "name": "CueMediaRole",
+      "values": [
+        "CONTEXT_ANCHOR",
+        "MOOD_REFERENCE",
+        "EVIDENCE_CARD",
+        "VISUAL_SEED",
+        "COVER_CANDIDATE",
+        "CONTINUITY_ANCHOR"
+      ]
+    },
+    {
+      "name": "CueMediaUsageStrength",
+      "values": [
+        "OPTIONAL",
+        "PREFERRED",
+        "ANCHOR",
+        "SELECTED_ONLY_POOL"
+      ]
+    },
+    {
+      "name": "CueMediaUsePolicy",
+      "values": [
+        "RUNTIME_ONLY",
+        "PREFER_RUNTIME_CONTEXT",
+        "PREFER_PUBLIC_DISPLAY",
+        "ALLOW_GENERATED_DERIVATIVE",
+        "REQUIRE_PUBLIC_DISPLAY"
+      ]
+    },
+    {
+      "name": "CueMediaValidationStatus",
+      "values": [
+        "VALID",
+        "INVALID",
+        "BLOCKED",
+        "DEGRADED"
+      ]
+    },
+    {
+      "name": "CueRiskLevel",
+      "values": [
+        "LOW",
+        "STANDARD",
+        "HIGH",
+        "STRICT_REVIEW"
+      ]
+    },
+    {
+      "name": "CueScheduleSource",
+      "values": [
+        "BASELINE",
+        "MANUAL",
+        "AUTOMATED",
+        "MIXED"
+      ]
+    },
+    {
+      "name": "CueScheduleStatus",
+      "values": [
+        "DRAFT",
+        "REVIEW",
+        "PUBLISHED",
+        "ACTIVE",
+        "ARCHIVED",
+        "ROLLED_BACK"
+      ]
+    },
+    {
+      "name": "CueScopeType",
+      "values": [
+        "GLOBAL",
+        "COMMUNITY",
+        "ROOM"
+      ]
+    },
+    {
+      "name": "CueSourceType",
+      "values": [
+        "MANUAL",
+        "AUTOMATED",
+        "BASELINE",
+        "SYSTEM"
       ]
     },
     {
@@ -553,6 +729,25 @@
       "values": [
         "ACTIVE",
         "RELEASED"
+      ]
+    },
+    {
+      "name": "PublicDiscussionCueStatus",
+      "values": [
+        "DRAFT",
+        "VALIDATING",
+        "VALIDATED",
+        "SCHEDULED",
+        "PREWARMING",
+        "DUE",
+        "CLAIMED",
+        "EXECUTING",
+        "CONSUMED",
+        "DEFERRED",
+        "SKIPPED",
+        "EXPIRED",
+        "CANCELLED",
+        "FAILED"
       ]
     },
     {
@@ -12601,6 +12796,254 @@
       ]
     },
     {
+      "name": "CommunityRuntimeLoadSnapshot",
+      "dbName": "community_runtime_load_snapshots",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activeSceneCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "active_scene_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "capacityRemaining",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "capacity_remaining",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "computedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "computed_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dueCueCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "due_cue_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "executingCueCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "executing_cue_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "freshness",
+          "type": "CueLoadSnapshotFreshness",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "CACHED",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "globalState",
+          "type": "CueLoadState",
+          "nullable": false,
+          "list": false,
+          "dbName": "global_state",
+          "dbType": null,
+          "default": "GREEN",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "hotThreadPressure",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "hot_thread_pressure",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "loadScore",
+          "type": "Float",
+          "nullable": false,
+          "list": false,
+          "dbName": "load_score",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "mediaQueueDepth",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "media_queue_depth",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "providerQueuePressure",
+          "type": "Float",
+          "nullable": true,
+          "list": false,
+          "dbName": "provider_queue_pressure",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "recentRootPostCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "recent_root_post_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "recentThreadFollowupCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "recent_thread_followup_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scheduledCueCount",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "scheduled_cue_count",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "state",
+          "type": "CueLoadState",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "GREEN",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visibleLlmQueueDepth",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "visible_llm_queue_depth",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "windowEnd",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "window_end",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "windowStart",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "window_start",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "computedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "freshness",
+            "computedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "CommunitySearchDoc",
       "dbName": "community_search_docs",
       "schema": null,
@@ -13434,6 +13877,572 @@
           "fields": [
             "agentId",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "CueExecutionAttempt",
+      "dbName": "cue_execution_attempts",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorSurface",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "actor_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "actualClaimedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "actual_claimed_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "admissionLatencyMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "admission_latency_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "admissionResultJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "admission_result_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "agentRunId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_run_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "allocatorLatencyMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "allocator_latency_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "allocatorResultJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "allocator_result_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "attemptNo",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "attempt_no",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "compiledPayloadRef",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "compiled_payload_ref",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "compileLatencyMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "compile_latency_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "consumptionResultJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "consumption_result_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cueId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "cue_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorBriefJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "director_brief_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "directorSurface",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "director_surface",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "displayAttributionJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "display_attribution_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodeId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "episodePlanId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "episode_plan_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorCode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorText",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_text",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "finishedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "finished_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "forumSceneMetadataId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "forum_scene_metadata_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "idempotency_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "leaseExpiresAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "lease_expires_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "leaseOwner",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "lease_owner",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "llmLatencyMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "llm_latency_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "loadSnapshotJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "load_snapshot_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "localIntentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "local_intent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "mediaUsageJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "media_usage_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "moderationResultJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "moderation_result_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "overlayId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "overlay_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "queueLatencyMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "queue_latency_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomProgramEventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_program_event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scheduledTriggerAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "scheduled_trigger_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectedAgentIdsJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "selected_agent_ids_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectedCastJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "selected_cast_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectionId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "selection_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "startedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "started_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "CueExecutionAttemptStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "threadId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "thread_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "totalLatencyMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "total_latency_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "turnId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "turn_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "writeLatencyMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "write_latency_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "cue",
+          "to": "PublicDiscussionCue",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "cueId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "cueId",
+            "status"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "leaseOwner",
+            "leaseExpiresAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "scheduledTriggerAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "cueId",
+            "attemptNo"
           ],
           "name": null,
           "map": null
@@ -26974,6 +27983,860 @@
           "fields": [
             "status",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PublicDiscussionCue",
+      "dbName": null,
+      "schema": null,
+      "columns": [
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "scheduleId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "schedule_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sourceType",
+          "type": "CueSourceType",
+          "nullable": false,
+          "list": false,
+          "dbName": "source_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "PublicDiscussionCueStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "DRAFT",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": []
+    },
+    {
+      "name": "PublicDiscussionCueChange",
+      "dbName": "public_discussion_cue_changes",
+      "schema": null,
+      "columns": [
+        {
+          "name": "actorSystem",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "actor_system",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "actorUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "actor_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "appliedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "applied_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "approvalStatus",
+          "type": "CueChangeApprovalStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": "approval_status",
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "baseRevision",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "base_revision",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "changeType",
+          "type": "CueChangeType",
+          "nullable": false,
+          "list": false,
+          "dbName": "change_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cueId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "cue_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "diffJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "diff_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "loadSnapshotJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "load_snapshot_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "patchJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "patch_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "riskLevel",
+          "type": "CueRiskLevel",
+          "nullable": false,
+          "list": false,
+          "dbName": "risk_level",
+          "dbType": null,
+          "default": "STANDARD",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scheduleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "schedule_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type": "CueChangeSource",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "triggerId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "trigger_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "triggerType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "trigger_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "validationJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "validation_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "validationStatus",
+          "type": "CueChangeValidationStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": "validation_status",
+          "dbType": null,
+          "default": "PENDING",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "cue",
+          "to": "PublicDiscussionCue",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "cueId"
+          ],
+          "references": [
+            "id"
+          ]
+        },
+        {
+          "field": "schedule",
+          "to": "PublicDiscussionCueSchedule",
+          "optional": true,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "scheduleId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "approvalStatus",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "cueId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "scheduleId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PublicDiscussionCueMedia",
+      "dbName": "public_discussion_cue_media",
+      "schema": null,
+      "columns": [
+        {
+          "name": "assetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdById",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "created_by_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByType",
+          "type": "CueMediaCreatedByType",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_by_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "cueId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "cue_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "displayPolicy",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "display_policy",
+          "dbType": null,
+          "default": "\"runtime_decides\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "reuseLimit",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "reuse_limit",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "role",
+          "type": "CueMediaRole",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "selectionNote",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "selection_note",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "semanticSnapshotId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "semantic_snapshot_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sortOrder",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "sort_order",
+          "dbType": null,
+          "default": "0",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "usageStrength",
+          "type": "CueMediaUsageStrength",
+          "nullable": false,
+          "list": false,
+          "dbName": "usage_strength",
+          "dbType": null,
+          "default": "OPTIONAL",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "usePolicy",
+          "type": "CueMediaUsePolicy",
+          "nullable": false,
+          "list": false,
+          "dbName": "use_policy",
+          "dbType": null,
+          "default": "PREFER_RUNTIME_CONTEXT",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "validationReason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "validation_reason",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "validationStatus",
+          "type": "CueMediaValidationStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": "validation_status",
+          "dbType": null,
+          "default": "VALID",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "cue",
+          "to": "PublicDiscussionCue",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "cueId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "assetId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "cueId",
+            "sortOrder"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "PublicDiscussionCueSchedule",
+      "dbName": "public_discussion_cue_schedules",
+      "schema": null,
+      "columns": [
+        {
+          "name": "approvedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "approved_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "approvedByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "approved_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "baselineContractVersion",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "baseline_contract_version",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "baseScheduleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "base_schedule_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdBySystem",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "created_by_system",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dateRangeEnd",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "date_range_end",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dateRangeStart",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "date_range_start",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "publishedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "published_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "rollbackFromScheduleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "rollback_from_schedule_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "scopeType",
+          "type": "CueScopeType",
+          "nullable": false,
+          "list": false,
+          "dbName": "scope_type",
+          "dbType": null,
+          "default": "GLOBAL",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type": "CueScheduleSource",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "MANUAL",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "CueScheduleStatus",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "DRAFT",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "summary",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "timezone",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"Asia/Shanghai\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "changes",
+          "to": "PublicDiscussionCueChange",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        },
+        {
+          "field": "cues",
+          "to": "PublicDiscussionCue",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "status"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "dateRangeStart"
           ],
           "name": null,
           "map": null

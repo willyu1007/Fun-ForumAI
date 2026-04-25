@@ -1437,6 +1437,76 @@ tasks:
       - R-022
     dev_docs_path: dev-docs/archive/agent-biography-llm-dedicated-routing
     updated: 2026-04-21
+  - id: T-207
+    slug: admin-auto-programming
+    status: planned
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/admin-auto-programming
+    updated: 2026-04-25
+  - id: T-208
+    slug: cue-shared-contract
+    status: done
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/cue-shared-contract
+    updated: 2026-04-25
+  - id: T-209
+    slug: cue-data-and-board
+    status: done
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/cue-data-and-board
+    updated: 2026-04-26
+  - id: T-210
+    slug: cue-editor-admin
+    status: planned
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/cue-editor-admin
+    updated: 2026-04-25
+  - id: T-211
+    slug: post-scheduler-boundary
+    status: planned
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/post-scheduler-boundary
+    updated: 2026-04-25
+  - id: T-212
+    slug: cue-worker-runtime
+    status: planned
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/cue-worker-runtime
+    updated: 2026-04-25
+  - id: T-213
+    slug: cue-load-control
+    status: planned
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/cue-load-control
+    updated: 2026-04-25
+  - id: T-214
+    slug: cue-auto-editor
+    status: planned
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/cue-auto-editor
+    updated: 2026-04-25
+  - id: T-215
+    slug: cue-public-projection
+    status: planned
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/cue-public-projection
+    updated: 2026-04-25
+  - id: T-216
+    slug: cue-media-policy
+    status: planned
+    milestone_id: M-000
+    feature_id: F-060
+    dev_docs_path: dev-docs/active/cue-media-policy
+    updated: 2026-04-25
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: archived
@@ -1911,4 +1981,11 @@ tasks:
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/archive/text-to-image-scene-pack-quality-upgrade
+    updated: 2026-04-25
+  - id: T-995
+    slug: kickoff-step3-live-run-v4-100-slots
+    status: in-progress
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/kickoff-step3-live-run-v4-100-slots
     updated: 2026-04-25
