@@ -2,7 +2,7 @@ version: 1
 task_id: T-994
 project: main
 slug: text-to-image-scene-pack-quality-upgrade
-status: in-progress
+status: archived
 updated: "2026-04-25"
 keywords:
   - media

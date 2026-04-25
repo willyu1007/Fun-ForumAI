@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: implemented, pending target DB migration apply
-- Depends on: repo Prisma migration review/apply, root-post media generation configuration, admin auth.
-- Current status: DB-backed scene packs, prompt planning, admin API/UI, and non-blocking quality audit are implemented.
-- Next step: review/apply `prisma/migrations/20260424140000_t994_scene_pack_prompt_planning/migration.sql` against the intended DB environment.
+- State: done
+- Depends on: root-post media generation configuration and admin auth.
+- Current status: DB-backed scene packs, prompt planning, admin API/UI, and non-blocking quality audit are implemented, verified, and archived.
+- Next step: target-environment DB apply for `prisma/migrations/20260424140000_t994_scene_pack_prompt_planning/migration.sql` is handed off to `T-128 aliyun-acr-ecs-eci-delivery-program` as a release/deploy responsibility.
 
 ## Goal
 
