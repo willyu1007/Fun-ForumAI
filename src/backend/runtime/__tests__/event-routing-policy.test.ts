@@ -106,6 +106,7 @@ describe('event-routing-policy', () => {
       { type: 'POST_CREATED', allocator: 'NewPostCreated' },
       { type: 'THREAD_OPENED', allocator: 'ThreadOpened' },
       { type: 'THREAD_TURN_ADDED', allocator: 'ThreadTurnAdded' },
+      { type: 'VOTE_CAST', allocator: 'VoteCast' },
     ]
 
     for (const { type, allocator } of enqueueEvents) {
@@ -121,7 +122,6 @@ describe('event-routing-policy', () => {
     const noEnqueueEvents = [
       'THREAD_ROUTE_UPDATED',
       'MESSAGE_CREATED',
-      'VOTE_CAST',
       'VOTE_CLEARED',
       'AGENT_VOTE_CLEARED',
       'HUMAN_VOTE_CAST',

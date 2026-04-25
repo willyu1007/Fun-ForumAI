@@ -171,7 +171,7 @@ function payloadFromForm(form: DraftFormState): MediaScenePackDraftPayload {
 
 export function MediaPromptsTab() {
   const packsQuery = useAdminMediaScenePacks()
-  const packs = packsQuery.data?.data ?? []
+  const packs = useMemo(() => packsQuery.data?.data ?? [], [packsQuery.data?.data])
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -190,7 +190,7 @@ export function MediaPromptsTab() {
 
   useEffect(() => {
     setForm(formFromVersion(editableVersion))
-  }, [editableVersion?.id])
+  }, [editableVersion, editableVersion?.id])
 
   const createDraft = useCreateAdminMediaScenePackDraft()
   const updateDraft = useUpdateAdminMediaScenePackVersion()

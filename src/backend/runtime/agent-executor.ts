@@ -7,6 +7,7 @@ import type { DataPlaneWriter } from './data-plane-writer.js'
 import type { AllocationResult, EventPayload } from '../allocator/types.js'
 import type { AgentExecutionResult, ExecutionContext, WriteInstruction } from './types.js'
 import type { LlmTokenUsage } from '../llm/types.js'
+import type { PersonaObservationV1 } from './persona-observation.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentService } from '../services/agent-service.js'
@@ -60,6 +61,25 @@ interface ExecuteOneResult extends AgentExecutionResult {
 interface VisibleRoutingDecision {
   homeVoiceLineId: import('../../shared/agent-persona-catalog.js').VoiceLineId
   requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+}
+
+type ForumRuntimeEventPayload = EventPayload & {
+  event_type: 'NewPostCreated' | 'ThreadOpened' | 'ThreadTurnAdded'
+}
+
+type ForumPromptScene = 'forum_post' | 'forum_thread'
+
+type TextWriteInstruction = Extract<
+  WriteInstruction,
+  { action: 'create_post' | 'open_thread' | 'add_thread_turn' | 'create_message' }
+>
+
+function hasTextBody(instruction: WriteInstruction): instruction is TextWriteInstruction {
+  return instruction.action !== 'vote'
+}
+
+function isForumPromptScene(scene: 'forum_post' | 'forum_thread' | 'chat_room'): scene is ForumPromptScene {
+  return scene === 'forum_post' || scene === 'forum_thread'
 }
 
 function normalizeForumNoWriteReason(reason: string):
@@ -127,7 +147,7 @@ export class AgentExecutor {
     replyBudgetRemaining: number | null,
   ): Promise<ExecuteOneResult> {
     const start = Date.now()
-    let ctx: ExecutionContext | null = null
+    let ctx: ExecutionContext
 
     try {
       ctx = await this.deps.contextBuilder.build(event, agent)
@@ -152,7 +172,7 @@ export class AgentExecutor {
         return result
       }
 
-      if (shouldUseForumRoaming) {
+      if (shouldUseForumRoaming && isForumRuntimeEvent(event)) {
         const result = await this.executeForumThreadWithRoaming({
           start,
           event,
@@ -329,7 +349,7 @@ export class AgentExecutor {
 
   private async executeForumThreadWithRoaming(input: {
     start: number
-    event: EventPayload
+    event: ForumRuntimeEventPayload
     agent: { agent_id: string; score: number; priority: number }
     ctx: ExecutionContext
     replyBudgetRemaining: number | null
@@ -665,6 +685,7 @@ export class AgentExecutor {
 
     if (
       writeResult.success &&
+      hasTextBody(instruction) &&
       input.ctx.promptScene &&
       input.ctx.runtimeEnvelope?.renderTierDecision &&
       this.deps.personaStateService
@@ -691,7 +712,7 @@ export class AgentExecutor {
   }
   private async executeForumActionPlan(input: {
     start: number
-    event: EventPayload
+    event: ForumRuntimeEventPayload
     agent: { agent_id: string; score: number; priority: number }
     ctx: ExecutionContext
     replyBudgetRemaining: number | null
@@ -699,6 +720,16 @@ export class AgentExecutor {
     preResolvedRouting?: VisibleRoutingDecision | null
   }): Promise<ExecuteOneResult> {
     const promptScene = this.pickScene(input.event, input.ctx)
+    if (!isForumPromptScene(promptScene)) {
+      return this.recordNoWriteDecision({
+        agentId: input.agent.agent_id,
+        event: input.event,
+        start: input.start,
+        ctx: input.ctx,
+        usage: input.extraUsage ?? null,
+        reason: 'decision_failed',
+      })
+    }
     const actionPlanRequestedTier = this.getForumDecisionRequestedTier(promptScene)
     const routing = input.preResolvedRouting
       && promptScene === 'forum_thread'
@@ -718,9 +749,9 @@ export class AgentExecutor {
       homeVoiceLineId: routing.homeVoiceLineId,
       requestedTier: routing.requestedTier,
       responseMode: 'json_object',
-        localOverrides: {
-          executionPolicyId: 'visible-forum_reply-action-plan-lite',
-        },
+      localOverrides: {
+        executionPolicyId: 'visible-forum_reply-action-plan-lite',
+      },
     })) {
       return this.recordNoWriteDecision({
         agentId: input.agent.agent_id,
@@ -745,6 +776,7 @@ export class AgentExecutor {
           input.ctx,
           identity?.persona_seed_code ?? 'scholar',
           promptScene,
+          input.event.event_type,
         ),
         budgetClass: 'visible_standard',
         traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:action_plan`,
@@ -802,14 +834,6 @@ export class AgentExecutor {
     let instructions = resolved.resolved_instructions
 
     if (instructions.length === 0) {
-      this.debugLogConservativeOutcome({
-        event: input.event,
-        agentId: input.agent.agent_id,
-        reason: 'no_write',
-        ctx: input.ctx,
-        replyBudgetRemaining: input.replyBudgetRemaining,
-        validationStatus: 'all_actions_dropped',
-      })
       return this.recordNoWriteDecision({
         agentId: input.agent.agent_id,
         event: input.event,
@@ -888,9 +912,9 @@ export class AgentExecutor {
 
     if (survivingText) {
       const templateId = this.pickTemplate(input.event, input.ctx)
-      const bodyRequestedTier = promptScene === 'chat_room' ? 'lite' : 'base'
-      const canServeBodyRoute = promptScene === 'forum_thread'
-        ? this.canServeVisibleForumRoute({
+      const bodyRequestedTier = 'base'
+      const bodyRouteOverrides = this.getForumBodyExecutionPolicyOverrides(promptScene)
+      const canServeBodyRoute = this.canServeVisibleForumRoute({
             agentId: input.agent.agent_id,
             traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body:capability`,
             scene: promptScene,
@@ -898,31 +922,7 @@ export class AgentExecutor {
             homeVoiceLineId: routing.homeVoiceLineId,
             requestedTier: bodyRequestedTier,
             responseMode: 'text',
-            localOverrides: {
-              executionPolicyId: 'visible-forum_reply-thread-base',
-            },
-          })
-        : promptScene === 'forum_post'
-          ? this.canServeVisibleForumRoute({
-              agentId: input.agent.agent_id,
-              traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body:capability`,
-              scene: promptScene,
-              promptRef: templateId,
-              homeVoiceLineId: routing.homeVoiceLineId,
-              requestedTier: bodyRequestedTier,
-              responseMode: 'text',
-              localOverrides: {
-                executionPolicyId: 'visible-forum_reply-post-base',
-              },
-            })
-        : this.canServeVisibleForumRoute({
-            agentId: input.agent.agent_id,
-            traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body:capability`,
-            scene: promptScene,
-            promptRef: templateId,
-            homeVoiceLineId: routing.homeVoiceLineId,
-            requestedTier: bodyRequestedTier,
-            responseMode: 'text',
+            localOverrides: bodyRouteOverrides,
           })
       if (!canServeBodyRoute) {
         if (!survivingVote) {
@@ -946,64 +946,49 @@ export class AgentExecutor {
 
     if (survivingText) {
       const templateId = this.pickTemplate(input.event, input.ctx)
-      let bodyResponse: Awaited<ReturnType<LLMGateway['generateVisibleText']>>
+      let bodyResponse: Awaited<ReturnType<LLMGateway['generateVisibleText']> | null> = null
       try {
-        bodyResponse = promptScene === 'forum_thread'
-          ? await this.deps.llmGateway.generateVisibleText({
-              intent: 'forum_reply',
-              scene: promptScene,
-              modality: 'text',
-              responseMode: 'text',
-              agentId: input.agent.agent_id,
-              homeVoiceLineId: routing.homeVoiceLineId,
-              promptRef: templateId,
-              variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
-              budgetClass: 'visible_standard',
-              traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body`,
-              promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
-              requestedTier: promptScene === 'chat_room' ? 'lite' : 'base',
-              allowFallbackWithinLine: true,
-              allowCrossFamily: false,
-              localOverrides: {
-                executionPolicyId: 'visible-forum_reply-thread-base',
-              },
-            })
-          : promptScene === 'forum_post'
-            ? await this.deps.llmGateway.generateVisibleText({
-                intent: 'forum_reply',
-                scene: promptScene,
-                modality: 'text',
-                responseMode: 'text',
-                agentId: input.agent.agent_id,
-                homeVoiceLineId: routing.homeVoiceLineId,
-                promptRef: templateId,
-                variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
-                budgetClass: 'visible_standard',
-                traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body`,
-                promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
-                requestedTier: promptScene === 'chat_room' ? 'lite' : 'base',
-                allowFallbackWithinLine: true,
-                allowCrossFamily: false,
-                localOverrides: {
-                  executionPolicyId: 'visible-forum_reply-post-base',
-                },
-              })
-          : await this.deps.llmGateway.generateVisibleText({
-              intent: 'forum_reply',
-              scene: promptScene,
-              modality: 'text',
-              responseMode: 'text',
-              agentId: input.agent.agent_id,
-              homeVoiceLineId: routing.homeVoiceLineId,
-              promptRef: templateId,
-              variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
-              budgetClass: 'visible_standard',
-              traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body`,
-              promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
-              requestedTier: promptScene === 'chat_room' ? 'lite' : 'base',
-              allowFallbackWithinLine: true,
-              allowCrossFamily: false,
-            })
+        if (promptScene === 'forum_thread') {
+          bodyResponse = await this.deps.llmGateway.generateVisibleText({
+            intent: 'forum_reply',
+            scene: promptScene,
+            modality: 'text',
+            responseMode: 'text',
+            agentId: input.agent.agent_id,
+            homeVoiceLineId: routing.homeVoiceLineId,
+            promptRef: templateId,
+            variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
+            budgetClass: 'visible_standard',
+            traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body`,
+            promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
+            requestedTier: 'base',
+            allowFallbackWithinLine: true,
+            allowCrossFamily: false,
+            localOverrides: {
+              executionPolicyId: 'visible-forum_reply-thread-base',
+            },
+          })
+        } else {
+          bodyResponse = await this.deps.llmGateway.generateVisibleText({
+            intent: 'forum_reply',
+            scene: promptScene,
+            modality: 'text',
+            responseMode: 'text',
+            agentId: input.agent.agent_id,
+            homeVoiceLineId: routing.homeVoiceLineId,
+            promptRef: templateId,
+            variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
+            budgetClass: 'visible_standard',
+            traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body`,
+            promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
+            requestedTier: 'base',
+            allowFallbackWithinLine: true,
+            allowCrossFamily: false,
+            localOverrides: {
+              executionPolicyId: 'visible-forum_reply-post-base',
+            },
+          })
+        }
       } catch (error) {
         if (!this.isRouteUnavailableLlmError(error)) {
           throw error
@@ -1024,9 +1009,8 @@ export class AgentExecutor {
         }
         textDroppedBy = 'route_unavailable'
         survivingText = null
-        bodyResponse = null as never
       }
-      if (!survivingText) {
+      if (!survivingText || !bodyResponse) {
         // Route-unavailable degradation retained a surviving vote-only action.
       } else {
       const normalizedBody = normalizeModelOutputText(bodyResponse.content)
@@ -1165,6 +1149,12 @@ export class AgentExecutor {
     }
   }
 
+  private getForumBodyExecutionPolicyOverrides(scene: ForumPromptScene): { executionPolicyId: string } {
+    return scene === 'forum_thread'
+      ? { executionPolicyId: 'visible-forum_reply-thread-base' }
+      : { executionPolicyId: 'visible-forum_reply-post-base' }
+  }
+
   private applyInstructionRuntimeMetadata(
     ctx: ExecutionContext,
     instruction: WriteInstruction,
@@ -1175,12 +1165,12 @@ export class AgentExecutor {
         generation_mode: ctx.event.generation_mode,
       }
     }
-    if (ctx.public_scene && instruction.action !== 'vote') {
+    if (ctx.public_scene && hasTextBody(instruction)) {
       instruction.public_scene = ctx.public_scene
     }
     if (
       ctx.surface_media_plan
-      && instruction.action !== 'vote'
+      && hasTextBody(instruction)
     ) {
       instruction.audit_metadata = {
         ...(instruction.audit_metadata ?? {}),
@@ -1202,7 +1192,7 @@ export class AgentExecutor {
         reply_thread_id: ctx.forum_targeting.reply_thread_id,
         browse_reason: ctx.forum_targeting.browse_reason,
         allowed_actions: ctx.forum_targeting.allowed_actions,
-        written_anchor_turn_id: instruction.anchor_turn_id ?? null,
+        written_anchor_turn_id: instruction.action === 'add_thread_turn' ? instruction.anchor_turn_id ?? null : null,
       }
       instruction.audit_metadata = {
         ...(instruction.audit_metadata ?? {}),
@@ -1356,12 +1346,13 @@ export class AgentExecutor {
   private buildForumActionPlanVariables(
     ctx: ExecutionContext,
     personaSeedCode: import('../../shared/agent-persona-catalog.js').PersonaSeedCode,
-    scene: 'forum_post' | 'forum_thread',
+    scene: ForumPromptScene,
+    eventType: ForumRuntimeEventPayload['event_type'],
   ): Record<string, string> {
     return {
       ...this.buildVariables(ctx, personaSeedCode, scene),
       forum_action_options_json: buildForumActionOptionsPayload({
-        event_type: ctx.event.event_type,
+        event_type: eventType,
         options: buildForumActionOptions(ctx),
       }),
     }
@@ -1466,13 +1457,13 @@ export class AgentExecutor {
   }
 
   private getForumDecisionRequestedTier(
-    scene: 'forum_post' | 'forum_thread' | 'chat_room',
+    _scene: ForumPromptScene,
   ): import('../../shared/agent-persona-catalog.js').RenderTier {
     return 'lite'
   }
 
   private isDeterministicObserveOnlyRoaming(
-    candidates: ExecutionContext['forum_roaming']['arrival_candidates'],
+    candidates: NonNullable<ExecutionContext['forum_roaming']>['arrival_candidates'],
   ): boolean {
     return candidates.length > 0
       && candidates.every(

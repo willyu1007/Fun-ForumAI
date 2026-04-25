@@ -12,14 +12,14 @@
     "heavyRouteMaxRawBytes": 200000
   },
   "heavyRouteChunkNames": [
-    "AdminPanel",
+    "AdminPages",
     "ChatRoomPage",
     "PostDetailPage"
   ],
   "requiredAsyncRoutes": [
     {
-      "name": "AdminPanel",
-      "moduleId": "src/frontend/features/admin/pages/AdminPanel.tsx"
+      "name": "AdminPages",
+      "moduleId": "src/frontend/features/admin/pages/AdminPages.tsx"
     },
     {
       "name": "ChatRoomPage",

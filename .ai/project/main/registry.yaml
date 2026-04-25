@@ -1886,10 +1886,10 @@ tasks:
     updated: 2026-04-22
   - id: T-991
     slug: kickoff-live-run-v3
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/kickoff-live-run-v3
+    dev_docs_path: dev-docs/archive/kickoff-live-run-v3
     updated: 2026-04-25
   - id: T-992
     slug: runtime-autonomous-vote-pipeline

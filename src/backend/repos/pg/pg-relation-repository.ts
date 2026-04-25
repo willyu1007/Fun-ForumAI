@@ -148,7 +148,7 @@ export class PgRelationRepository implements RelationRepository {
       if (err instanceof RelationStateChangeSkippedError) {
         const relation = await this.getRelation(input.relation_input.from_agent_id, input.relation_input.to_agent_id)
         if (!relation) {
-          throw new Error('relation_not_found_after_skipped_state_change')
+          throw new Error('relation_not_found_after_skipped_state_change', { cause: err })
         }
         return {
           applied: false,
@@ -167,7 +167,7 @@ export class PgRelationRepository implements RelationRepository {
           }),
         ])
         if (!relation || !eventRow) {
-          throw new Error('relation_domain_event_not_found_after_dedup')
+          throw new Error('relation_domain_event_not_found_after_dedup', { cause: err })
         }
         const domainEvent = this.toDomainEvent(eventRow)
         this.deps.rememberEventPersisted?.(domainEvent)

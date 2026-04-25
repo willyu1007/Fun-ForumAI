@@ -328,6 +328,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
     ) ?? Object.getOwnPropertyDescriptor(llmGateway, 'isConfigured')
     const originalGatewayGenerateVisibleText = llmGateway.generateVisibleText.bind(llmGateway)
     const originalGatewayGenerateHiddenArtifact = llmGateway.generateHiddenArtifact.bind(llmGateway)
+    const originalGatewayCanServeRoute = llmGateway.canServeRoute.bind(llmGateway)
     const schedulerDeps = postScheduler as unknown as {
       deps?: {
         publicSceneSelectorService?: {
@@ -407,6 +408,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
       model: 'test-model',
       usage: mockPostResponse.usage,
     })
+    llmGateway.canServeRoute = vi.fn(() => true)
     llmGateway.generateVisibleText = vi.fn().mockResolvedValue(mockPostResponse)
     llmGateway.generateHiddenArtifact = vi.fn().mockResolvedValue(mockVisionResponse)
 
@@ -466,7 +468,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
 
       const runtimePostRes = await request(app).post('/v1/dev/runtime/post').send()
       expect(runtimePostRes.status).toBe(200)
-      expect(runtimePostRes.body.data.triggered).toBe(true)
+      expect(runtimePostRes.body.data).toMatchObject({ triggered: true })
       expect(runtimePostRes.body.data.agent_id).toBe(agentId)
       const postId = runtimePostRes.body.data.post_id as string
       expect(typeof postId).toBe('string')
@@ -485,6 +487,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
       expect(currentRes.body.data.latest_public_attachment.asset_id).toBe(assetId)
     } finally {
       llmClient.chat = originalChat
+      llmGateway.canServeRoute = originalGatewayCanServeRoute
       llmGateway.generateVisibleText = originalGatewayGenerateVisibleText
       llmGateway.generateHiddenArtifact = originalGatewayGenerateHiddenArtifact
       if (originalIsConfigured) {
@@ -514,6 +517,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
     ) ?? Object.getOwnPropertyDescriptor(llmGateway, 'isConfigured')
     const originalGatewayGenerateVisibleText = llmGateway.generateVisibleText.bind(llmGateway)
     const originalGatewayGenerateHiddenArtifact = llmGateway.generateHiddenArtifact.bind(llmGateway)
+    const originalGatewayCanServeRoute = llmGateway.canServeRoute.bind(llmGateway)
     const originalMediaGatewayGenerate = mediaGenerationGateway.generate.bind(mediaGenerationGateway)
     const originalMediaGatewayIsConfigured = Object.getOwnPropertyDescriptor(
       Object.getPrototypeOf(mediaGenerationGateway),
@@ -571,6 +575,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
       model: 'test-model',
       usage: { prompt_tokens: 12, completion_tokens: 24, total_tokens: 36 },
     })
+    llmGateway.canServeRoute = vi.fn(() => true)
     llmGateway.generateVisibleText = vi.fn().mockResolvedValue({
       content: JSON.stringify({
         community_id_or_slug: 'hot-arena',
@@ -678,7 +683,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
 
       const runtimePostRes = await request(app).post('/v1/dev/runtime/post').send()
       expect(runtimePostRes.status).toBe(200)
-      expect(runtimePostRes.body.data.triggered).toBe(true)
+      expect(runtimePostRes.body.data).toMatchObject({ triggered: true })
       expect(runtimePostRes.body.data.agent_id).toBe(agentId)
       const postId = runtimePostRes.body.data.post_id as string
       expect(typeof postId).toBe('string')
@@ -698,6 +703,7 @@ describe('E2E: Multimodal media + owner-only growth controls', () => {
       expect(currentRes.body.data.latest_public_attachment.asset_id).toBe(generatedAssetId)
     } finally {
       llmClient.chat = originalChat
+      llmGateway.canServeRoute = originalGatewayCanServeRoute
       llmGateway.generateVisibleText = originalGatewayGenerateVisibleText
       llmGateway.generateHiddenArtifact = originalGatewayGenerateHiddenArtifact
       mediaGenerationGateway.generate = originalMediaGatewayGenerate

@@ -370,7 +370,11 @@ describe('AgentInteractionModal geometry updates', () => {
   it('updates modal position while keeping the active tab render stable during drag', () => {
     renderOpenModal()
 
-    const modal = screen.getByTestId('agent-modal-content')
+    type ModalContentWithOutsideHandlers = HTMLElement & {
+      __onInteractOutside?: (event: Event) => void
+      __onPointerDownOutside?: (event: Event) => void
+    }
+    const modal = screen.getByTestId('agent-modal-content') as ModalContentWithOutsideHandlers
     const dragHandle = screen.getByTestId('agent-modal-drag-handle')
     const initialTransform = modal.style.transform
     const initialIntroRenders = renderCounts.intro
@@ -396,7 +400,7 @@ describe('AgentInteractionModal geometry updates', () => {
   it('renders with an explicit initial geometry instead of falling back to full-width dialog defaults', () => {
     renderOpenModal()
 
-    const modal = screen.getByTestId('agent-modal-content')
+    const modal = screen.getByTestId('agent-modal-content') as ModalContentTestElement
 
     expect(modal.style.transform).toMatch(/^translate3d\(\d+px, \d+px, 0\)$/)
     expect(modal.style.width).toMatch(/px$/)
@@ -597,7 +601,7 @@ describe('AgentInteractionModal geometry updates', () => {
       useAgentModalStore.setState({ activeTab: 'chat' })
     })
 
-    const modal = screen.getByTestId('agent-modal-content')
+    const modal = screen.getByTestId('agent-modal-content') as ModalContentTestElement
     expect(modal.getAttribute('data-has-interact-outside-handler')).toBeNull()
     expect(modal.getAttribute('data-has-pointer-down-outside-handler')).toBeNull()
 

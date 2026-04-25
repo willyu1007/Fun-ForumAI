@@ -594,6 +594,13 @@ export function AgentInteractionModal() {
     }
   }, [geometryMenuOpen])
 
+  useLayoutEffect(() => {
+    const menu = geometryMenuRef.current
+    if (!menu || !geometryMenuPosition) return
+    menu.style.top = `${geometryMenuPosition.top}px`
+    menu.style.left = `${geometryMenuPosition.left}px`
+  }, [geometryMenuPosition])
+
   useEffect(() => {
     if (!geometryMenuOpen) return
     geometryCenterButtonRef.current?.focus()
@@ -1106,10 +1113,6 @@ export function AgentInteractionModal() {
             aria-labelledby="agent-modal-geometry-trigger"
             data-testid="agent-modal-geometry-menu"
             className="pointer-events-auto fixed z-[90] min-w-[8rem] -translate-x-full overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-            style={{
-              top: geometryMenuPosition.top,
-              left: geometryMenuPosition.left,
-            }}
             onKeyDown={(event) => {
               const items = Array.from(
                 geometryMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],

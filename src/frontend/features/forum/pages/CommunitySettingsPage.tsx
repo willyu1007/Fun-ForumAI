@@ -19,7 +19,7 @@ import {
   readCommunitySurfaceSettings,
 } from '@/shared/utils/community-shell-meta'
 import { cn } from '@/lib/utils'
-import { COMMUNITY_FAMILY_TO_SHELL_CATEGORY } from '../../../../shared/semantic-taxonomy'
+import { buildCommunityTopicSemanticPreview, readCommunityFamily } from '../../../../shared/semantic-taxonomy'
 import type { CommunityFamily, CommunityInteractionContract } from '../../../../shared/semantic-taxonomy'
 
 const TOPIC_FAMILY_VALUES = [
@@ -163,7 +163,7 @@ export function CommunitySettingsPage() {
     setSelectedBannerUrl(surfaceSettings.bannerImageUrl ?? fallbackBanner)
     setSelectedAvatarUrl(surfaceSettings.avatarImageUrl ?? fallbackAvatar)
     setPublicIntro(surfaceSettings.publicIntro ?? '')
-    setSelectedTopicFamily(community.community_semantics?.community_family ?? null)
+    setSelectedTopicFamily(readCommunityFamily(community))
     setSelectedInteractionContract(effectiveCommunityInteractionContract)
     setActiveVisualTarget(null)
   }, [community, effectiveCommunityInteractionContract, isEditingPreview])
@@ -213,7 +213,7 @@ export function CommunitySettingsPage() {
   }
 
   const defaultSurfaceSettings = readCommunitySurfaceSettings(community)
-  const defaultTopicFamily = community.community_semantics?.community_family ?? null
+  const defaultTopicFamily = readCommunityFamily(community)
   const defaultInteractionContract = effectiveCommunityInteractionContract
   const selectedParticipationMode = findParticipationModeOption(selectedInteractionContract)
   const selectedParticipationModeControlValue = selectedParticipationMode?.value
@@ -272,13 +272,10 @@ export function CommunitySettingsPage() {
                     description: publicIntro.trim() || community.description,
                     banner_image_url: selectedBannerUrl,
                     avatar_image_url: selectedAvatarUrl,
-                    community_semantics: selectedTopicFamily
-                      ? {
-                          ...(community.community_semantics ?? {}),
-                          community_family: selectedTopicFamily,
-                          community_shell_category: COMMUNITY_FAMILY_TO_SHELL_CATEGORY[selectedTopicFamily],
-                        }
-                      : community.community_semantics,
+                    community_semantics: buildCommunityTopicSemanticPreview(
+                      community.community_semantics,
+                      selectedTopicFamily,
+                    ),
                     interaction_contract: selectedInteractionContract ?? community.interaction_contract ?? null,
                   }}
                   isAuthenticated

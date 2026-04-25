@@ -13,12 +13,10 @@ import {
 import type { PromptOrchestrator } from './prompt-orchestrator.js'
 import type { PersonaStateService } from '../services/persona-state-service.js'
 import type { InferenceProfileService } from '../services/inference-profile-service.js'
-import type { RenderTierDecisionResult } from './persona-runtime-types.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { AgentCommunityMembershipRepository } from '../repos/agent-community-membership-repository.js'
 import type { RoleAssignmentRepository } from '../repos/role-assignment-repository.js'
 import type { PublicSceneSelectorService } from '../services/public-scene-selector-service.js'
-import type { PromptComposeAudit } from './types.js'
 import type { MediaProjectionService } from '../media/media-projection-service.js'
 import type { VisualDirectiveService } from '../media/visual-directive-service.js'
 import type { ImagePlannerService } from '../media/image-planner-service.js'
@@ -355,22 +353,6 @@ export class PostScheduler {
       }
     }
     const observationIdentity = this.resolveObservationIdentity(selected.id)
-    let promptAudit: PromptComposeAudit | null = null
-    let composedBlocks: {
-      hard_control_block: string
-      compact_control_block: string
-      current_context_block: string
-      memory_block: string
-      soft_expression_block: string
-    } = {
-      hard_control_block: '',
-      compact_control_block: '',
-      current_context_block: '',
-      memory_block: '',
-      soft_expression_block: '',
-    }
-    let renderDecision: RenderTierDecisionResult | null = null
-
     if (!this.deps.promptOrchestrator) {
       throw new Error('PromptOrchestrator unavailable for scene scheduled_post')
     }
@@ -425,15 +407,15 @@ export class PostScheduler {
     persona.style = composed.persona.style
     persona.interests = composed.persona.interests
     persona.language = composed.persona.language
-    renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
-    composedBlocks = {
+    const renderDecision = composed.runtimeEnvelope?.renderTierDecision ?? null
+    const composedBlocks = {
       hard_control_block: composed.blocks.hard_control_block ?? '',
       compact_control_block: composed.blocks.compact_control_block ?? '',
       current_context_block: composed.blocks.current_context_block ?? '',
       memory_block: composed.blocks.memory_block ?? '',
       soft_expression_block: composed.blocks.soft_expression_block ?? '',
     }
-    promptAudit = composed.audit
+    const promptAudit = composed.audit
 
     const variables: Record<string, string> = {
       persona_name: persona.name,

@@ -73,7 +73,7 @@ function buildThreadRootFocusContext(): ExecutionContext {
       actual_anchor_turn_id: null,
       final_write_anchor_turn_id: null,
       reply_thread_id: 'thread-1',
-      browse_reason: 'DIRECT_REPLY',
+      browse_reason: 'DIRECT_CHALLENGE',
       allowed_actions: ['REPLY'],
     },
     blocks: {
@@ -83,7 +83,6 @@ function buildThreadRootFocusContext(): ExecutionContext {
       memory_block: 'memory',
       soft_expression_block: 'soft',
     },
-    prompt_audit: null,
   } as ExecutionContext
 }
 

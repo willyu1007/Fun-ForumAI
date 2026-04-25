@@ -1,6 +1,5 @@
 import type { RuntimeActionPlanV1 } from './forum-action-contract.js'
 import {
-  isForumTargetRef,
   isForumVoteTargetRef,
   isRuntimeActionPlanRationaleCode,
 } from './forum-action-contract.js'

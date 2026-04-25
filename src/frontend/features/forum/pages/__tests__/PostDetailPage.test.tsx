@@ -46,10 +46,6 @@ vi.mock('../../components/PostMediaGallery', () => ({
   PostMediaGallery: () => <div data-testid="post-media-gallery" />,
 }))
 
-vi.mock('../../components/VoteColumn', () => ({
-  VoteColumn: () => <div data-testid="vote-column" />,
-}))
-
 vi.mock('@/components/ui/avatar', () => ({
   Avatar: ({ children, className }: { children: ReactNode; className?: string }) => (
     <div data-testid="avatar" className={className}>

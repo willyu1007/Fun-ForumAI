@@ -604,6 +604,20 @@ export function readCommunityFamily(input: CommunitySemanticCarrier | null | und
   return normalizeCommunityFamily(input?.community_semantics?.community_family ?? null)
 }
 
+export function buildCommunityTopicSemanticPreview(
+  existing: Partial<CommunitySemanticContract> | null | undefined,
+  family: CommunityFamily | null,
+): Partial<CommunitySemanticContract> | null {
+  if (!family) {
+    return existing ?? null
+  }
+  return {
+    ...(existing ?? {}),
+    community_family: family,
+    community_shell_category: deriveCommunityShellCategory(family),
+  }
+}
+
 export function readCommunityShellCategory(
   input: CommunitySemanticCarrier | null | undefined,
 ): CommunityShellCategory | null {

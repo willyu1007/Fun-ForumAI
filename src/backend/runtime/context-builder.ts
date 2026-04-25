@@ -217,54 +217,49 @@ export class ContextBuilder {
     const communityHardRule = communityProfile?.hard_rules_text || ctx.community.rules
     const communitySoftCulture = communityProfile?.soft_culture_text || ctx.community.description
 
-    let composed
-    try {
-      composed = await this.deps.promptOrchestrator.compose({
-        agentId: ctx.agent.agent_id,
-        scene,
-        conversationText,
-        communityId: ctx.community.id,
-        topicHints,
-        currentContextSources: this.buildCurrentContextSources(ctx, scene),
-        requestEnvelope: this.buildRequestEnvelope(scene, {
-          currentUserText: promptFocusEntry?.body,
-        }),
-        communityHardRule,
-        communitySoftCulture,
-        ...(communityProfile
-          ? {
-              communityProfileProvenance: {
-                source: communityProfile.provenance.source,
-                version: 'v1',
-              },
-            }
-          : {}),
-        sceneRule: ctx.chatContext
-          ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
-          : ctx.event.event_type === 'NewMessageCreated'
-            ? '你正在聊天室中继续群聊'
-          : promptFocusEntry
-            ? '你正在公共 thread 中继续推进当前回合'
-            : '你正在论坛帖子下参与公开讨论',
-        shortTermState: ctx.chatContext
-          ? `recent_messages=${ctx.chatContext.recent_messages.length}`
-          : ctx.event.event_type === 'NewMessageCreated'
-            ? 'recent_messages=0'
-            : ctx.threadMeta
-              ? `thread_turns=${Math.max((ctx.threadTurns?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_mode=${ctx.threadMeta.writeability.reply_mode};preferred_action=${ctx.threadMeta.writeability.preferred_action};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
-              : ctx.threadTurns
-                ? `thread_turns=${Math.max(ctx.threadTurns.length - 1, 0)}`
-                : '',
-        threadTurns: ctx.threadTurns?.map((entry) => ({
-          id: entry.id,
-          author_agent_id: entry.author_agent_id,
-          body: entry.body,
-        })),
-        focusThreadTurnId: promptFocusEntry?.id,
-      })
-    } catch (error) {
-      throw error
-    }
+    const composed = await this.deps.promptOrchestrator.compose({
+      agentId: ctx.agent.agent_id,
+      scene,
+      conversationText,
+      communityId: ctx.community.id,
+      topicHints,
+      currentContextSources: this.buildCurrentContextSources(ctx, scene),
+      requestEnvelope: this.buildRequestEnvelope(scene, {
+        currentUserText: promptFocusEntry?.body,
+      }),
+      communityHardRule,
+      communitySoftCulture,
+      ...(communityProfile
+        ? {
+            communityProfileProvenance: {
+              source: communityProfile.provenance.source,
+              version: 'v1',
+            },
+          }
+        : {}),
+      sceneRule: ctx.chatContext
+        ? `你正在聊天室「${ctx.chatContext.room_name}」中继续群聊`
+        : ctx.event.event_type === 'NewMessageCreated'
+          ? '你正在聊天室中继续群聊'
+        : promptFocusEntry
+          ? '你正在公共 thread 中继续推进当前回合'
+          : '你正在论坛帖子下参与公开讨论',
+      shortTermState: ctx.chatContext
+        ? `recent_messages=${ctx.chatContext.recent_messages.length}`
+        : ctx.event.event_type === 'NewMessageCreated'
+          ? 'recent_messages=0'
+          : ctx.threadMeta
+            ? `thread_turns=${Math.max((ctx.threadTurns?.length ?? 1) - 1, 0)};thread_state=${ctx.threadMeta.thread_state};reply_mode=${ctx.threadMeta.writeability.reply_mode};preferred_action=${ctx.threadMeta.writeability.preferred_action};reply_budget_remaining=${ctx.threadMeta.reply_budget_remaining}`
+            : ctx.threadTurns
+              ? `thread_turns=${Math.max(ctx.threadTurns.length - 1, 0)}`
+              : '',
+      threadTurns: ctx.threadTurns?.map((entry) => ({
+        id: entry.id,
+        author_agent_id: entry.author_agent_id,
+        body: entry.body,
+      })),
+      focusThreadTurnId: promptFocusEntry?.id,
+    })
     ctx.persona = composed.persona
     ctx.blocks = composed.blocks
     ctx.runtimeEnvelope = composed.runtimeEnvelope ?? null

@@ -74,13 +74,17 @@ export function evaluateVoteGuardrails(input: {
     }
   }
 
+  const existingVoteDirection = existing?.direction === 'UP' || existing?.direction === 'DOWN'
+    ? existing.direction
+    : undefined
+
   return {
     outcome: 'allow',
     normalized_transition:
       input.instruction.direction === 'DOWN'
         ? 'CAST_DOWN'
         : 'CAST_UP',
-    ...(existing ? { existing_vote_direction: existing.direction } : {}),
+    ...(existingVoteDirection ? { existing_vote_direction: existingVoteDirection } : {}),
   }
 }
 

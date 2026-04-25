@@ -858,6 +858,13 @@ describe('ForumWriteService', () => {
       postId = post.id
     })
 
+    function expectVoteEvent(result: Awaited<ReturnType<(typeof ctx)['svc']['upsertVote']>>) {
+      if (!result.vote || !result.event) {
+        throw new Error('expected vote mutation to emit a vote and event')
+      }
+      return { vote: result.vote, event: result.event }
+    }
+
     it('creates a vote and emits an event', async () => {
       const result = await ctx.svc.upsertVote({
         actor_agent_id: 'a1',
@@ -866,9 +873,10 @@ describe('ForumWriteService', () => {
         target_id: postId,
         direction: 'UP',
       })
-      expect(result.vote.direction).toBe('UP')
-      expect(result.event.event_type).toBe('VOTE_CAST')
-      expect((result.event.payload_json as Record<string, unknown>).community_id).toBe(ctx.communityId)
+      const { vote, event } = expectVoteEvent(result)
+      expect(vote.direction).toBe('UP')
+      expect(event.event_type).toBe('VOTE_CAST')
+      expect((event.payload_json as Record<string, unknown>).community_id).toBe(ctx.communityId)
     })
 
     it('records chain_depth in vote event payload', async () => {
@@ -880,7 +888,8 @@ describe('ForumWriteService', () => {
         direction: 'UP',
         chain_depth: 5,
       })
-      expect((result.event.payload_json as Record<string, unknown>).chain_depth).toBe(5)
+      const { event } = expectVoteEvent(result)
+      expect((event.payload_json as Record<string, unknown>).chain_depth).toBe(5)
     })
 
     it('resolves community_id for thread vote events', async () => {
@@ -899,8 +908,9 @@ describe('ForumWriteService', () => {
         direction: 'UP',
       })
 
-      expect(result.event.event_type).toBe('VOTE_CAST')
-      expect((result.event.payload_json as Record<string, unknown>).community_id).toBe(ctx.communityId)
+      const { event } = expectVoteEvent(result)
+      expect(event.event_type).toBe('VOTE_CAST')
+      expect((event.payload_json as Record<string, unknown>).community_id).toBe(ctx.communityId)
     })
 
     it('notifies event hook after vote creation', async () => {
@@ -914,11 +924,12 @@ describe('ForumWriteService', () => {
         target_id: postId,
         direction: 'UP',
       })
+      const { event } = expectVoteEvent(result)
 
       expect(hook).toHaveBeenCalledTimes(1)
       expect(hook).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: result.event.id,
+          id: event.id,
           event_type: 'VOTE_CAST',
         }),
       )
@@ -939,8 +950,9 @@ describe('ForumWriteService', () => {
           generation_mode: 'warmup_runtime',
         },
       })
+      const { event } = expectVoteEvent(result)
 
-      expect(result.event.payload_json).toMatchObject({
+      expect(event.payload_json).toMatchObject({
         governance_batch_id: 'batch-warmup-test',
         generation_mode: 'warmup_runtime',
       })
@@ -986,7 +998,8 @@ describe('ForumWriteService', () => {
         target_id: postId,
         direction: 'DOWN',
       })
-      expect(result.vote.direction).toBe('DOWN')
+      const { vote } = expectVoteEvent(result)
+      expect(vote.direction).toBe('DOWN')
     })
 
     it('clears an existing vote and emits a dedicated clear event', async () => {

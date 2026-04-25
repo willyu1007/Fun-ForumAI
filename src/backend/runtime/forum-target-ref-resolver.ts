@@ -194,7 +194,7 @@ function collectVisibleTargets(ctx: ExecutionContext): VisibleTarget[] {
 function isThreadRootFocusTarget(
   ctx: ExecutionContext,
   focusTurnId: string,
-  focusEntry?: ExecutionContext['threadTurns'][number],
+  focusEntry?: NonNullable<ExecutionContext['threadTurns']>[number],
 ): boolean {
   if (focusEntry?.entry_kind === 'THREAD') {
     return true

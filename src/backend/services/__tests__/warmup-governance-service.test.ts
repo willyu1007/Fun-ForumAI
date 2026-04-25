@@ -535,6 +535,9 @@ describe('WarmupGovernanceService', () => {
     expect(result.verification.active_baseline.reasons).toContain('warmup_layer_not_ready')
 
     const kickoff = await ctx.service.getKickoffStatus()
+    if (!kickoff) {
+      throw new Error('expected kickoff status baseline')
+    }
     expect(kickoff?.baseline_label).toBe('kickoff-baseline-test')
     expect(kickoff?.verification.ok).toBe(true)
     expect(kickoff?.current_warmup_run).toBeNull()
@@ -908,6 +911,9 @@ describe('WarmupGovernanceService', () => {
     })
 
     const kickoff = await ctx.service.getKickoffStatus()
+    if (!kickoff) {
+      throw new Error('expected kickoff status baseline')
+    }
     const staleStartedAt = new Date('2026-04-18T11:00:00.000Z')
     vi.setSystemTime(staleStartedAt)
     const staleRun = await ctx.repos.warmupGovernanceRepo.createBatch({

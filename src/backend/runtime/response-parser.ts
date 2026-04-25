@@ -1,4 +1,4 @@
-import type { ExecutionContext, WriteInstruction } from './types.js'
+import type { CreatePostWriteInstruction, ExecutionContext, WriteInstruction } from './types.js'
 import { sanitizeChatOutput } from './chat-output-sanitizer.js'
 
 interface CommunityCandidate {
@@ -158,7 +158,7 @@ export class ResponseParser {
     fallbackCommunityId: string
     communities: CommunityCandidate[]
     lockedCommunityId?: string
-  }): WriteInstruction | null {
+  }): CreatePostWriteInstruction | null {
     const normalized = normalizeScheduledPostText(input.text)
     const parsed = this.tryParseScheduledJson(normalized, input.communities)
       ?? this.tryParseScheduledLabeledPost(normalized, input.communities)

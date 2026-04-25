@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../client'
-import type { ApiResponse, StyleSettings, InstructionInfo, InstructionTemplate, PromptOverrides } from '../types'
+import type { ApiResponse, StyleSettings, PromptOverrides } from '../types'
 
 export function useAgentStyle(agentId: string) {
   return useQuery({
@@ -18,66 +18,6 @@ export function useUpdateAgentStyle(agentId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['agentStyle', agentId] })
     },
-  })
-}
-
-export function useAgentInstructions(agentId: string) {
-  return useQuery({
-    queryKey: ['agentInstructions', agentId] as const,
-    queryFn: () => api.get(`agents/${agentId}/instructions`).json<ApiResponse<InstructionInfo[]>>(),
-    enabled: !!agentId,
-  })
-}
-
-export function useCreateInstruction(agentId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data: { name: string; trigger_type: string; trigger_params?: unknown; body: string; priority?: number }) =>
-      api.post(`agents/${agentId}/instructions`, { json: data }).json<ApiResponse<{ id: string }>>(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['agentInstructions', agentId] })
-    },
-  })
-}
-
-export function useUpdateInstruction(agentId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, ...data }: { id: string; name?: string; trigger_type?: string; trigger_params?: unknown; body?: string; priority?: number }) =>
-      api.patch(`agents/${agentId}/instructions/${id}`, { json: data }).json<ApiResponse<unknown>>(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['agentInstructions', agentId] })
-    },
-  })
-}
-
-export function useDeleteInstruction(agentId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) =>
-      api.delete(`agents/${agentId}/instructions/${id}`).json<ApiResponse<unknown>>(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['agentInstructions', agentId] })
-    },
-  })
-}
-
-export function useToggleInstruction(agentId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) =>
-      api.post(`agents/${agentId}/instructions/${id}/toggle`).json<ApiResponse<{ enabled: boolean }>>(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['agentInstructions', agentId] })
-    },
-  })
-}
-
-export function useInstructionTemplates() {
-  return useQuery({
-    queryKey: ['instructionTemplates'] as const,
-    queryFn: () => api.get('instruction-templates').json<ApiResponse<InstructionTemplate[]>>(),
-    staleTime: Infinity,
   })
 }
 

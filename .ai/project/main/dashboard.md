@@ -8,13 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 204 (planned: 1, in-progress: 5, blocked: 0, done: 1, archived: 197)
+- Tasks: 204 (planned: 1, in-progress: 5, blocked: 0, done: 0, archived: 198)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-991 kickoff-live-run-v3 | done | F-000 | dev-docs/active/kickoff-live-run-v3 |
+| T-991 kickoff-live-run-v3 | archived | F-000 | dev-docs/archive/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | archived | F-000 | dev-docs/archive/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |

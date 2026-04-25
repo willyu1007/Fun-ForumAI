@@ -31,6 +31,22 @@ export function parseArgs(args) {
   return result;
 }
 
+export function resolveVmPlannerOptions(args, helpText) {
+  const opts = parseArgs(args);
+
+  if (opts.help) {
+    console.log(helpText);
+    return { opts, exitCode: 0 };
+  }
+
+  if (!opts.env) {
+    console.error('[error] --env is required. Use --help for usage.');
+    return { opts, exitCode: 1 };
+  }
+
+  return { opts, exitCode: null };
+}
+
 export function loadJSON(relPath) {
   const filePath = resolve(ROOT, relPath);
   if (!existsSync(filePath)) return null;
@@ -188,6 +204,46 @@ export function resolveServices(deployConfig, pkgInfo, serviceId) {
   };
 }
 
+export function loadVmPlanningContext(envId, serviceId, plannerLabel) {
+  const deployConfig = loadJSON('ops/deploy/config.json');
+  if (!deployConfig) {
+    throw new Error('ops/deploy/config.json not found');
+  }
+
+  if (deployConfig.model !== 'vm') {
+    throw new Error(
+      `Expected ops/deploy/config.json model="vm" for ECS host planning (found "${deployConfig.model}")`,
+    );
+  }
+
+  const envCfg = deployConfig.environments.find((env) => env.id === envId);
+  if (!envCfg) {
+    throw new Error(`Environment "${envId}" not configured in ops/deploy/config.json`);
+  }
+  if (!envCfg.canDeploy) {
+    throw new Error(`Environment "${envId}" is not handled by the VM/Compose ${plannerLabel} planner.`);
+  }
+
+  const envChecks = validateEnvContract(envId);
+  const envFile = loadEnvironmentConfig(envId);
+  const pkgInfo = validatePackagingTarget();
+  const serviceInfo = resolveServices(deployConfig, pkgInfo, serviceId);
+  if (serviceInfo.error) {
+    throw new Error(serviceInfo.error);
+  }
+  if (serviceInfo.missingPackagingTargets.length > 0) {
+    throw new Error(`Missing packaging target(s): ${serviceInfo.missingPackagingTargets.join(', ')}`);
+  }
+
+  return {
+    deployConfig,
+    envCfg,
+    envChecks,
+    envFile,
+    serviceInfo,
+  };
+}
+
 function readString(...values) {
   for (const value of values) {
     if (typeof value !== 'string') continue;
@@ -341,6 +397,12 @@ export function listMissingVmFields(target) {
   }
   if (!target.dbCompat) missing.push('--db-compat');
   return missing;
+}
+
+export function printVmReadiness(envChecks, servicePlans) {
+  const allChecksPassed = envChecks.every((check) => check.ok);
+  const allPlansReady = servicePlans.every((plan) => plan.issues.length === 0);
+  console.log(`\nReady to hand off to operator: ${allChecksPassed && allPlansReady ? 'YES' : 'NO (fix issues above)'}`);
 }
 
 export function quoteShell(value) {

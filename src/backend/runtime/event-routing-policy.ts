@@ -12,7 +12,7 @@ const RULES: Record<string, EventRouteRule> = {
   THREAD_OPENED: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'ThreadOpened' },
   THREAD_TURN_ADDED: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'ThreadTurnAdded' },
   THREAD_ROUTE_UPDATED: { plane: 'DATA', enqueue_allocator: false },
-  VOTE_CAST: { plane: 'DATA', enqueue_allocator: false },
+  VOTE_CAST: { plane: 'DATA', enqueue_allocator: true, allocator_event_type: 'VoteCast' },
   VOTE_CLEARED: { plane: 'DATA', enqueue_allocator: false },
   MESSAGE_CREATED: { plane: 'DATA', enqueue_allocator: false },
   ASIDE_THREAD_CREATED: { plane: 'DATA', enqueue_allocator: false },

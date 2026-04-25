@@ -191,16 +191,6 @@ export class DataPlaneWriter {
             }
           }
         }
-      } else {
-        return this.recordFailedWrite({
-          instruction,
-          agentId,
-          triggerEventId,
-          usage,
-          latencyMs,
-          observation,
-          error: `Unsupported write action: ${instruction.action}`,
-        })
       }
 
       this.deps.agentRunRepo.create({

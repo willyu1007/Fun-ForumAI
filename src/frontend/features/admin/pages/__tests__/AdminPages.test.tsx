@@ -1,6 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { AdminPanel } from '../AdminPanel'
+import type { ComponentProps, ReactNode } from 'react'
+import {
+  AdminGovernancePage,
+  AdminHotTopicPage,
+  AdminProgrammingPage,
+  AdminWarmupPage,
+} from '../AdminPages'
 import type { ComplaintTicket, ReviewCaseDetail, ReviewEvidenceExport } from '@/api/types'
 import {
   useAdminAgentRiskProfile,
@@ -21,7 +27,6 @@ import {
   useCreateDisclosureCapOverride,
   useDisclosureCaps,
   useGovernanceAction,
-  useHealth,
   useIdentityReviews,
   useModerationCase,
   useModerationEvidenceExport,
@@ -75,7 +80,6 @@ vi.mock('@/api/hooks', () => ({
   useCreateDisclosureCapOverride: vi.fn(),
   useDisclosureCaps: vi.fn(),
   useGovernanceAction: vi.fn(),
-  useHealth: vi.fn(),
   useIdentityReviews: vi.fn(),
   useModerationCase: vi.fn(),
   useModerationEvidenceExport: vi.fn(),
@@ -97,6 +101,57 @@ vi.mock('@/shared/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
 
+vi.mock('@/components/ui/select', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+  type SelectContextValue = {
+    value?: string
+    onValueChange?: (value: string) => void
+  }
+  const SelectContext = React.createContext<SelectContextValue>({})
+
+  return {
+    Select: ({
+      value,
+      onValueChange,
+      children,
+    }: {
+      value?: string
+      onValueChange?: (value: string) => void
+      children: ReactNode
+    }) => (
+      <SelectContext.Provider value={{ value, onValueChange }}>
+        <div>{children}</div>
+      </SelectContext.Provider>
+    ),
+    SelectTrigger: ({ children, ...props }: ComponentProps<'button'>) => (
+      <button type="button" {...props}>
+        {children}
+      </button>
+    ),
+    SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    SelectItem: ({
+      value,
+      children,
+    }: {
+      value: string
+      children: ReactNode
+    }) => {
+      const context = React.useContext(SelectContext)
+      return (
+        <button
+          type="button"
+          role="option"
+          aria-selected={context.value === value}
+          onClick={() => context.onValueChange?.(value)}
+        >
+          {children}
+        </button>
+      )
+    },
+    SelectValue: () => <span />,
+  }
+})
+
 const useAssignModerationCaseMock = vi.mocked(useAssignModerationCase)
 const useClaimModerationTaskMock = vi.mocked(useClaimModerationTask)
 const useAdminAgentRiskProfileMock = vi.mocked(useAdminAgentRiskProfile)
@@ -115,7 +170,6 @@ const useApplyCommunityHotTopicPolicyMock = vi.mocked(useApplyCommunityHotTopicP
 const useCreateDisclosureCapOverrideMock = vi.mocked(useCreateDisclosureCapOverride)
 const useDisclosureCapsMock = vi.mocked(useDisclosureCaps)
 const useGovernanceActionMock = vi.mocked(useGovernanceAction)
-const useHealthMock = vi.mocked(useHealth)
 const useIdentityReviewsMock = vi.mocked(useIdentityReviews)
 const useModerationCaseMock = vi.mocked(useModerationCase)
 const useModerationEvidenceExportMock = vi.mocked(useModerationEvidenceExport)
@@ -284,26 +338,21 @@ const shareExport: ReviewEvidenceExport = {
   ],
 }
 
-describe('AdminPanel', () => {
+describe('AdminPages', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(HTMLElement.prototype, 'hasPointerCapture', {
+      configurable: true,
+      value: () => false,
+    })
+    Object.defineProperty(HTMLElement.prototype, 'releasePointerCapture', {
+      configurable: true,
+      value: () => undefined,
+    })
 
     useAuthMock.mockReturnValue({
       currentIdentity: 'admin',
       user: { id: 'admin-1' },
-    } as never)
-    useHealthMock.mockReturnValue({
-      data: {
-        ok: true,
-        service: 'forum-api',
-        checks: {
-          app: 'ok',
-          db: 'ok',
-          redis: 'ok',
-        },
-        version: 'test-build',
-        ts: '2026-04-13T00:00:00.000Z',
-      },
     } as never)
     useGovernanceActionMock.mockReturnValue({
       mutateAsync: vi.fn(),
@@ -575,7 +624,7 @@ describe('AdminPanel', () => {
       isPending: false,
     } as never)
 
-    render(<AdminPanel />)
+    render(<AdminGovernancePage />)
 
     const queueButton = screen.getByText('COMPLAINT · Privacy complaint').closest('button')
     expect(queueButton).toBeTruthy()
@@ -598,16 +647,8 @@ describe('AdminPanel', () => {
     fireEvent.mouseDown(exportTab)
     fireEvent.click(exportTab)
 
-    const exportRedactionSelect = Array.from(document.querySelectorAll('select')).find((element) =>
-      Array.from(element.querySelectorAll('option')).some(
-        (option) => option.value === 'operator' || option.value === 'share',
-      ),
-    )
-    expect(exportRedactionSelect).toBeTruthy()
-
-    fireEvent.change(exportRedactionSelect!, {
-      target: { value: 'share' },
-    })
+    fireEvent.pointerDown(screen.getByLabelText('导出类型'), { button: 0, pointerId: 1 })
+    fireEvent.click(await screen.findByRole('option', { name: '分享导出' }))
 
     await waitFor(() => {
       expect(useModerationEvidenceExportMock).toHaveBeenLastCalledWith('case-1', 'share')
@@ -762,10 +803,7 @@ describe('AdminPanel', () => {
       error: null,
     } as never)
 
-    render(<AdminPanel />)
-
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Programming' }))
-    fireEvent.click(screen.getByRole('tab', { name: 'Programming' }))
+    render(<AdminProgrammingPage />)
 
     await waitFor(() => {
       expect(screen.getByText('Daypart Baseline')).toBeTruthy()
@@ -775,10 +813,11 @@ describe('AdminPanel', () => {
     })
   })
 
-  it('renames the warmup control-plane tab to kickoff and warmup semantics', () => {
-    render(<AdminPanel />)
+  it('renders the kickoff and warmup control-plane page', () => {
+    render(<AdminWarmupPage />)
 
-    expect(screen.getByRole('tab', { name: 'Kickoff / Warmup' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '预热与启动' })).toBeTruthy()
+    expect(screen.getByText('Warmup tab stub')).toBeTruthy()
   })
 
   it('renders agent risk profile and disclosure cap controls', async () => {
@@ -906,7 +945,7 @@ describe('AdminPanel', () => {
           : { data: undefined }) as never,
     )
 
-    render(<AdminPanel />)
+    render(<AdminGovernancePage />)
 
     await act(async () => {
       fireEvent.change(screen.getByPlaceholderText('Agent ID'), {
@@ -923,13 +962,13 @@ describe('AdminPanel', () => {
       expect(screen.getByText('曝光限流管理')).toBeTruthy()
     })
 
-    const createCapButton = await screen.findByRole('button', { name: '设置 Cap Override' })
+    const createCapButton = await screen.findByRole('button', { name: '设置限流规则' })
     fireEvent.click(createCapButton)
     await waitFor(() => {
       expect(createCapMutate).toHaveBeenCalled()
     })
 
-    const releaseCapButton = await screen.findByRole('button', { name: '释放当前 Override' })
+    const releaseCapButton = await screen.findByRole('button', { name: '释放当前规则' })
     fireEvent.click(releaseCapButton)
     const confirmReleaseButton = await screen.findByRole('button', { name: '确认释放' })
     fireEvent.click(confirmReleaseButton)
@@ -1017,10 +1056,7 @@ describe('AdminPanel', () => {
       data: undefined,
     } as never)
 
-    render(<AdminPanel />)
-
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Hot Topic' }))
-    fireEvent.click(screen.getByRole('tab', { name: 'Hot Topic' }))
+    render(<AdminHotTopicPage />)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Community ID')).toBeTruthy()
@@ -1159,10 +1195,7 @@ describe('AdminPanel', () => {
       error: null,
     } as never)
 
-    render(<AdminPanel />)
-
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Hot Topic' }))
-    fireEvent.click(screen.getByRole('tab', { name: 'Hot Topic' }))
+    render(<AdminHotTopicPage />)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('操作原因（将写入治理日志）')).toBeTruthy()

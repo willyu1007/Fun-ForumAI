@@ -1,44 +1,26 @@
 {
   "schemaVersion": 1,
-  "acceptedAt": "2026-03-30T14:23:47.601Z",
+  "acceptedAt": "2026-04-25T04:11:31.892Z",
   "sourceReport": "dist/frontend/bundle-report.json",
   "rootEntryChunk": {
     "name": "index",
-    "fileName": "assets/index-BxNVfkQd.js",
-    "rawBytes": 148430,
-    "gzipBytes": 29520,
+    "fileName": "assets/index-T_VxlsyY.js",
+    "rawBytes": 81649,
+    "gzipBytes": 22822,
     "isEntry": true,
     "isDynamicEntry": false,
     "facadeModuleId": "index.html"
   },
   "largestJsChunk": {
-    "name": "react-dom",
-    "fileName": "assets/react-dom-B2q9P9UF.js",
-    "rawBytes": 358833,
-    "gzipBytes": 107248,
+    "name": "math-rendering",
+    "fileName": "assets/math-rendering-Ba4H6HuF.js",
+    "rawBytes": 259243,
+    "gzipBytes": 76650,
     "isEntry": false,
     "isDynamicEntry": false,
     "facadeModuleId": null
   },
   "topJsChunks": [
-    {
-      "name": "react-dom",
-      "fileName": "assets/react-dom-B2q9P9UF.js",
-      "rawBytes": 358833,
-      "gzipBytes": 107248,
-      "isEntry": false,
-      "isDynamicEntry": false,
-      "facadeModuleId": null
-    },
-    {
-      "name": "AgentInteractionModal",
-      "fileName": "assets/AgentInteractionModal-RlCEXS0c.js",
-      "rawBytes": 309970,
-      "gzipBytes": 48846,
-      "isEntry": false,
-      "isDynamicEntry": true,
-      "facadeModuleId": "src/frontend/widgets/agent-modal/AgentInteractionModal.tsx"
-    },
     {
       "name": "math-rendering",
       "fileName": "assets/math-rendering-Ba4H6HuF.js",
@@ -58,58 +40,76 @@
       "facadeModuleId": "node_modules/.pnpm/html2canvas@1.4.1/node_modules/html2canvas/dist/html2canvas.esm.js"
     },
     {
-      "name": "AdminPanel",
-      "fileName": "assets/AdminPanel-BOu8Ue8S.js",
-      "rawBytes": 181330,
-      "gzipBytes": 25412,
+      "name": "vendor",
+      "fileName": "assets/vendor-B90zqo1F.js",
+      "rawBytes": 197063,
+      "gzipBytes": 61064,
       "isEntry": false,
-      "isDynamicEntry": true,
-      "facadeModuleId": "src/frontend/features/admin/pages/AdminPanel.tsx"
+      "isDynamicEntry": false,
+      "facadeModuleId": null
     },
     {
-      "name": "index",
-      "fileName": "assets/index-BxNVfkQd.js",
-      "rawBytes": 148430,
-      "gzipBytes": 29520,
-      "isEntry": true,
+      "name": "react-dom",
+      "fileName": "assets/react-dom-YSp69gvb.js",
+      "rawBytes": 180295,
+      "gzipBytes": 56214,
+      "isEntry": false,
       "isDynamicEntry": false,
-      "facadeModuleId": "index.html"
+      "facadeModuleId": null
+    },
+    {
+      "name": "help-docs-runtime",
+      "fileName": "assets/help-docs-runtime-CPnK7pMG.js",
+      "rawBytes": 167342,
+      "gzipBytes": 48954,
+      "isEntry": false,
+      "isDynamicEntry": false,
+      "facadeModuleId": null
     },
     {
       "name": "ui-radix",
-      "fileName": "assets/ui-radix-BZFNr82B.js",
-      "rawBytes": 129908,
-      "gzipBytes": 40758,
+      "fileName": "assets/ui-radix-DTBAee89.js",
+      "rawBytes": 130206,
+      "gzipBytes": 40813,
       "isEntry": false,
       "isDynamicEntry": false,
       "facadeModuleId": null
+    },
+    {
+      "name": "agent-modal-panels",
+      "fileName": "assets/agent-modal-panels-941FS2MO.js",
+      "rawBytes": 103323,
+      "gzipBytes": 31588,
+      "isEntry": false,
+      "isDynamicEntry": true,
+      "facadeModuleId": null
+    },
+    {
+      "name": "AgentInteractionModal",
+      "fileName": "assets/AgentInteractionModal-fJR1K2ov.js",
+      "rawBytes": 101191,
+      "gzipBytes": 28272,
+      "isEntry": false,
+      "isDynamicEntry": true,
+      "facadeModuleId": "src/frontend/widgets/agent-modal/AgentInteractionModal.tsx"
     },
     {
       "name": "router",
-      "fileName": "assets/router-Cg1S8EVd.js",
-      "rawBytes": 85924,
-      "gzipBytes": 29189,
+      "fileName": "assets/router-D9aBLqbk.js",
+      "rawBytes": 86523,
+      "gzipBytes": 29386,
       "isEntry": false,
       "isDynamicEntry": false,
       "facadeModuleId": null
     },
     {
-      "name": "ChatRoomPage",
-      "fileName": "assets/ChatRoomPage-zuy7wkeA.js",
-      "rawBytes": 75999,
-      "gzipBytes": 11792,
-      "isEntry": false,
-      "isDynamicEntry": true,
-      "facadeModuleId": "src/frontend/features/chat/pages/ChatRoomPage.tsx"
-    },
-    {
-      "name": "ShellRightRail",
-      "fileName": "assets/ShellRightRail-BsDGYjE7.js",
-      "rawBytes": 75538,
-      "gzipBytes": 12185,
-      "isEntry": false,
+      "name": "index",
+      "fileName": "assets/index-T_VxlsyY.js",
+      "rawBytes": 81649,
+      "gzipBytes": 22822,
+      "isEntry": true,
       "isDynamicEntry": false,
-      "facadeModuleId": null
+      "facadeModuleId": "index.html"
     }
   ]
 }

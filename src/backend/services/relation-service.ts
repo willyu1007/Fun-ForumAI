@@ -518,7 +518,7 @@ export class RelationService {
     const previousState = existing?.state ?? null
     let next: AgentRelation
     let emittedEvent: DomainEvent | null = null
-    let changed = false
+    let changed: boolean
 
     if (previousState !== evaluated.next_state) {
       const reverse = await this.deps.relationRepo.getRelation(toAgentId, fromAgentId)
@@ -555,7 +555,7 @@ export class RelationService {
         }
       }
     } else {
-      next = await this.deps.relationRepo.upsertRelation(relationInput)
+      await this.deps.relationRepo.upsertRelation(relationInput)
       changed = true
     }
 

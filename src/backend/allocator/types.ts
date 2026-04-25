@@ -114,7 +114,9 @@ export type ForumBaselineFallbackReason =
   (typeof FORUM_BASELINE_FALLBACK_REASON_IDS)[number]
 
 export const FORUM_ROAMING_NO_WRITE_REASON_IDS = [
+  'no_write',
   'decision_failed',
+  'invalid_plan',
   'candidate_missing',
   'candidate_expired',
   'candidate_invalid',
@@ -122,6 +124,8 @@ export const FORUM_ROAMING_NO_WRITE_REASON_IDS = [
   'observe_only',
   'no_viable_candidates',
   'audience_scope_excluded',
+  'reply_budget_exceeded',
+  'route_unavailable',
 ] as const
 
 export type ForumRoamingNoWriteReason =

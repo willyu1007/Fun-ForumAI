@@ -8,17 +8,30 @@
  */
 
 import {
-  parseArgs,
-  loadJSON,
-  loadEnvironmentConfig,
-  validateEnvContract,
-  validatePackagingTarget,
-  resolveServices,
+  loadVmPlanningContext,
   resolveVmTarget,
   listMissingVmFields,
+  printVmReadiness,
+  resolveVmPlannerOptions,
   validateImmutableImageRef,
   quoteShell,
 } from './_shared.mjs';
+
+const HELP_TEXT = `
+rollback.mjs — ECS host rollback planner
+
+Usage:
+  node ops/deploy/scripts/rollback.mjs --env <env> [options]
+
+Options:
+  --env <env>                 Target environment (staging|prod) (required)
+  --dry-run                   Print the plan only (default behavior)
+  --service <id>              Limit planning to one service
+  --to-image-ref <repo:tag>   Optional explicit immutable image reference
+  --db-plan <ticket>          Required only when the current host release is marked incompatible
+  --notes <text>              Optional rollback notes
+  --help                      Show this help
+`;
 
 function renderRollbackCommand(target, explicitImageRef, dbPlan, notes) {
   const envPrefix = [
@@ -80,58 +93,21 @@ function printPlan(envId, envCfg, envFile, envChecks, servicePlans, explicitImag
     }
   }
 
-  const allChecksPassed = envChecks.every((check) => check.ok);
-  const allPlansReady = servicePlans.every((plan) => plan.issues.length === 0);
-  console.log(`\nReady to hand off to operator: ${allChecksPassed && allPlansReady ? 'YES' : 'NO (fix issues above)'}`);
+  printVmReadiness(envChecks, servicePlans);
 }
 
 function main() {
-  const opts = parseArgs(process.argv.slice(2));
+  const { opts, exitCode } = resolveVmPlannerOptions(process.argv.slice(2), HELP_TEXT);
+  if (exitCode !== null) return exitCode;
 
-  if (opts.help) {
-    console.log(`
-rollback.mjs — ECS host rollback planner
-
-Usage:
-  node ops/deploy/scripts/rollback.mjs --env <env> [options]
-
-Options:
-  --env <env>                 Target environment (staging|prod) (required)
-  --dry-run                   Print the plan only (default behavior)
-  --service <id>              Limit planning to one service
-  --to-image-ref <repo:tag>   Optional explicit immutable image reference
-  --db-plan <ticket>          Required only when the current host release is marked incompatible
-  --notes <text>              Optional rollback notes
-  --help                      Show this help
-`);
-    return 0;
-  }
-
-  if (!opts.env) {
-    console.error('[error] --env is required. Use --help for usage.');
+  let context;
+  try {
+    context = loadVmPlanningContext(opts.env, opts.service, 'rollback');
+  } catch (err) {
+    console.error(`[error] ${err instanceof Error ? err.message : String(err)}`);
     return 1;
   }
-
-  const deployConfig = loadJSON('ops/deploy/config.json');
-  if (!deployConfig) {
-    console.error('[error] ops/deploy/config.json not found');
-    return 1;
-  }
-
-  if (deployConfig.model !== 'vm') {
-    console.error(`[error] Expected ops/deploy/config.json model="vm" for ECS host planning (found "${deployConfig.model}")`);
-    return 1;
-  }
-
-  const envCfg = deployConfig.environments.find((env) => env.id === opts.env);
-  if (!envCfg) {
-    console.error(`[error] Environment "${opts.env}" not configured in ops/deploy/config.json`);
-    return 1;
-  }
-  if (!envCfg.canDeploy) {
-    console.error(`[error] Environment "${opts.env}" is not handled by the VM/Compose rollback planner.`);
-    return 1;
-  }
+  const { deployConfig, envCfg, envChecks, envFile, serviceInfo } = context;
 
   let explicitImageRef = null;
   try {
@@ -145,21 +121,6 @@ Options:
 
   const dbPlan = typeof opts['db-plan'] === 'string' ? opts['db-plan'].trim() : '';
   const notes = typeof opts.notes === 'string' ? opts.notes.trim() : '';
-
-  const envChecks = validateEnvContract(opts.env);
-  const envFile = loadEnvironmentConfig(opts.env);
-  const pkgInfo = validatePackagingTarget();
-  const serviceInfo = resolveServices(deployConfig, pkgInfo, opts.service);
-  if (serviceInfo.error) {
-    console.error(`[error] ${serviceInfo.error}`);
-    return 1;
-  }
-  if (serviceInfo.missingPackagingTargets.length > 0) {
-    console.error(
-      `[error] Missing packaging target(s): ${serviceInfo.missingPackagingTargets.join(', ')}`,
-    );
-    return 1;
-  }
 
   let servicePlans;
   try {

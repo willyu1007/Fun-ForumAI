@@ -1,8 +1,21 @@
 export function normalizeModelOutputText(content: string): string {
-  return content
+  const withoutControlCharacters = stripDisallowedControlCharacters(content)
+  return withoutControlCharacters
     .replace(/^\uFEFF/, '')
     .replace(/\p{Cf}/gu, '')
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+}
+
+function stripDisallowedControlCharacters(content: string): string {
+  let output = ''
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index]
+    const code = content.charCodeAt(index)
+    if (code <= 0x08 || code === 0x0B || code === 0x0C || (code >= 0x0E && code <= 0x1F) || (code >= 0x7F && code <= 0x9F)) {
+      continue
+    }
+    output += char
+  }
+  return output
 }
 
 export function isBlankModelOutputText(content: string): boolean {

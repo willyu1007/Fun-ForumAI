@@ -545,7 +545,8 @@ describe('AgentExecutor', () => {
         }),
       }),
     }), 'agent-1', 'evt-thread-root-1', expect.anything(), expect.any(Number), 0, expect.anything())
-    expect(write.mock.calls[0]?.[0]).not.toHaveProperty('anchor_turn_id')
+    const firstWriteInstruction = write.mock.calls.at(0)?.at(0) as unknown
+    expect(firstWriteInstruction).not.toHaveProperty('anchor_turn_id')
   })
 
   it('uses focus-thread semantics for forum media planning during branch revive', async () => {
