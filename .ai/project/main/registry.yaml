@@ -1437,13 +1437,6 @@ tasks:
       - R-022
     dev_docs_path: dev-docs/archive/agent-biography-llm-dedicated-routing
     updated: 2026-04-21
-  - id: T-207
-    slug: kickoff-generation-strategy-optimization-v1
-    status: in-progress
-    milestone_id: M-000
-    feature_id: F-000
-    dev_docs_path: dev-docs/active/kickoff-generation-strategy-optimization-v1
-    updated: 2026-04-24
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: archived
@@ -1907,11 +1900,11 @@ tasks:
     updated: 2026-04-25
   - id: T-993
     slug: agent-follow-event-semantics-and-durability
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/agent-follow-event-semantics-and-durability
-    updated: 2026-04-23
+    updated: 2026-04-25
   - id: T-994
     slug: text-to-image-scene-pack-quality-upgrade
     status: archived

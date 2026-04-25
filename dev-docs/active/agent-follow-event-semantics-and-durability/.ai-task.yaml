@@ -2,8 +2,8 @@ version: 1
 task_id: T-993
 project: main
 slug: agent-follow-event-semantics-and-durability
-status: planned
-updated: "2026-04-23"
+status: done
+updated: "2026-04-25"
 keywords:
   - agent
   - follow

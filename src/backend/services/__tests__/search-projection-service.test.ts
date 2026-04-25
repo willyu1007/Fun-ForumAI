@@ -242,6 +242,9 @@ describe('SearchProjectionService', () => {
 
   it('refreshAgent stores public projection hint and active community summaries', async () => {
     const searchDocRepo = new InMemorySearchDocRepository()
+    const getProjectionMock = vi.fn().mockResolvedValue({
+      public_bio: '会把 talk show 的梗接回主线。',
+    })
     const service = new SearchProjectionService({
       searchDocRepo,
       forumReadService: {
@@ -407,9 +410,7 @@ describe('SearchProjectionService', () => {
         }),
       } as never,
       agentBioService: {
-        getProjection: vi.fn().mockResolvedValue({
-          public_bio: '会把 talk show 的梗接回主线。',
-        }),
+        getProjection: getProjectionMock,
       } as never,
       aftershowService: {
         getLatestByPost: vi.fn(),
@@ -418,6 +419,11 @@ describe('SearchProjectionService', () => {
     })
 
     await service.refreshAgent('agent-1')
+
+    expect(getProjectionMock).toHaveBeenCalledWith('agent-1', {
+      build_if_missing: false,
+      allow_minor_refresh: false,
+    })
 
     const result = await searchDocRepo.searchAgentDocs({
       query: 'TALK_SHOW',

@@ -1,6 +1,7 @@
 import type {
   AgentRelation as PrismaRelation,
   AgentRelationEvent as PrismaRelationEvent,
+  Event as PrismaEvent,
   PrismaClient,
 } from '@prisma/client'
 import { Prisma } from '@prisma/client'
@@ -8,29 +9,43 @@ import type {
   AgentRelation,
   AgentRelationEvent,
   CreateAgentRelationEventInput,
+  DomainEvent,
   PaginatedResult,
   PaginationOpts,
+  PersistRelationStateChangeTxInput,
+  PersistRelationStateChangeTxResult,
   RelationState,
   UpsertAgentRelationInput,
 } from '../types.js'
 import type { RelationRepository } from '../relation-repository.js'
+import { PgEventRepository, toPrismaActorType, toPrismaPlane } from './pg-event-repository.js'
+
+type TxClient = Prisma.TransactionClient
+
+class RelationStateChangeSkippedError extends Error {
+  constructor() {
+    super('relation_state_change_skipped')
+  }
+}
+
+class RelationStateChangeDedupedError extends Error {
+  constructor() {
+    super('relation_state_change_deduped')
+  }
+}
 
 export class PgRelationRepository implements RelationRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly deps: {
+      rememberEventPersisted?: (event: DomainEvent) => void
+    } = {},
+  ) {}
 
   async createEvent(input: CreateAgentRelationEventInput): Promise<{ event: AgentRelationEvent; deduped: boolean }> {
     try {
       const row = await this.prisma.agentRelationEvent.create({
-        data: {
-          fromAgentId: input.from_agent_id,
-          toAgentId: input.to_agent_id,
-          eventType: input.event_type,
-          severity: input.severity ?? 'info',
-          sourceType: input.source_type,
-          sourceRefId: input.source_ref_id ?? null,
-          idempotencyKey: input.idempotency_key,
-          payload: (input.payload ?? undefined) as Prisma.InputJsonValue | undefined,
-        },
+        data: buildRelationEventCreate(input),
       })
       return { event: this.eventToDomain(row), deduped: false }
     } catch (err) {
@@ -45,14 +60,7 @@ export class PgRelationRepository implements RelationRepository {
   }
 
   async getRelation(fromAgentId: string, toAgentId: string): Promise<AgentRelation | null> {
-    const row = await this.prisma.agentRelation.findUnique({
-      where: {
-        fromAgentId_toAgentId: {
-          fromAgentId,
-          toAgentId,
-        },
-      },
-    })
+    const row = await this.findRelationRow(this.prisma, fromAgentId, toAgentId)
     return row ? this.relationToDomain(row) : null
   }
 
@@ -88,29 +96,92 @@ export class PgRelationRepository implements RelationRepository {
           toAgentId: input.to_agent_id,
         },
       },
-      create: {
-        fromAgentId: input.from_agent_id,
-        toAgentId: input.to_agent_id,
-        state: input.state,
-        relationScore: input.relation_score,
-        interactionScore: input.interaction_score,
-        personaScore: input.persona_score,
-        safetyScore: input.safety_score,
-        shadowStartedAt: input.shadow_started_at ?? null,
-        effectiveAt: input.effective_at ?? null,
-        inactiveAt: input.inactive_at ?? null,
-        blockedAt: input.blocked_at ?? null,
-        belowThresholdSince: input.below_threshold_since ?? null,
-        lastSignalAt: input.last_signal_at ?? null,
-        lastInteractionAt: input.last_interaction_at ?? null,
-        lastEvaluatedAt: input.last_evaluated_at ?? null,
-        lastStateChangedAt: input.last_state_changed_at ?? null,
-        version: 1,
-      },
+      create: buildRelationCreate(input),
       update: buildRelationUpdate(input, true),
     })
 
     return this.relationToDomain(row)
+  }
+
+  async persistStateChangeTx(input: PersistRelationStateChangeTxInput): Promise<PersistRelationStateChangeTxResult> {
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        let relationEventRow: PrismaRelationEvent | null = null
+        if (input.relation_event_input) {
+          relationEventRow = await tx.agentRelationEvent.create({
+            data: buildRelationEventCreate(input.relation_event_input),
+          })
+        }
+
+        const relationRow = await this.persistRelationStateChangeRowTx(tx, input.relation_input)
+
+        let eventRow: PrismaEvent
+        try {
+          eventRow = await tx.event.create({
+            data: buildDomainEventCreate(input, relationRow),
+          })
+        } catch (err) {
+          if (isUniqueConstraintError(err)) {
+            throw new RelationStateChangeDedupedError()
+          }
+          throw err
+        }
+
+        return {
+          relationEventRow,
+          relationRow,
+          eventRow,
+        }
+      })
+
+      const domainEvent = this.toDomainEvent(result.eventRow)
+      this.deps.rememberEventPersisted?.(domainEvent)
+
+      return {
+        applied: true,
+        relation: this.relationToDomain(result.relationRow),
+        relation_event: result.relationEventRow ? this.eventToDomain(result.relationEventRow) : null,
+        domain_event: domainEvent,
+        domain_event_status: 'created',
+      }
+    } catch (err) {
+      if (err instanceof RelationStateChangeSkippedError) {
+        const relation = await this.getRelation(input.relation_input.from_agent_id, input.relation_input.to_agent_id)
+        if (!relation) {
+          throw new Error('relation_not_found_after_skipped_state_change')
+        }
+        return {
+          applied: false,
+          relation,
+          relation_event: null,
+          domain_event: null,
+          domain_event_status: 'skipped',
+        }
+      }
+
+      if (err instanceof RelationStateChangeDedupedError) {
+        const [relation, eventRow] = await Promise.all([
+          this.getRelation(input.relation_input.from_agent_id, input.relation_input.to_agent_id),
+          this.prisma.event.findUnique({
+            where: { idempotencyKey: input.domain_event_template.idempotency_key },
+          }),
+        ])
+        if (!relation || !eventRow) {
+          throw new Error('relation_domain_event_not_found_after_dedup')
+        }
+        const domainEvent = this.toDomainEvent(eventRow)
+        this.deps.rememberEventPersisted?.(domainEvent)
+        return {
+          applied: true,
+          relation,
+          relation_event: null,
+          domain_event: domainEvent,
+          domain_event_status: 'deduped',
+        }
+      }
+
+      throw err
+    }
   }
 
   async listOutgoing(
@@ -234,40 +305,6 @@ export class PgRelationRepository implements RelationRepository {
     return rows.map((row) => this.eventToDomain(row))
   }
 
-  async adminUnblockTx(
-    eventInput: CreateAgentRelationEventInput,
-    relationInput: UpsertAgentRelationInput,
-  ): Promise<{ event: AgentRelationEvent; relation: AgentRelation }> {
-    const [eventRow, relationRow] = await this.prisma.$transaction([
-      this.prisma.agentRelationEvent.create({
-        data: {
-          fromAgentId: eventInput.from_agent_id,
-          toAgentId: eventInput.to_agent_id,
-          eventType: eventInput.event_type,
-          severity: eventInput.severity ?? 'info',
-          sourceType: eventInput.source_type,
-          sourceRefId: eventInput.source_ref_id ?? null,
-          idempotencyKey: eventInput.idempotency_key,
-          payload: (eventInput.payload ?? undefined) as Prisma.InputJsonValue | undefined,
-        },
-      }),
-      this.prisma.agentRelation.update({
-        where: {
-          fromAgentId_toAgentId: {
-            fromAgentId: relationInput.from_agent_id,
-            toAgentId: relationInput.to_agent_id,
-          },
-        },
-        data: buildRelationUpdate(relationInput, true),
-      }),
-    ])
-
-    return {
-      event: this.eventToDomain(eventRow),
-      relation: this.relationToDomain(relationRow),
-    }
-  }
-
   async listRelationsByStates(states: RelationState[], limit: number): Promise<AgentRelation[]> {
     const rows = await this.prisma.agentRelation.findMany({
       where: {
@@ -278,6 +315,57 @@ export class PgRelationRepository implements RelationRepository {
     })
 
     return rows.map((row) => this.relationToDomain(row))
+  }
+
+  private async persistRelationStateChangeRowTx(
+    tx: TxClient,
+    input: UpsertAgentRelationInput,
+  ): Promise<PrismaRelation> {
+    if (input.expected_version !== undefined) {
+      const result = await tx.agentRelation.updateMany({
+        where: {
+          fromAgentId: input.from_agent_id,
+          toAgentId: input.to_agent_id,
+          version: input.expected_version,
+        },
+        data: buildRelationUpdate(input, true),
+      })
+      if (result.count === 0) {
+        throw new RelationStateChangeSkippedError()
+      }
+
+      const latest = await this.findRelationRow(tx, input.from_agent_id, input.to_agent_id)
+      if (!latest) {
+        throw new Error('relation_not_found_after_state_change_update')
+      }
+      return latest
+    }
+
+    try {
+      return await tx.agentRelation.create({
+        data: buildRelationCreate(input),
+      })
+    } catch (err) {
+      if (isUniqueConstraintError(err)) {
+        throw new RelationStateChangeSkippedError()
+      }
+      throw err
+    }
+  }
+
+  private async findRelationRow(
+    client: PrismaClient | TxClient,
+    fromAgentId: string,
+    toAgentId: string,
+  ): Promise<PrismaRelation | null> {
+    return client.agentRelation.findUnique({
+      where: {
+        fromAgentId_toAgentId: {
+          fromAgentId,
+          toAgentId,
+        },
+      },
+    })
   }
 
   private rawRelationToDomain(row: Record<string, unknown>): AgentRelation {
@@ -343,6 +431,67 @@ export class PgRelationRepository implements RelationRepository {
       payload: toJsonObjectOrNull(row.payload),
       created_at: row.createdAt,
     }
+  }
+
+  private toDomainEvent(row: PrismaEvent): DomainEvent {
+    return PgEventRepository.toDomain(row)
+  }
+}
+
+function buildRelationCreate(input: UpsertAgentRelationInput): Prisma.AgentRelationCreateInput {
+  return {
+    fromAgent: { connect: { id: input.from_agent_id } },
+    toAgent: { connect: { id: input.to_agent_id } },
+    state: input.state,
+    relationScore: input.relation_score,
+    interactionScore: input.interaction_score,
+    personaScore: input.persona_score,
+    safetyScore: input.safety_score,
+    shadowStartedAt: input.shadow_started_at ?? null,
+    effectiveAt: input.effective_at ?? null,
+    inactiveAt: input.inactive_at ?? null,
+    blockedAt: input.blocked_at ?? null,
+    belowThresholdSince: input.below_threshold_since ?? null,
+    lastSignalAt: input.last_signal_at ?? null,
+    lastInteractionAt: input.last_interaction_at ?? null,
+    lastEvaluatedAt: input.last_evaluated_at ?? null,
+    lastStateChangedAt: input.last_state_changed_at ?? null,
+    version: 1,
+  }
+}
+
+function buildRelationEventCreate(input: CreateAgentRelationEventInput): Prisma.AgentRelationEventCreateInput {
+  return {
+    fromAgent: { connect: { id: input.from_agent_id } },
+    toAgent: { connect: { id: input.to_agent_id } },
+    eventType: input.event_type,
+    severity: input.severity ?? 'info',
+    sourceType: input.source_type,
+    sourceRefId: input.source_ref_id ?? null,
+    idempotencyKey: input.idempotency_key,
+    payload: (input.payload ?? undefined) as Prisma.InputJsonValue | undefined,
+  }
+}
+
+function buildDomainEventCreate(
+  input: PersistRelationStateChangeTxInput,
+  relationRow: PrismaRelation,
+): Prisma.EventCreateInput {
+  return {
+    eventType: input.domain_event_template.event_type,
+    plane: toPrismaPlane(input.domain_event_template.plane ?? 'CONTROL'),
+    schemaVersion: input.domain_event_template.schema_version ?? 'v1',
+    actorType: toPrismaActorType(input.domain_event_template.actor_type ?? 'system'),
+    actorId: input.domain_event_template.actor_id ?? null,
+    causeEventId: input.domain_event_template.cause_event_id ?? null,
+    correlationId: relationRow.id,
+    idempotencyKey: input.domain_event_template.idempotency_key,
+    payloadJson: {
+      ...input.domain_event_template.payload_base,
+      relation_id: relationRow.id,
+      relation_version: relationRow.version,
+      emitted_at: new Date().toISOString(),
+    } as Prisma.InputJsonValue,
   }
 }
 

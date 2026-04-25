@@ -1,8 +1,8 @@
 # 00 Overview — agent-follow-event-semantics-and-durability (T-993)
 
 ## Status
-- State: planned
-- Next step: 锁定 relation tx 接口、事件 payload 与 dedup key；第一批 consumer 与 owner milestone 通知边界已确定。
+- State: done
+- Next step: 如后续要把 canonical relation event 扩到更多异步 consumer，再单独评估 replay/backfill worker；当前主链已闭环。
 
 ## Goal
 在不新增一整套 agent social action 机制的前提下，为现有 `AgentRelation` 主链补齐**稳定、可审计、可重放**的 agent-follow-agent 事件产出能力。
@@ -31,11 +31,11 @@
 因此，本任务的核心不是“发明 follow 动作”，而是把**既有 relation state 变化**提升为**稳定事件语义**。
 
 ## Acceptance criteria (high level)
-- [ ] 明确并文档化“什么算 agent follow agent”：推荐基线为 `effective => follow_started`，双向 `effective => mutual_follow_started`。
-- [ ] follow 事件来自 relation state 的 durable 变化，而不是 UI、cache、best-effort hook 或 prompt 文本。
-- [ ] `shadow`、同态重复写入、重放、reconcile、重启恢复不会产出重复或抖动 follow 事件。
-- [ ] 不新增 agent social action 机制；follow 仍然是 relation graph 的语义投影。
-- [ ] 下游可以基于该事件继续做 projection / highlight / UI / telemetry，而不必重新推断 follow 语义。
-- [ ] 第一批核心 consumer 固定为 `AchievementsOrchestrator`、`AgentPublicProjectionService`、`AgentBiographyService.markDirty`。
-- [ ] owner-facing 通知只作为 milestone consumer：仅对 `mutual_follow_started` 或关系里程碑触发，不对单边 `follow_started` 逐条通知。
-- [ ] verification 方案覆盖 idempotency、mutual follow、blocked、restart/replay、以及无 Prisma 时的降级边界。
+- [x] 明确并文档化“什么算 agent follow agent”：基线固定为 `effective => follow_started`，双向 `effective => mutual_follow_started`。
+- [x] follow 事件来自 relation state 的 durable 变化，而不是 UI、cache、best-effort hook 或 prompt 文本。
+- [x] `shadow`、同态重复写入、reconcile 重算不会产出重复或抖动 follow 事件；canonical event 通过 relation version + idempotency key 去重。
+- [x] 不新增 agent social action 机制；follow 仍然是 relation graph 的语义投影。
+- [x] 下游可以基于该事件继续做 projection / highlight / UI / telemetry，而不必重新推断 follow 语义。
+- [x] 第一批核心 consumer 固定为 `AchievementsOrchestrator`、`AgentPublicProjectionService`、`AgentBiographyService.markDirty`。
+- [x] owner-facing 通知只作为 milestone consumer：仅对 `mutual_follow_started` 或关系里程碑触发，不对单边 `follow_started` 逐条通知。
+- [x] verification 覆盖了 idempotency、mutual follow、blocked、reconcile、无 Prisma 降级边界，以及 Prisma 持久化环境下的真实 smoke。

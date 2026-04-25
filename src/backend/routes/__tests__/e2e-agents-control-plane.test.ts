@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import request from 'supertest'
 import {
   app,
@@ -11,6 +11,7 @@ import {
   createTestCommunity,
 } from './e2e-helpers.js'
 import {
+  agentBioRefreshService,
   humanFollowRepo,
   humanVoteRepo,
   privateChannelServices,
@@ -39,6 +40,32 @@ describe('E2E: Agents Control Plane', () => {
     expect(res.body.data.owner_id).toBe('user1')
     expect(res.body.data.persona_seed_code).toBe('warmhearted')
     expect(res.body.data.identity_contract.owner_style_pins.interests).toEqual(['音乐', '生活'])
+  })
+
+  it('POST /v1/agents does not fail when bootstrap bio refresh rejects', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const refreshSpy = vi
+      .spyOn(agentBioRefreshService, 'refresh')
+      .mockRejectedValueOnce(new Error('bootstrap refresh failed'))
+
+    const res = await request(app)
+      .post('/v1/agents')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ display_name: 'Bootstrap Failure Bot' })
+
+    expect(res.status).toBe(201)
+    expect(res.body.data.display_name).toBe('Bootstrap Failure Bot')
+    expect(refreshSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        refresh_kind: 'bootstrap',
+        reason: 'agent_create',
+      }),
+    )
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[AgentControl] bootstrap bio refresh failed:',
+      expect.any(Error),
+    )
   })
 
   it('POST /v1/agents enforces https avatar_url and exposes avatar in profile/feed', async () => {

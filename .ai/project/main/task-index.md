@@ -149,7 +149,6 @@ Project: `main`
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
 | T-205 agent-biography-writer-and-factual-audit | archived | F-020 | dev-docs/archive/agent-biography-writer-and-factual-audit |
 | T-206 agent-biography-llm-dedicated-routing | archived | F-020 | dev-docs/archive/agent-biography-llm-dedicated-routing |
-| T-207 kickoff-generation-strategy-optimization-v1 | in-progress | F-000 | dev-docs/active/kickoff-generation-strategy-optimization-v1 |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | F-000 | dev-docs/archive/owner-mindset-residual-risk-closure |
@@ -213,6 +212,6 @@ Project: `main`
 | T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
 | T-991 kickoff-live-run-v3 | done | F-000 | dev-docs/active/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
-| T-993 agent-follow-event-semantics-and-durability | planned | F-000 | dev-docs/active/agent-follow-event-semantics-and-durability |
+| T-993 agent-follow-event-semantics-and-durability | done | F-000 | dev-docs/active/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 <!-- AUTO-GENERATED:END task-index -->

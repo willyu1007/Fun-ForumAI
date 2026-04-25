@@ -1,4 +1,10 @@
-import type { DomainEvent, RelationState, RelationView, AgentRelation } from '../repos/types.js'
+import type {
+  DomainEvent,
+  RelationState,
+  RelationView,
+  AgentRelation,
+  RelationStateChangeTrigger,
+} from '../repos/types.js'
 import type { RelationRepository } from '../repos/relation-repository.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
 import type { AgentService } from './agent-service.js'
@@ -11,6 +17,7 @@ import type { MessageRepository } from '../repos/message-repository.js'
 import type { StatsService } from './stats-service.js'
 import { RelationEngine, type RelationPairStats } from './relation-engine.js'
 import { RelationMetrics } from './relation-metrics.js'
+import { buildRelationStateChangedEventTemplate } from './relation-domain-event.js'
 import { config } from '../lib/config.js'
 import { LruMap } from '../lib/lru-map.js'
 import {
@@ -54,6 +61,7 @@ export interface RelationServiceDeps {
     next_state: RelationState
     relation_id: string
   }) => Promise<void> | void
+  onDomainEventCreated?: (event: DomainEvent) => Promise<void> | void
 }
 
 export interface RelationListItem {
@@ -104,6 +112,10 @@ export class RelationService {
     this.deps.onStateChanged = hook
   }
 
+  setDomainEventCreatedHook(hook: (event: DomainEvent) => Promise<void> | void): void {
+    this.deps.onDomainEventCreated = hook
+  }
+
   getMetrics(): RelationMetrics {
     return this.metrics
   }
@@ -137,7 +149,10 @@ export class RelationService {
       return
     }
 
-    await this.evaluateAndPersist(input.from_agent_id, input.to_agent_id)
+    await this.evaluateAndPersist(input.from_agent_id, input.to_agent_id, undefined, {
+      trigger: 'signal_ingest',
+      relation_event_id: eventResult.event.id,
+    })
   }
 
   async onForumStageEvent(event: DomainEvent): Promise<void> {
@@ -309,6 +324,7 @@ export class RelationService {
   async adminUnblock(fromAgentId: string, toAgentId: string, reason: string): Promise<AgentRelation | null> {
     const existing = await this.deps.relationRepo.getRelation(fromAgentId, toAgentId)
     if (!existing || existing.state !== 'blocked') return existing
+    const reverse = await this.deps.relationRepo.getRelation(toAgentId, fromAgentId)
 
     const eventInput = {
       from_agent_id: fromAgentId,
@@ -336,17 +352,45 @@ export class RelationService {
       expected_version: existing.version,
     }
 
-    let next: AgentRelation
-    if (this.deps.relationRepo.adminUnblockTx) {
-      const result = await this.deps.relationRepo.adminUnblockTx(eventInput, relationInput)
-      next = result.relation
-    } else {
-      await this.deps.relationRepo.createEvent(eventInput)
-      next = await this.deps.relationRepo.upsertRelation(relationInput)
+    const result = await this.deps.relationRepo.persistStateChangeTx({
+      relation_input: relationInput,
+      relation_event_input: eventInput,
+      domain_event_template: buildRelationStateChangedEventTemplate({
+        from_agent_id: fromAgentId,
+        to_agent_id: toAgentId,
+        previous_state: existing.state,
+        next_state: relationInput.state,
+        reverse_state_before: reverse?.state ?? null,
+        next_relation_version: existing.version + 1,
+        source: {
+          trigger: 'admin_unblock',
+        },
+        scores: {
+          relation_score: relationInput.relation_score,
+          interaction_score: relationInput.interaction_score,
+          persona_score: relationInput.persona_score,
+          safety_score: relationInput.safety_score,
+        },
+      }),
+    })
+
+    if (result.applied) {
+      this.metrics.markStateTransition()
     }
 
     await this.refreshPairHints(fromAgentId, toAgentId)
-    return next
+    if (result.domain_event_status === 'created' && result.domain_event) {
+      this.emitPostCommitStateChange({
+        event: result.domain_event,
+        previous_state: existing.state,
+        next_state: result.relation.state,
+        relation_id: result.relation.id,
+        from_agent_id: fromAgentId,
+        to_agent_id: toAgentId,
+      })
+    }
+
+    return result.relation
   }
 
   async listRelations(
@@ -424,7 +468,9 @@ export class RelationService {
     let updated = 0
 
     for (const relation of rows) {
-      const changed = await this.evaluateAndPersist(relation.from_agent_id, relation.to_agent_id, relation)
+      const changed = await this.evaluateAndPersist(relation.from_agent_id, relation.to_agent_id, relation, {
+        trigger: 'reconcile',
+      })
       if (changed) updated += 1
     }
 
@@ -435,6 +481,10 @@ export class RelationService {
     fromAgentId: string,
     toAgentId: string,
     existingOverride?: AgentRelation,
+    context: {
+      trigger: RelationStateChangeTrigger
+      relation_event_id?: string | null
+    } = { trigger: 'signal_ingest' },
   ): Promise<boolean> {
     const start = Date.now()
     const now = new Date()
@@ -471,7 +521,7 @@ export class RelationService {
       return false
     }
 
-    const next = await this.deps.relationRepo.upsertRelation({
+    const relationInput = {
       from_agent_id: fromAgentId,
       to_agent_id: toAgentId,
       state: evaluated.next_state,
@@ -489,28 +539,64 @@ export class RelationService {
       last_evaluated_at: now,
       last_state_changed_at: evaluated.last_state_changed_at,
       expected_version: existing?.version,
-    })
+    }
 
-    if (existing?.state !== next.state) {
-      this.metrics.markStateTransition()
-      if (next.state === 'blocked') {
-        this.metrics.markBlock()
-      }
-      if (this.deps.onStateChanged) {
-        Promise.resolve(this.deps.onStateChanged({
+    const previousState = existing?.state ?? null
+    let next: AgentRelation
+    let emittedEvent: DomainEvent | null = null
+    let changed = false
+
+    if (previousState !== evaluated.next_state) {
+      const reverse = await this.deps.relationRepo.getRelation(toAgentId, fromAgentId)
+      const txResult = await this.deps.relationRepo.persistStateChangeTx({
+        relation_input: relationInput,
+        domain_event_template: buildRelationStateChangedEventTemplate({
           from_agent_id: fromAgentId,
           to_agent_id: toAgentId,
-          previous_state: existing?.state ?? null,
-          next_state: next.state,
-          relation_id: next.id,
-        })).catch((hookError) => {
-          console.error('[RelationService] state-change hook failed:', hookError)
-        })
+          previous_state: previousState,
+          next_state: evaluated.next_state,
+          reverse_state_before: reverse?.state ?? null,
+          next_relation_version: (existing?.version ?? 0) + 1,
+          source: {
+            trigger: context.trigger,
+            relation_event_id: context.relation_event_id ?? null,
+          },
+          scores: {
+            relation_score: evaluated.relation_score,
+            interaction_score: evaluated.interaction_score,
+            persona_score: evaluated.persona_score,
+            safety_score: evaluated.safety_score,
+          },
+        }),
+      })
+      next = txResult.relation
+      changed = txResult.domain_event_status === 'created'
+      if (txResult.domain_event_status === 'created') {
+        emittedEvent = txResult.domain_event
       }
+      if (txResult.domain_event_status === 'created' && txResult.applied) {
+        this.metrics.markStateTransition()
+        if (next.state === 'blocked') {
+          this.metrics.markBlock()
+        }
+      }
+    } else {
+      next = await this.deps.relationRepo.upsertRelation(relationInput)
+      changed = true
     }
 
     await this.refreshPairHints(fromAgentId, toAgentId)
-    return true
+    if (emittedEvent) {
+      this.emitPostCommitStateChange({
+        event: emittedEvent,
+        previous_state: previousState,
+        next_state: next.state,
+        relation_id: next.id,
+        from_agent_id: fromAgentId,
+        to_agent_id: toAgentId,
+      })
+    }
+    return changed
   }
 
   private async computePairStats(fromAgentId: string, toAgentId: string, now: Date): Promise<RelationPairStats> {
@@ -581,8 +667,10 @@ export class RelationService {
   }
 
   private async computeStyleSimilarity(fromAgentId: string, toAgentId: string): Promise<number> {
-    const fromConfig = this.getSafeAgentConfig(fromAgentId)
-    const toConfig = this.getSafeAgentConfig(toAgentId)
+    const [fromConfig, toConfig] = await Promise.all([
+      this.getSafeAgentConfig(fromAgentId),
+      this.getSafeAgentConfig(toAgentId),
+    ])
 
     const fromStyle = extractStyle(fromConfig)
     const toStyle = extractStyle(toConfig)
@@ -603,19 +691,26 @@ export class RelationService {
     return clamp01(mood * 0.25 + formality * 0.25 + verbosity * 0.25 + habitScore * 0.25)
   }
 
-  private getSafeAgentConfig(agentId: string): Record<string, unknown> {
+  private async getSafeAgentConfig(agentId: string): Promise<Record<string, unknown>> {
     try {
       return this.deps.agentService.getLatestConfig(agentId)?.config_json ?? {}
     } catch {
-      return {}
+      try {
+        return (await this.deps.agentService.getLatestConfigPersisted(agentId))?.config_json ?? {}
+      } catch {
+        return {}
+      }
     }
   }
 
   private async computeSafetyScore(fromAgentId: string, toAgentId: string): Promise<number> {
-    const [from, to] = await Promise.all([
-      this.deps.agentRepo.findById(fromAgentId),
-      this.deps.agentRepo.findById(toAgentId),
-    ])
+    let from = this.deps.agentRepo.findById(fromAgentId)
+    let to = this.deps.agentRepo.findById(toAgentId)
+    if ((!from || !to) && this.deps.agentRepo.refreshPersisted) {
+      await this.deps.agentRepo.refreshPersisted()
+      from = from ?? this.deps.agentRepo.findById(fromAgentId)
+      to = to ?? this.deps.agentRepo.findById(toAgentId)
+    }
     if (!from || !to) return 0.2
 
     if (from.status === 'BANNED' || to.status === 'BANNED') return 0
@@ -630,7 +725,10 @@ export class RelationService {
     return activeCount < RELATION_CAPACITY
   }
 
-  private async refreshPairHints(fromAgentId: string, toAgentId: string): Promise<void> {
+  private async refreshPairHints(fromAgentId: string, toAgentId: string): Promise<{
+    forward: AgentRelation | null
+    reverse: AgentRelation | null
+  }> {
     const [forward, reverse] = await Promise.all([
       this.deps.relationRepo.getRelation(fromAgentId, toAgentId),
       this.deps.relationRepo.getRelation(toAgentId, fromAgentId),
@@ -638,6 +736,7 @@ export class RelationService {
 
     this.setHint(fromAgentId, toAgentId, resolveHint(forward?.state, reverse?.state))
     this.setHint(toAgentId, fromAgentId, resolveHint(reverse?.state, forward?.state))
+    return { forward, reverse }
   }
 
   private toViewItem(
@@ -678,6 +777,33 @@ export class RelationService {
 
   private pairKey(fromAgentId: string, toAgentId: string): string {
     return `${fromAgentId}:${toAgentId}`
+  }
+
+  private emitPostCommitStateChange(input: {
+    event: DomainEvent
+    from_agent_id: string
+    to_agent_id: string
+    previous_state: RelationState | null
+    next_state: RelationState
+    relation_id: string
+  }): void {
+    if (this.deps.onDomainEventCreated) {
+      Promise.resolve(this.deps.onDomainEventCreated(input.event)).catch((hookError) => {
+        console.error('[RelationService] domain-event hook failed:', hookError)
+      })
+    }
+
+    if (this.deps.onStateChanged) {
+      Promise.resolve(this.deps.onStateChanged({
+        from_agent_id: input.from_agent_id,
+        to_agent_id: input.to_agent_id,
+        previous_state: input.previous_state,
+        next_state: input.next_state,
+        relation_id: input.relation_id,
+      })).catch((hookError) => {
+        console.error('[RelationService] state-change hook failed:', hookError)
+      })
+    }
   }
 }
 

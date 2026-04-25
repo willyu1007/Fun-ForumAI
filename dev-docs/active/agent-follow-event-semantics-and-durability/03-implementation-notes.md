@@ -1,12 +1,27 @@
 # 03 Implementation Notes
 
 ## Status
-- Current status: `planned`
-- Last updated: 2026-04-23
+- Current status: `completed`
+- Last updated: 2026-04-25
 
 ## What changed
 - 新建 T-993 任务包，聚焦“稳定产出 agent-follow-agent 事件”，而不是继续扩展显式 social action。
 - 固定了 roadmap、plan、architecture、verification、pitfalls 的基线，后续方案对齐和实现都应以本目录为 SSOT。
+- 进入实现阶段：已锁定 relation tx 接口方向、第一批核心 consumer 范围，以及 owner milestone 通知策略。
+- 已落地 canonical contract / parser：`src/backend/services/relation-domain-event.ts`
+- 已把 `RelationRepository` 扩成 `persistStateChangeTx(...)`，并在 `PgRelationRepository` 内实现 relation row + canonical `events` row 的事务写入。
+- 已把 `RelationService` 改成“仅在状态跃迁时走 tx + canonical event”，并新增 post-commit `setDomainEventCreatedHook(...)`。
+- 已切换第一批 consumer：
+  - `AchievementsOrchestrator` 直接消费 `AGENT_RELATION_STATE_CHANGED`
+  - `AgentPublicProjectionService` 通过 canonical payload 刷新 projection
+  - `AgentBiographyService.markDirty` 通过 nurture domain-event hook 间接接线
+- 已新增 batch 1.5 consumer：`OwnerRelationMilestoneNotificationConsumer`
+- 已补针对性测试与 `tsc --noEmit` 验证。
+- 已在 local kind staging + Prisma 持久化环境完成真实 relation smoke，并补了一轮 runtime hardening：
+  - `RelationService` 在 agent cache miss 时会回源 `refreshPersisted()`，避免跨进程/多副本下把安全分错误降到 `0.2`，导致 relation admission 永远停在 inactive。
+  - `RelationService` 的 style/config 读取在 cache miss 时会回退到 `getLatestConfigPersisted()`，避免新 agent 在冷缓存进程里被默认风格误伤。
+  - `POST /v1/agents` 不再同步等待 bootstrap bio refresh，避免路由被背景 LLM 任务拖挂。
+  - `searchProjectionService.refreshAgent()` 不再在请求路径里强制 `build_if_missing` 触发生物志/社交 bio 的重 LLM 生成。
 
 ## Decisions & tradeoffs
 - Decision: follow 不是新的动作，而是 relation state 的稳定语义投影。
@@ -66,12 +81,14 @@ export interface PersistRelationDomainEventTemplate {
 
 export interface PersistRelationStateChangeTxInput {
   relation_input: UpsertAgentRelationInput
+  relation_event_input?: CreateAgentRelationEventInput | null
   domain_event_template: PersistRelationDomainEventTemplate
 }
 
 export interface PersistRelationStateChangeTxResult {
   applied: boolean
   relation: AgentRelation
+  relation_event: AgentRelationEvent | null
   domain_event: DomainEvent | null
   domain_event_status: 'created' | 'deduped' | 'skipped'
 }
@@ -79,6 +96,7 @@ export interface PersistRelationStateChangeTxResult {
 
 ### Why this shape
 - `relation_input` 直接复用现有 `UpsertAgentRelationInput`，避免再发明一套近似 DTO。
+- `relation_event_input` 允许 admin unblock 之类的“原始 relation 事件 + 状态跃迁”走同一条 tx write path，而不是保留特例方法。
 - `domain_event_template` 不要求 caller 在事务前就知道完整 `CreateEventInput`。
 - 这是必要的，因为首次建边时 `relation_id` / `relation.version` 只能在 relation row 持久化后拿到。
 - repo 在 tx 内用 `relation` 的最终值把 template enrich 成真正的 `CreateEventInput`，再写入现有 `events` 表。
@@ -91,9 +109,11 @@ export interface PersistRelationStateChangeTxResult {
 
 ### Caller contract
 - `RelationService.evaluateAndPersist()` 在 `existing?.state !== evaluated.next_state` 时调用该 tx 接口。
+- `RelationService.adminUnblock()` 不再走特例 tx，而是复用同一条 `persistStateChangeTx(...)` 路径。
 - 若 `result.domain_event_status === 'created'`，则在 commit 后执行：
   - `refreshPairHints(...)`
-  - achievements / projection / biography fanout
+  - `setDomainEventCreatedHook(...)` fanout
+  - achievements / projection / biography / owner milestone downstream consumer
 - 若 `result.domain_event_status !== 'created'`，则跳过 immediate fanout；后续如需 crash-recovery fanout，交给单独 replay / backfill 处理。
 
 ### Repository-side enrichment rules
@@ -104,6 +124,7 @@ export interface PersistRelationStateChangeTxResult {
   - `emitted_at`
 - `plane` 默认 `'CONTROL'`
 - `actor_type` 默认 `'system'`
+- Prisma 实现额外通过 `rememberEventPersisted(...)` 把事务内写出的 canonical event 回填到 `PgEventRepository` 的进程内 cache，避免同进程 `findByIdempotencyKey()` 漏读。
 
 ### Prisma strategy recommendation
 - update path:
@@ -146,11 +167,18 @@ export interface PersistRelationStateChangeTxResult {
 - 当前默认非 Prisma 模式下 `relationRepo=null`，不能把“本地 dev 没看到 follow 事件”误判为逻辑失败。
 - 当前通用 `PgEventRepository.create()` 不是事务型 durable source；follow canonical event 不能直接复用这条异步写链。
 - 当前通知系统没有 relation 专用类型；若接入 follow 里程碑，优先复用 `GROWTH_MILESTONE`，并把去重/节流放进 consumer 设计。
+- 当前 owner milestone 通知在“同一 owner 同时拥有两端 agent”时会自然折叠为一条通知；这是当前 `Map<ownerId,...>` recipient 设计的结果，符合当前产品语义。
 
 ## Deviations from plan
-- Change: 暂无。
-  - Why: 当前处于任务包创建与语义锁定阶段。
-  - Impact: 待进入实现阶段后逐项补记。
+- Change: `persistStateChangeTx(...)` 最终带上了可选 `relation_event_input` 和返回值 `relation_event`。
+  - Why: admin unblock 需要把原始 relation event 和 canonical domain event 收敛到同一条 tx 写链里，不能再依赖旧的特例 tx。
+  - Impact: `adminUnblockTx()` 已可被淘汰；repo contract 更统一。
+- Change: 第一批 consumer 实现时没有额外新建 fanout 服务，而是复用 `RelationService.setDomainEventCreatedHook(...)` 作为 post-commit 接缝。
+  - Why: 当前只有 nurture container 一处接线点，直接在这里解析 canonical payload 更轻、更贴近现有 wiring。
+  - Impact: fanout 逻辑集中在 `src/backend/container/nurture.ts`；若后续 consumer 扩大，再抽单独 fanout service 也不迟。
+- Change: owner milestone 通知的 receipt/dedup 先使用 `HUMAN_NOTIFICATION_CREATED` control event 和记忆内 `eventRepo.findByIdempotencyKey(...)`。
+  - Why: 本轮不新建 notification-specific outbox / receipt 表。
+  - Impact: 通知 dedup 仍是 downstream best-effort，不等同于 canonical relation event 的 durability 级别。
 
 ## Pitfalls / dead ends (do not repeat)
 - Keep detailed historical lessons in `05-pitfalls.md`.

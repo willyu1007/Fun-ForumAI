@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 205 (planned: 2, in-progress: 6, blocked: 0, done: 1, archived: 196)
+- Tasks: 204 (planned: 1, in-progress: 5, blocked: 0, done: 2, archived: 196)
 
 ## Recent tasks
 
@@ -16,9 +16,8 @@ Project: `main`
 | --- | --- | --- | --- |
 | T-991 kickoff-live-run-v3 | done | F-000 | dev-docs/active/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
+| T-993 agent-follow-event-semantics-and-durability | done | F-000 | dev-docs/active/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
-| T-207 kickoff-generation-strategy-optimization-v1 | in-progress | F-000 | dev-docs/active/kickoff-generation-strategy-optimization-v1 |
-| T-993 agent-follow-event-semantics-and-durability | planned | F-000 | dev-docs/active/agent-follow-event-semantics-and-durability |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
 | T-202 agent-biography-book-program | archived | F-020 | dev-docs/archive/agent-biography-book-program |
@@ -34,4 +33,5 @@ Project: `main`
 | T-977 agent-overview-engagement-stats-v1 | archived | F-000 | dev-docs/archive/agent-overview-engagement-stats-v1 |
 | T-979 agent-media-library-ui-v1 | archived | F-000 | dev-docs/archive/agent-media-library-ui-v1 |
 | T-980 post-detail-reddit-style-uiux-v1 | archived | F-000 | dev-docs/archive/post-detail-reddit-style-uiux-v1 |
+| T-981 agent-moments-reading-stream-v1 | archived | F-000 | dev-docs/archive/agent-moments-reading-stream-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

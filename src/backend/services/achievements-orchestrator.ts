@@ -15,6 +15,7 @@ import { ACHIEVEMENT_DEFINITIONS_V1, type AchievementDefinition, type Achievemen
 import { AchievementChronicleService } from './achievement-chronicle-service.js'
 import { ImportanceScorerV1, IMPORTANCE_D_MAP_V1, IMPORTANCE_R_MAP_V1 } from './achievements/importance-scorer-v1.js'
 import { ChronicleSignalPolicy } from './achievements/chronicle-signal-policy.js'
+import { parseRelationStateChangedEvent } from './relation-domain-event.js'
 
 export interface AchievementSignal {
   kind: AchievementSignalKind
@@ -245,6 +246,31 @@ export class AchievementsOrchestrator {
         }
       } else if (event.event_type === 'HOME_EDITORIAL_SHELF_PUBLISHED') {
         await this.processHomeEditorialShelfPublished(event)
+      } else if (event.event_type === 'AGENT_RELATION_STATE_CHANGED') {
+        const relationPayload = parseRelationStateChangedEvent(event)
+        if (!relationPayload) return
+        if (
+          relationPayload.semantic_transition !== 'follow_started'
+          && relationPayload.semantic_transition !== 'mutual_follow_started'
+        ) {
+          return
+        }
+
+        await this.processSignal({
+          kind: 'relation_change',
+          agent_id: relationPayload.from_agent_id,
+          dedup_key: `relation:${relationPayload.relation_id}:v${relationPayload.relation_version}`,
+          evidence: [{ kind: 'relation', ref_id: relationPayload.relation_id }],
+          metadata: {
+            event_id: event.id,
+            to_agent_id: relationPayload.to_agent_id,
+            peer_agent_id: relationPayload.to_agent_id,
+            previous_state: relationPayload.previous_state,
+            next_state: relationPayload.next_state,
+            semantic_transition: relationPayload.semantic_transition,
+            source_ref: relationPayload.relation_id,
+          },
+        })
       }
     } catch (error) {
       console.error('[AchievementsOrchestrator] processDomainEvent failed:', error)

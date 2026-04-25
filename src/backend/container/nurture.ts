@@ -4,6 +4,7 @@ import { RelationService } from '../services/relation-service.js'
 import { RelationMetrics } from '../services/relation-metrics.js'
 import { NurtureOrchestrator } from '../services/nurture-orchestrator.js'
 import { PublicObservationDigestService } from '../services/public-observation-digest-service.js'
+import { parseRelationStateChangedEvent } from '../services/relation-domain-event.js'
 import { NurtureScheduler } from '../runtime/nurture-scheduler.js'
 import { RelationScheduler } from '../runtime/relation-scheduler.js'
 import { AchievementsScheduler } from '../runtime/achievements-scheduler.js'
@@ -134,6 +135,7 @@ export async function createNurtureEngines(deps: {
     const { InstructionEngine } = await import('../services/instruction-engine.js')
     const { MemoryService } = await import('../services/memory-service.js')
     const { NotificationService } = await import('../services/notification-service.js')
+    const { OwnerRelationMilestoneNotificationConsumer } = await import('../services/owner-relation-milestone-notification-consumer.js')
     const { ProactiveInteractionService } = await import('../services/proactive-interaction-service.js')
     const { ProactiveEventHandler } = await import('../runtime/proactive-event-handler.js')
     const { PublicObservationEventHandler } = await import('../runtime/public-observation-event-handler.js')
@@ -174,19 +176,6 @@ export async function createNurtureEngines(deps: {
         statsService,
         metrics: new RelationMetrics(),
       })
-      relationService.setStateChangeHook(async (input) => {
-        if (achievementsOrchestrator) {
-          await achievementsOrchestrator.processRelationStateChange(input)
-        }
-        await agentPublicProjectionService.refresh(input.from_agent_id, {
-          reason: 'relation_change',
-          relation_change: {
-            to_agent_id: input.to_agent_id,
-            next_state: input.next_state,
-          },
-        })
-        await deps.onRelationStateChanged?.(input)
-      })
     }
 
     nurtureOrchestrator = new NurtureOrchestrator({
@@ -206,9 +195,48 @@ export async function createNurtureEngines(deps: {
     const privateShadowRepo = new PgPrivateShadowMemoryRepository(prisma)
     const notificationRepo = new PgNotificationRepository(prisma)
     const notificationService = new NotificationService(notificationRepo)
+    const ownerRelationMilestoneConsumer = relationService && repos.relationRepo
+      ? new OwnerRelationMilestoneNotificationConsumer({
+        agentRepo: repos.agentRepo,
+        relationRepo: repos.relationRepo,
+        eventRepo: repos.eventRepo,
+        notificationService,
+      })
+      : null
     const contextJournalService = new DefaultContextJournalService(rawContextEventRepo)
     const summaryOrchestrator = new LlmSummaryOrchestrator({ llmGateway, agentService })
     const identityFinalizer = new LlmIdentityFinalizer({ llmGateway, agentService })
+
+    if (relationService) {
+      relationService.setDomainEventCreatedHook(async (event) => {
+        const payload = parseRelationStateChangedEvent(event)
+        if (!payload) return
+
+        if (achievementsOrchestrator) {
+          await achievementsOrchestrator.processDomainEvent(event)
+        }
+
+        await agentPublicProjectionService.refresh(payload.from_agent_id, {
+          reason: 'relation_change',
+          relation_change: {
+            to_agent_id: payload.to_agent_id,
+            next_state: payload.next_state,
+          },
+        })
+
+        await deps.onRelationStateChanged?.({
+          from_agent_id: payload.from_agent_id,
+          to_agent_id: payload.to_agent_id,
+          previous_state: payload.previous_state,
+          next_state: payload.next_state,
+          relation_id: payload.relation_id,
+        })
+
+        if (ownerRelationMilestoneConsumer) {
+          await ownerRelationMilestoneConsumer.processDomainEvent(event)
+        }
+      })
+    }
 
     memoryService = new MemoryService({
       memoryRepo,

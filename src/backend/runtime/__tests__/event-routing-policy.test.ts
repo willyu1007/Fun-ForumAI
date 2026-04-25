@@ -38,6 +38,7 @@ describe('event-routing-policy', () => {
 
   it('maps aftershow notification/control events without allocator enqueue', () => {
     const controlEvents = [
+      'AGENT_RELATION_STATE_CHANGED',
       'AFTERSHOW_CALLOUTS_EXTRACTED',
       'HUMAN_NOTIFICATION_CREATED',
       'HUMAN_NOTIFICATION_INVALIDATED',

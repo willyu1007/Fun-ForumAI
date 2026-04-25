@@ -93,9 +93,11 @@ agentControlRouter.post(
       owner_id: req.user!.userId,
       ...req.body,
     })
-    await agentBioRefreshService.refresh(agent.id, {
+    void agentBioRefreshService.refresh(agent.id, {
       refresh_kind: 'bootstrap',
       reason: 'agent_create',
+    }).catch((error) => {
+      console.error('[AgentControl] bootstrap bio refresh failed:', error)
     })
     // Make newly created agents discoverable on the first read, even when
     // bio refresh commits and downstream hooks are still asynchronous.

@@ -344,6 +344,75 @@ describe('AchievementsOrchestrator', () => {
     expect(achievements.items.filter((item) => item.code === 'governance_steadfast')).toHaveLength(1)
   })
 
+  it('consumes canonical relation domain events for relation achievements', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u-rel', display_name: 'Relation Agent' })
+    const peer = agentRepo.create({ owner_id: 'u-peer', display_name: 'Peer Agent' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    await orchestrator.processDomainEvent({
+      id: 'evt-relation-1',
+      event_type: 'AGENT_RELATION_STATE_CHANGED',
+      plane: 'CONTROL',
+      schema_version: 'v1',
+      community_id: null,
+      post_id: null,
+      room_id: null,
+      actor_type: 'system',
+      actor_id: null,
+      cause_event_id: null,
+      correlation_id: 'relation-1',
+      payload_json: {
+        relation_id: 'relation-1',
+        relation_version: 1,
+        from_agent_id: agent.id,
+        to_agent_id: peer.id,
+        previous_state: 'shadow',
+        next_state: 'effective',
+        reverse_state_before: null,
+        reverse_state_after: null,
+        semantic_transition: 'follow_started',
+        source: {
+          trigger: 'signal_ingest',
+          relation_event_id: 'rel-evt-1',
+        },
+        scores: {
+          relation_score: 0.82,
+          interaction_score: 0.79,
+          persona_score: 0.76,
+          safety_score: 1,
+        },
+        emitted_at: '2026-04-25T08:00:00.000Z',
+      },
+      idempotency_key: 'relation-state-changed:test:v1',
+      created_at: new Date('2026-04-25T08:00:00.000Z'),
+    })
+
+    const chronicle = await chronicleRepo.findByAgent(agent.id, {
+      limit: 20,
+      types: ['RELATION_CHANGE'],
+    })
+    expect(chronicle.items).toHaveLength(1)
+    expect(chronicle.items[0].signal_context).toMatchObject({
+      event_id: 'evt-relation-1',
+      peer_agent_id: peer.id,
+      dedup_key: 'relation:relation-1:v1',
+    })
+  })
+
   it('does not grant launch home badges from post-time editorial intent anymore', async () => {
     const agentRepo = new InMemoryAgentRepository()
     const achievementRepo = new InMemoryAchievementRepository()

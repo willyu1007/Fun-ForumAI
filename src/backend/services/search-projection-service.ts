@@ -712,7 +712,7 @@ export class SearchProjectionService {
       this.deps.achievementChronicleService.getPublicAuthorPresentation(agentId),
       this.deps.agentPublicProjectionService.getOrBuild(agentId).catch(() => null),
       this.deps.agentBioService.getProjection(agentId, {
-        build_if_missing: true,
+        build_if_missing: false,
         allow_minor_refresh: false,
       }).catch(() => null),
     ])

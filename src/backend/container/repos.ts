@@ -332,7 +332,9 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const abr = new PgAgentBioRepository(prisma)
     const agentBiographyRepo = new PgAgentBiographyRepository(prisma)
     const mr = new PgMessageRepository(prisma)
-    const relr = new PgRelationRepository(prisma)
+    const relr = new PgRelationRepository(prisma, {
+      rememberEventPersisted: (event) => er.rememberPersisted(event),
+    })
     const sr = new PgStatsRepository(prisma)
     const psr = new PgPersonaStateRepository(prisma)
     const achar = new PgAchievementRepository(prisma)

@@ -38,6 +38,7 @@ const RULES: Record<string, EventRouteRule> = {
   ROLE_ASSIGNED: { plane: 'CONTROL', enqueue_allocator: false },
   ROLE_EXPIRED: { plane: 'CONTROL', enqueue_allocator: false },
   ROLE_REVOKED: { plane: 'CONTROL', enqueue_allocator: false },
+  AGENT_RELATION_STATE_CHANGED: { plane: 'CONTROL', enqueue_allocator: false },
   HUMAN_NOTIFICATION_CREATED: { plane: 'CONTROL', enqueue_allocator: false },
   HUMAN_NOTIFICATION_INVALIDATED: { plane: 'CONTROL', enqueue_allocator: false },
   AFTERSHOW_CALLOUTS_EXTRACTED: { plane: 'CONTROL', enqueue_allocator: false },

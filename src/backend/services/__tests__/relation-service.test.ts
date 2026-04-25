@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { InMemoryRelationRepository } from '../../repos/relation-repository.js'
 import { InMemoryAgentRepository, InMemoryAgentConfigRepository } from '../../repos/agent-repository.js'
 import { InMemoryAgentRunRepository } from '../../repos/event-repository.js'
@@ -7,7 +7,36 @@ import { InMemoryPublicStageThreadRepository } from '../../repos/public-stage-th
 import { InMemoryPublicStageTurnRepository } from '../../repos/public-stage-turn-repository.js'
 import { AgentService } from '../agent-service.js'
 import { RelationService } from '../relation-service.js'
+import { parseRelationStateChangedEvent } from '../relation-domain-event.js'
 import { InMemoryPublicStageStore } from '../../test-support/public-stage-store.js'
+
+class RefreshOnDemandAgentRepository extends InMemoryAgentRepository {
+  private cold = true
+
+  override async refreshPersisted(): Promise<void> {
+    this.cold = false
+  }
+
+  override findById(id: string) {
+    return this.cold ? null : super.findById(id)
+  }
+}
+
+class RefreshOnDemandAgentConfigRepository extends InMemoryAgentConfigRepository {
+  private cold = true
+
+  override async refreshPersisted(): Promise<void> {
+    this.cold = false
+  }
+
+  override findLatest(agentId: string) {
+    return this.cold ? null : super.findLatest(agentId)
+  }
+
+  override findLatestRevision(agentId: string) {
+    return this.cold ? null : super.findLatestRevision(agentId)
+  }
+}
 
 function setup() {
   const agentRepo = new InMemoryAgentRepository()
@@ -82,6 +111,68 @@ describe('RelationService', () => {
 
     expect(following.items.length).toBeGreaterThan(0)
     expect(following.items[0].pair_agent_id).toBe(agentB.id)
+    expect(following.items[0].state).toBe('shadow')
+  })
+
+  it('refreshes persisted agent state on cache miss before admitting a relation', async () => {
+    const agentRepo = new RefreshOnDemandAgentRepository()
+    const configRepo = new RefreshOnDemandAgentConfigRepository()
+    const runRepo = new InMemoryAgentRunRepository()
+
+    const agentA = agentRepo.create({ owner_id: 'u1', display_name: 'A' })
+    const agentB = agentRepo.create({ owner_id: 'u2', display_name: 'B' })
+
+    configRepo.create({
+      agent_id: agentA.id,
+      config_json: { style: { mood: 'calm', formality: 3, verbosity: 3, habits: ['logic'] } },
+      updated_by: 'u1',
+    })
+    configRepo.create({
+      agent_id: agentB.id,
+      config_json: { style: { mood: 'calm', formality: 3, verbosity: 3, habits: ['logic'] } },
+      updated_by: 'u2',
+    })
+
+    const relationRepo = new InMemoryRelationRepository()
+    const agentService = new AgentService({
+      agentRepo,
+      agentConfigRepo: configRepo,
+      agentRunRepo: runRepo,
+    })
+    const relationService = new RelationService({
+      relationRepo,
+      agentRepo,
+      agentService,
+    })
+
+    for (let i = 0; i < 12; i++) {
+      await relationService.ingestSignal({
+        from_agent_id: agentA.id,
+        to_agent_id: agentB.id,
+        event_type: 'co_presence',
+        source_type: 'room_message',
+        source_ref_id: `refresh-cp-${i}`,
+        idempotency_key: `refresh-cp:${i}`,
+      })
+    }
+
+    for (let i = 0; i < 8; i++) {
+      await relationService.ingestSignal({
+        from_agent_id: agentA.id,
+        to_agent_id: agentB.id,
+        event_type: 'reciprocal_reply',
+        source_type: 'room_message',
+        source_ref_id: `refresh-rr-${i}`,
+        idempotency_key: `refresh-rr:${i}`,
+      })
+    }
+
+    const following = await relationService.listRelations(agentA.id, {
+      view: 'following',
+      limit: 20,
+    })
+
+    expect(following.items.length).toBeGreaterThan(0)
     expect(following.items[0].state).toBe('shadow')
   })
 
@@ -169,6 +260,36 @@ describe('RelationService', () => {
     })
 
     expect(following.items[0].state).toBe('blocked')
+  })
+
+  it('emits canonical relation state changed event on blocked transition', async () => {
+    const { relationService, agentA, agentB } = setup()
+    const onEvent = vi.fn()
+    relationService.setDomainEventCreatedHook(onEvent)
+
+    await relationService.ingestSignal({
+      from_agent_id: agentA.id,
+      to_agent_id: agentB.id,
+      event_type: 'safety_severe',
+      source_type: 'moderation',
+      source_ref_id: 'risk-evt-1',
+      idempotency_key: 'severe-hook-1',
+    })
+
+    expect(onEvent).toHaveBeenCalledTimes(1)
+    const [event] = onEvent.mock.calls[0]
+    const payload = parseRelationStateChangedEvent(event)
+    expect(event.event_type).toBe('AGENT_RELATION_STATE_CHANGED')
+    expect(payload).toMatchObject({
+      from_agent_id: agentA.id,
+      to_agent_id: agentB.id,
+      previous_state: null,
+      next_state: 'blocked',
+      semantic_transition: 'relation_blocked',
+      source: {
+        trigger: 'signal_ingest',
+      },
+    })
   })
 
   it('maps thread creation to a forum_thread reply against the post author', async () => {
