@@ -5,6 +5,7 @@ import {
   mediaObservabilityService,
   mediaReuseGovernanceService,
   mediaRolloutControllerService,
+  mediaScenePackService,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
 import { AppError } from '../../lib/errors.js'
@@ -13,8 +14,14 @@ import type { MediaLineageNodeType, MediaRolloutControllerOverride } from '../..
 import {
   createCommunityCommonsAssetSchema,
   createPlatformCanonicalAssetSchema,
+  createMediaScenePackDraftSchema,
+  activateMediaScenePackVersionSchema,
+  mediaScenePackCompilePreviewSchema,
+  mediaScenePackRoutePreviewSchema,
   patchMediaReusePolicySchema,
+  patchMediaScenePackDraftSchema,
   patchMediaRolloutControllerSchema,
+  releaseMediaScenePackVersionSchema,
   releaseMediaRolloutControllerOverrideSchema,
   revokeMediaReusePolicySchema,
 } from '../../validation/schemas.js'
@@ -61,6 +68,169 @@ function serializeMediaRolloutControllerProfile(
 }
 
 export function registerAdminMediaRoutes(router: IRouter): void {
+  router.post(
+    '/admin/media/scene-packs/route-preview',
+    requireHumanAuth,
+    requireAdmin,
+    validate(mediaScenePackRoutePreviewSchema),
+    async (req, res, next) => {
+      try {
+        const data = await mediaScenePackService.previewRoute({
+          text: req.body.text ?? null,
+          visual_brief: req.body.visual_brief ?? null,
+        })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.post(
+    '/admin/media/scene-packs/compile-preview',
+    requireHumanAuth,
+    requireAdmin,
+    validate(mediaScenePackCompilePreviewSchema),
+    async (req, res, next) => {
+      try {
+        const data = await mediaScenePackService.previewCompile({
+          text: req.body.text ?? null,
+          scene_id: req.body.scene_id ?? null,
+          visual_brief: req.body.visual_brief ?? null,
+          aspect_ratio_hint: req.body.aspect_ratio_hint ?? null,
+        })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.get(
+    '/admin/media/scene-packs',
+    requireHumanAuth,
+    requireAdmin,
+    async (_req, res, next) => {
+      try {
+        const data = await mediaScenePackService.listScenePacks()
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.get(
+    '/admin/media/scene-packs/:sceneId',
+    requireHumanAuth,
+    requireAdmin,
+    async (req, res, next) => {
+      try {
+        const data = await mediaScenePackService.getScenePack(String(req.params.sceneId))
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.post(
+    '/admin/media/scene-packs/:sceneId/versions',
+    requireHumanAuth,
+    requireAdmin,
+    validate(createMediaScenePackDraftSchema),
+    async (req, res, next) => {
+      try {
+        const data = await mediaScenePackService.createDraftVersion({
+          scene_id: String(req.params.sceneId),
+          patch: req.body,
+          created_by_user_id: req.user!.userId,
+        })
+        res.status(201).json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.patch(
+    '/admin/media/scene-packs/:sceneId/versions/:version',
+    requireHumanAuth,
+    requireAdmin,
+    validate(patchMediaScenePackDraftSchema),
+    async (req, res, next) => {
+      try {
+        const version = Number.parseInt(String(req.params.version), 10)
+        if (!Number.isSafeInteger(version) || version <= 0) {
+          throw new AppError(400, 'version must be a positive integer', 'VALIDATION_ERROR')
+        }
+        const data = await mediaScenePackService.updateDraftVersion({
+          scene_id: String(req.params.sceneId),
+          version,
+          patch: req.body,
+          updated_by_user_id: req.user!.userId,
+        })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.post(
+    '/admin/media/scene-packs/:sceneId/versions/:version/activate',
+    requireHumanAuth,
+    requireAdmin,
+    validate(activateMediaScenePackVersionSchema),
+    async (req, res, next) => {
+      try {
+        const version = Number.parseInt(String(req.params.version), 10)
+        if (!Number.isSafeInteger(version) || version <= 0) {
+          throw new AppError(400, 'version must be a positive integer', 'VALIDATION_ERROR')
+        }
+        const data = await mediaScenePackService.activateVersion({
+          scene_id: String(req.params.sceneId),
+          version,
+        })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.post(
+    '/admin/media/scene-packs/:sceneId/versions/:version/release',
+    requireHumanAuth,
+    requireAdmin,
+    validate(releaseMediaScenePackVersionSchema),
+    async (req, res, next) => {
+      try {
+        const version = Number.parseInt(String(req.params.version), 10)
+        if (!Number.isSafeInteger(version) || version <= 0) {
+          throw new AppError(400, 'version must be a positive integer', 'VALIDATION_ERROR')
+        }
+        const data = await mediaScenePackService.releaseVersion({
+          scene_id: String(req.params.sceneId),
+          version,
+          released_by_user_id: req.user!.userId,
+          reason: req.body.reason ?? null,
+        })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
   router.post(
     '/admin/media/platform-canonical/assets',
     requireHumanAuth,

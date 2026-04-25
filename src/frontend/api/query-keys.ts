@@ -119,6 +119,8 @@ export const queryKeys = {
   adminRuntimeFeatures: ['admin', 'runtime-features'] as const,
   adminMediaObservability: ['admin', 'media-observability'] as const,
   adminMediaRolloutController: ['admin', 'media-rollout-controller'] as const,
+  adminMediaScenePacks: ['admin', 'media-scene-packs'] as const,
+  adminMediaScenePack: (sceneId: string) => ['admin', 'media-scene-pack', sceneId] as const,
   adminModerationQueue: (params?: {
     status?: string
     case_type?: string

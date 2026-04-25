@@ -825,6 +825,104 @@ export const releaseMediaRolloutControllerOverrideSchema = z
   })
   .strict()
 
+const mediaScenePackVisualContractSchema = z
+  .object({
+    surface: z.string().trim().min(1).max(240),
+    composition: z.string().trim().min(1).max(1000),
+    text_policy: z.enum(['avoid', 'allow_short_chinese', 'allow']),
+    real_world_anchor_required: z.boolean(),
+    required_information_layers: z.array(z.string().trim().min(1).max(160)).min(1).max(12),
+    routing_keywords: z.array(z.string().trim().min(1).max(80)).max(40).optional(),
+  })
+  .strict()
+
+const mediaScenePackSafetyBoundariesSchema = z
+  .object({
+    no_price: z.boolean(),
+    no_efficacy_claim: z.boolean(),
+    no_real_brand_promo: z.boolean(),
+    no_purchase_guarantee: z.boolean(),
+    additional_boundaries: z.array(z.string().trim().min(1).max(240)).max(20),
+  })
+  .strict()
+
+const mediaScenePackQualityGateSchema = z
+  .object({
+    must_have: z.array(z.string().trim().min(1).max(180)).min(1).max(20),
+    reject_if: z.array(z.string().trim().min(1).max(180)).min(1).max(20),
+  })
+  .strict()
+
+const mediaVisualBriefSchema = z
+  .object({
+    visual_intent: z.string().trim().min(1).max(260),
+    emotional_kernel: z.string().trim().min(1).max(260),
+    real_world_anchor: z.string().trim().min(1).max(260),
+    communication_job: z.string().trim().min(1).max(260),
+    forbidden_claims: z.array(z.string().trim().min(1).max(180)).max(20),
+  })
+  .strict()
+
+const mediaScenePackDraftFieldsSchema = z
+  .object({
+    display_name: z.string().trim().min(1).max(160).optional(),
+    media_family: z.string().trim().min(1).max(120).optional(),
+    when_to_use: z.array(z.string().trim().min(1).max(500)).min(1).max(20).optional(),
+    do_not_use_when: z.array(z.string().trim().min(1).max(500)).min(1).max(20).optional(),
+    visual_contract: mediaScenePackVisualContractSchema.optional(),
+    safety_boundaries: mediaScenePackSafetyBoundariesSchema.optional(),
+    prompt_system: z.string().trim().min(20).max(4000).optional(),
+    quality_gate: mediaScenePackQualityGateSchema.optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.display_name !== undefined ||
+      value.media_family !== undefined ||
+      value.when_to_use !== undefined ||
+      value.do_not_use_when !== undefined ||
+      value.visual_contract !== undefined ||
+      value.safety_boundaries !== undefined ||
+      value.prompt_system !== undefined ||
+      value.quality_gate !== undefined,
+    { message: 'at least one scene pack draft field is required' },
+  )
+
+export const createMediaScenePackDraftSchema = mediaScenePackDraftFieldsSchema
+export const patchMediaScenePackDraftSchema = mediaScenePackDraftFieldsSchema
+
+export const activateMediaScenePackVersionSchema = z.object({}).strict()
+
+export const releaseMediaScenePackVersionSchema = z
+  .object({
+    reason: z.string().trim().max(2000).optional(),
+  })
+  .strict()
+
+export const mediaScenePackRoutePreviewSchema = z
+  .object({
+    text: z.string().trim().max(10_000).nullable().optional(),
+    visual_brief: mediaVisualBriefSchema.nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (value) => Boolean(value.text?.trim()) || value.visual_brief !== undefined,
+    { message: 'text or visual_brief is required' },
+  )
+
+export const mediaScenePackCompilePreviewSchema = z
+  .object({
+    text: z.string().trim().max(10_000).nullable().optional(),
+    scene_id: z.string().trim().min(1).max(120).nullable().optional(),
+    visual_brief: mediaVisualBriefSchema.nullable().optional(),
+    aspect_ratio_hint: z.enum(['1:1', '4:5', '16:9']).nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (value) => Boolean(value.text?.trim()) || value.visual_brief !== undefined || Boolean(value.scene_id?.trim()),
+    { message: 'text, visual_brief, or scene_id is required' },
+  )
+
 export const createIncubationGrantSchema = z
   .object({
     reason: z.string().min(1).max(1000),
