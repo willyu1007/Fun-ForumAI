@@ -8,19 +8,19 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 205 (planned: 3, in-progress: 7, blocked: 0, done: 0, archived: 195)
+- Tasks: 205 (planned: 2, in-progress: 6, blocked: 0, done: 1, archived: 196)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-991 kickoff-live-run-v3 | done | F-000 | dev-docs/active/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
+| T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 | T-207 kickoff-generation-strategy-optimization-v1 | in-progress | F-000 | dev-docs/active/kickoff-generation-strategy-optimization-v1 |
-| T-994 text-to-image-scene-pack-quality-upgrade | in-progress | F-000 | dev-docs/active/text-to-image-scene-pack-quality-upgrade |
 | T-993 agent-follow-event-semantics-and-durability | planned | F-000 | dev-docs/active/agent-follow-event-semantics-and-durability |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
-| T-991 kickoff-live-run-v3 | planned | F-000 | dev-docs/active/kickoff-live-run-v3 |
 | T-202 agent-biography-book-program | archived | F-020 | dev-docs/archive/agent-biography-book-program |
 | T-203 agent-biography-book-view-and-modal-redesign | archived | F-020 | dev-docs/archive/agent-biography-book-view-and-modal-redesign |
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |

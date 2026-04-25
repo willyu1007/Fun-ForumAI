@@ -130,10 +130,10 @@ Project: `main`
 | T-986 kickoff-step3-live-run-human-loop | in-progress | dev-docs/active/kickoff-step3-live-run-human-loop |
 | T-987 forum-director-plan-enrichment-v1 | archived | dev-docs/archive/forum-director-plan-enrichment-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | dev-docs/active/kickoff-step3-live-run-v2 |
-| T-991 kickoff-live-run-v3 | planned | dev-docs/active/kickoff-live-run-v3 |
+| T-991 kickoff-live-run-v3 | done | dev-docs/active/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | planned | dev-docs/active/agent-follow-event-semantics-and-durability |
-| T-994 text-to-image-scene-pack-quality-upgrade | in-progress | dev-docs/active/text-to-image-scene-pack-quality-upgrade |
+| T-994 text-to-image-scene-pack-quality-upgrade | archived | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 
 ### F-010 Agent Stats System
 

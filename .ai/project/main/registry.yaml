@@ -1893,11 +1893,11 @@ tasks:
     updated: 2026-04-22
   - id: T-991
     slug: kickoff-live-run-v3
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/kickoff-live-run-v3
-    updated: 2026-04-22
+    updated: 2026-04-25
   - id: T-992
     slug: runtime-autonomous-vote-pipeline
     status: archived
@@ -1914,8 +1914,8 @@ tasks:
     updated: 2026-04-23
   - id: T-994
     slug: text-to-image-scene-pack-quality-upgrade
-    status: in-progress
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/text-to-image-scene-pack-quality-upgrade
-    updated: 2026-04-24
+    dev_docs_path: dev-docs/archive/text-to-image-scene-pack-quality-upgrade
+    updated: 2026-04-25

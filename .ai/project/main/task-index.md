@@ -211,8 +211,8 @@ Project: `main`
 | T-986 kickoff-step3-live-run-human-loop | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-human-loop |
 | T-987 forum-director-plan-enrichment-v1 | archived | F-000 | dev-docs/archive/forum-director-plan-enrichment-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
-| T-991 kickoff-live-run-v3 | planned | F-000 | dev-docs/active/kickoff-live-run-v3 |
+| T-991 kickoff-live-run-v3 | done | F-000 | dev-docs/active/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | planned | F-000 | dev-docs/active/agent-follow-event-semantics-and-durability |
-| T-994 text-to-image-scene-pack-quality-upgrade | in-progress | F-000 | dev-docs/active/text-to-image-scene-pack-quality-upgrade |
+| T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 <!-- AUTO-GENERATED:END task-index -->
