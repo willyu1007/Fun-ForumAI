@@ -10,6 +10,7 @@ import type { MediaLineageService } from './media-lineage-service.js'
 import type { MediaRolloutControllerService } from './media-rollout-controller-service.js'
 import type { MediaWriteBridge } from './media-write-bridge.js'
 import type { MediaRetrievalService } from './media-retrieval-service.js'
+import type { MediaScenePackService } from './media-scene-pack-service.js'
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type {
   CompiledMediaPrompt,
@@ -88,6 +89,7 @@ export interface MediaGenerationServiceDeps {
   mediaLineageService?: MediaLineageService | null
   mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
   mediaRetrievalService?: Pick<MediaRetrievalService, 'ensureAssetIndexed'> | null
+  mediaScenePackService?: Pick<MediaScenePackService, 'auditGeneratedSnapshot'> | null
 }
 
 interface MediaGenerationHardeningSettings {
@@ -524,6 +526,12 @@ export class MediaGenerationService {
             schema_version: generated.snapshot.schema_version,
           },
         ])
+        await this.recordScenePackQualityAudit({
+          job: finished ?? job,
+          plan: primaryPlan,
+          snapshot: generated.snapshot,
+          output_asset_id: generated.asset.id,
+        })
       }
       await this.syncLinkedPlansWithJob(finished ?? job)
       await this.recordJobEvent(
@@ -621,6 +629,38 @@ export class MediaGenerationService {
         input_mode: job.input_mode,
       },
     })
+  }
+
+  private async recordScenePackQualityAudit(input: {
+    job: MediaGenerationJob
+    plan: PersistedImagePlan | null
+    snapshot: MediaSemanticSnapshot
+    output_asset_id: string
+  }): Promise<void> {
+    if (!this.deps.mediaScenePackService || !input.job.compiled_prompt.scene_pack_ref) {
+      return
+    }
+    try {
+      const audit = this.deps.mediaScenePackService.auditGeneratedSnapshot({
+        compiled_prompt: input.job.compiled_prompt,
+        snapshot: input.snapshot,
+      })
+      await this.deps.mediaObservabilityService?.record({
+        event_type: 'scene_pack_quality_audited',
+        surface: input.plan ? resolveMediaObservabilitySurface(input.plan.scene_ref) : 'generation',
+        severity: audit.status === 'warn' ? 'warn' : 'info',
+        agent_id: input.job.agent_id,
+        image_plan_id: input.plan?.id ?? null,
+        generation_job_id: input.job.id,
+        asset_id: input.output_asset_id,
+        payload_json: audit as unknown as Record<string, unknown>,
+      })
+    } catch (error) {
+      console.warn(
+        '[MediaGenerationService] scene pack quality audit failed:',
+        error instanceof Error ? error.message : String(error),
+      )
+    }
   }
 
   private async syncPlanWithJob(plan: PersistedImagePlan, job: MediaGenerationJob): Promise<void> {

@@ -46,6 +46,45 @@ function buildGatewayStub(input: {
 }
 
 describe('FallbackMediaGenerationGateway', () => {
+  it('is configured when only the fallback provider is configured', async () => {
+    const primary = buildGatewayStub({
+      providerId: 'ark-seedream',
+      modelName: 'doubao-seedream-5-0-lite-260128',
+      isConfigured: false,
+      generate: vi.fn(async () => {
+        throw new MediaGenerationGatewayError('primary_not_configured', {
+          provider_id: 'ark-seedream',
+          model_name: 'doubao-seedream-5-0-lite-260128',
+        })
+      }),
+    })
+    const fallback = buildGatewayStub({
+      providerId: 'dashscope-qwen-image',
+      modelName: 'qwen-image-2.0',
+      isConfigured: true,
+      generate: vi.fn(async () => ({
+        image_url: 'https://cdn.example.com/fallback-only.png',
+        mime_type: 'image/png',
+        provider_id: 'dashscope-qwen-image',
+        model_name: 'qwen-image-2.0',
+      })),
+    })
+    const gateway = new FallbackMediaGenerationGateway({ primary, fallback })
+
+    expect(gateway.isConfigured).toBe(true)
+
+    const result = await gateway.generate(buildInput())
+
+    expect(result).toMatchObject({
+      image_url: 'https://cdn.example.com/fallback-only.png',
+      provider_request_summary: {
+        route: 'fallback',
+        selected_provider_id: 'dashscope-qwen-image',
+        selected_model_name: 'qwen-image-2.0',
+      },
+    })
+  })
+
   it('preserves the composed primary summary instead of overwriting it with the inner gateway summary', async () => {
     const primary = buildGatewayStub({
       providerId: 'ark-seedream',

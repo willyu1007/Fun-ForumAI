@@ -17,6 +17,7 @@ import { InMemoryImagePlanRepository } from '../repos/image-plan-repository.js'
 import { InMemoryMediaReusePolicyRepository } from '../repos/media-reuse-policy-repository.js'
 import { InMemoryMediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import { InMemoryMediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
+import { InMemoryMediaScenePackRepository } from '../repos/media-scene-pack-repository.js'
 import { InMemoryMediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
 import { InMemoryMediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
 import { InMemoryMediaCatalogCardRepository } from '../repos/media-catalog-card-repository.js'
@@ -83,6 +84,7 @@ import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
 import type { MediaReusePolicyRepository } from '../repos/media-reuse-policy-repository.js'
 import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { MediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
+import type { MediaScenePackRepository } from '../repos/media-scene-pack-repository.js'
 import type { MediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
 import type { MediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
 import type { MediaCatalogCardRepository } from '../repos/media-catalog-card-repository.js'
@@ -152,6 +154,7 @@ export interface Repositories {
   mediaReusePolicyRepo: MediaReusePolicyRepository
   mediaGenerationJobRepo: MediaGenerationJobRepository
   mediaObservabilityEventRepo: MediaObservabilityEventRepository
+  mediaScenePackRepo: MediaScenePackRepository
   mediaRolloutControllerOverrideRepo: MediaRolloutControllerOverrideRepository
   mediaLineageEdgeRepo: MediaLineageEdgeRepository
   mediaCatalogCardRepo: MediaCatalogCardRepository
@@ -234,6 +237,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const { PgMediaReusePolicyRepository } = await import('../repos/pg/pg-media-reuse-policy-repository.js')
     const { PgMediaGenerationJobRepository } = await import('../repos/pg/pg-media-generation-job-repository.js')
     const { PgMediaObservabilityEventRepository } = await import('../repos/pg/pg-media-observability-event-repository.js')
+    const { PgMediaScenePackRepository } = await import('../repos/pg/pg-media-scene-pack-repository.js')
     const { PgMediaRolloutControllerOverrideRepository } = await import('../repos/pg/pg-media-rollout-controller-override-repository.js')
     const { PgMediaLineageEdgeRepository } = await import('../repos/pg/pg-media-lineage-edge-repository.js')
     const { PgMediaCatalogCardRepository } = await import('../repos/pg/pg-media-catalog-card-repository.js')
@@ -302,6 +306,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
     const mrpr = new PgMediaReusePolicyRepository(prisma)
     const mgjr = new PgMediaGenerationJobRepository(prisma)
     const moer = new PgMediaObservabilityEventRepository(prisma)
+    const mediaScenePackRepo = new PgMediaScenePackRepository(prisma)
     const mrcor = new PgMediaRolloutControllerOverrideRepository(prisma)
     const mler = new PgMediaLineageEdgeRepository(prisma)
     const mediaCatalogCardRepo = new PgMediaCatalogCardRepository(prisma)
@@ -371,6 +376,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
         visualDirectiveRepo: vdr, imagePlanRepo: ipr,
         mediaReusePolicyRepo: mrpr, mediaGenerationJobRepo: mgjr,
         mediaObservabilityEventRepo: moer,
+        mediaScenePackRepo,
         mediaRolloutControllerOverrideRepo: mrcor,
         mediaLineageEdgeRepo: mler,
         mediaCatalogCardRepo,
@@ -434,6 +440,7 @@ export async function createRepositories(usePrisma: boolean): Promise<{
       mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
       mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
       mediaObservabilityEventRepo: new InMemoryMediaObservabilityEventRepository(),
+      mediaScenePackRepo: new InMemoryMediaScenePackRepository(),
       mediaRolloutControllerOverrideRepo: new InMemoryMediaRolloutControllerOverrideRepository(),
       mediaLineageEdgeRepo: new InMemoryMediaLineageEdgeRepository(),
       mediaCatalogCardRepo: new InMemoryMediaCatalogCardRepository(),

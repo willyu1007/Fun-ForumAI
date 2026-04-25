@@ -74,15 +74,17 @@ function mergeSummary(
 
 export class FallbackMediaGenerationGateway implements MediaGenerationGateway {
   readonly providerId: string
-  readonly modelName: string
 
   constructor(private readonly deps: FallbackMediaGenerationGatewayDeps) {
     this.providerId = MEDIA_GENERATION_FALLBACK_ROUTE_PROVIDER_ID
-    this.modelName = buildRouteModelName(deps)
+  }
+
+  get modelName(): string {
+    return buildRouteModelName(this.deps)
   }
 
   get isConfigured(): boolean {
-    return this.deps.primary.isConfigured
+    return this.deps.primary.isConfigured || Boolean(this.deps.fallback?.isConfigured)
   }
 
   async generate(input: MediaGenerationGatewayInput): Promise<MediaGenerationGatewayResult> {

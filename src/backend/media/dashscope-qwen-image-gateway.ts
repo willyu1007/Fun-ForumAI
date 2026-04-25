@@ -66,21 +66,42 @@ function extractImageUrl(payload: unknown): string | null {
   return null
 }
 
+type DashScopeQwenImageGatewayRole = 'primary' | 'fallback'
+
+interface DashScopeQwenImageGatewayOptions {
+  role?: DashScopeQwenImageGatewayRole
+}
+
+interface DashScopeQwenImageGatewaySettings {
+  apiKey: string
+  baseUrl: string
+  model: string
+  provider: string
+  route: 'primary_direct' | 'fallback_direct'
+}
+
 export class DashScopeQwenImageGateway implements MediaGenerationGateway {
   readonly providerId = 'dashscope-qwen-image'
-  readonly modelName = config.mediaGeneration.fallbackModel
+
+  constructor(private readonly options: DashScopeQwenImageGatewayOptions = {}) {}
+
+  get modelName(): string {
+    return this.resolveSettings().model
+  }
 
   get isConfigured(): boolean {
+    const settings = this.resolveSettings()
     return config.launch.capabilities.mediaGenerationV1
-      && config.mediaGeneration.fallbackProvider === this.providerId
-      && config.mediaGeneration.fallbackApiKey.trim().length > 0
+      && settings.provider === this.providerId
+      && settings.apiKey.trim().length > 0
   }
 
   async generate(input: MediaGenerationGatewayInput): Promise<MediaGenerationGatewayResult> {
+    const settings = this.resolveSettings()
     if (!this.isConfigured) {
-      throw new MediaGenerationGatewayError('media generation fallback gateway is not configured', {
+      throw new MediaGenerationGatewayError(`media generation ${this.role} gateway is not configured`, {
         provider_id: this.providerId,
-        model_name: this.modelName,
+        model_name: settings.model,
       })
     }
 
@@ -88,15 +109,15 @@ export class DashScopeQwenImageGateway implements MediaGenerationGateway {
     const timer = setTimeout(() => controller.abort(), config.mediaGeneration.timeoutMs)
     try {
       const response = await fetch(
-        resolveGenerationEndpoint(config.mediaGeneration.fallbackBaseUrl),
+        resolveGenerationEndpoint(settings.baseUrl),
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${config.mediaGeneration.fallbackApiKey}`,
+            Authorization: `Bearer ${settings.apiKey}`,
           },
           body: JSON.stringify({
-            model: this.modelName,
+            model: settings.model,
             input: {
               messages: [
                 {
@@ -124,7 +145,7 @@ export class DashScopeQwenImageGateway implements MediaGenerationGateway {
           `qwen_image_generation_failed status=${response.status} body=${errorText.slice(0, 300)}`,
           {
             provider_id: this.providerId,
-            model_name: this.modelName,
+            model_name: settings.model,
           },
         )
       }
@@ -134,7 +155,7 @@ export class DashScopeQwenImageGateway implements MediaGenerationGateway {
       if (!imageUrl) {
         throw new MediaGenerationGatewayError('qwen_image_generation_missing_url', {
           provider_id: this.providerId,
-          model_name: this.modelName,
+          model_name: settings.model,
         })
       }
 
@@ -142,15 +163,15 @@ export class DashScopeQwenImageGateway implements MediaGenerationGateway {
         image_url: imageUrl,
         mime_type: 'image/png',
         provider_id: this.providerId,
-        model_name: this.modelName,
+        model_name: settings.model,
         provider_request_summary: {
-          route: 'fallback_direct',
+          route: settings.route,
           selected_provider_id: this.providerId,
-          selected_model_name: this.modelName,
+          selected_model_name: settings.model,
           attempts: [
             {
               provider_id: this.providerId,
-              model_name: this.modelName,
+              model_name: settings.model,
               outcome: 'succeeded',
             },
           ],
@@ -161,7 +182,7 @@ export class DashScopeQwenImageGateway implements MediaGenerationGateway {
         throw new MediaGenerationGatewayError('qwen_image_generation_timeout', {
           cause: err,
           provider_id: this.providerId,
-          model_name: this.modelName,
+          model_name: settings.model,
         })
       }
       if (err instanceof MediaGenerationGatewayError) {
@@ -172,11 +193,35 @@ export class DashScopeQwenImageGateway implements MediaGenerationGateway {
         {
           cause: err,
           provider_id: this.providerId,
-          model_name: this.modelName,
+          model_name: settings.model,
         },
       )
     } finally {
       clearTimeout(timer)
+    }
+  }
+
+  private get role(): DashScopeQwenImageGatewayRole {
+    return this.options.role ?? 'fallback'
+  }
+
+  private resolveSettings(): DashScopeQwenImageGatewaySettings {
+    if (this.role === 'primary') {
+      return {
+        apiKey: config.mediaGeneration.apiKey,
+        baseUrl: config.mediaGeneration.baseUrl,
+        model: config.mediaGeneration.model,
+        provider: config.mediaGeneration.provider,
+        route: 'primary_direct',
+      }
+    }
+
+    return {
+      apiKey: config.mediaGeneration.fallbackApiKey,
+      baseUrl: config.mediaGeneration.fallbackBaseUrl,
+      model: config.mediaGeneration.fallbackModel,
+      provider: config.mediaGeneration.fallbackProvider,
+      route: 'fallback_direct',
     }
   }
 }

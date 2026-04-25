@@ -9,6 +9,7 @@ import type { MediaProjectionService } from './media-projection-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
 import type { MediaLineageService } from './media-lineage-service.js'
 import type { MediaRetrievalService } from './media-retrieval-service.js'
+import type { MediaScenePackService } from './media-scene-pack-service.js'
 import type { StorageAdapter } from '../services/storage-adapter.js'
 import type {
   AspectRatioHint,
@@ -101,6 +102,7 @@ export interface ImagePlannerServiceDeps {
   mediaReuseGovernanceService: MediaReuseGovernanceService
   mediaLineageService?: MediaLineageService | null
   mediaRetrievalService?: Pick<MediaRetrievalService, 'searchPlannerCandidates'> | null
+  mediaScenePackService?: Pick<MediaScenePackService, 'planPrompt'> | null
   storage?: Pick<StorageAdapter, 'getObject'> | null
 }
 
@@ -304,9 +306,10 @@ export class ImagePlannerService {
         ...baseSpec,
         source_projections: [cardResult.projection.id],
       }
-      const compiledPrompt = compileMediaGenerationSpec({
+      const compiledPrompt = await this.compileGenerationPrompt({
+        directive: input.directive,
         spec,
-        style_hint: input.directive.narrative_context.style_hint ?? null,
+        reference_card: cardResult.card,
       })
       const auditContext = buildPlannerAuditContext('generation', {
         sensitive_terms: deriveCandidate.candidate.source_kind === 'owner_private_pool'
@@ -854,9 +857,9 @@ export class ImagePlannerService {
     const spec = buildScratchGenerationSpec({
       directive: input.directive,
     })
-    const compiledPrompt = compileMediaGenerationSpec({
+    const compiledPrompt = await this.compileGenerationPrompt({
+      directive: input.directive,
       spec,
-      style_hint: input.directive.narrative_context.style_hint ?? null,
     })
     const auditContext = buildPlannerAuditContext('generation')
     const auditDecision = buildAllowAuditDecision()
@@ -1020,6 +1023,25 @@ export class ImagePlannerService {
         visibility_scope: 'public',
         actor_role: 'agent',
       },
+    })
+  }
+
+  private async compileGenerationPrompt(input: {
+    directive: PersistedVisualDirective
+    spec: MediaGenerationSpec
+    reference_card?: PublicMediaContextCard | null
+  }): Promise<CompiledMediaPrompt> {
+    if (this.deps.mediaScenePackService) {
+      return this.deps.mediaScenePackService.planPrompt({
+        directive: input.directive,
+        spec: input.spec,
+        style_hint: input.directive.narrative_context.style_hint ?? null,
+        reference_card: input.reference_card ?? null,
+      })
+    }
+    return compileMediaGenerationSpec({
+      spec: input.spec,
+      style_hint: input.directive.narrative_context.style_hint ?? null,
     })
   }
 

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-22T05:40:02.355Z",
+  "updatedAt": "2026-04-24T14:16:13.647Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -22989,6 +22989,372 @@
           "fields": [
             "status",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaScenePackRecord",
+      "dbName": "media_scene_packs",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activeVersion",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": "active_version",
+          "dbType": null,
+          "default": "1",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "displayName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "display_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "mediaFamily",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "media_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"active\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "versions",
+          "to": "MediaScenePackVersionRecord",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "sceneId"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaScenePackVersionRecord",
+      "dbName": "media_scene_pack_versions",
+      "schema": null,
+      "columns": [
+        {
+          "name": "activatedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "activated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdByUserId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "created_by_user_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "displayName",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "display_name",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "doNotUseWhen",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "do_not_use_when",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "mediaFamily",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "media_family",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "packId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "pack_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "promptSystem",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "prompt_system",
+          "dbType": "Text",
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "qualityGate",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "quality_gate",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "releasedAt",
+          "type": "DateTime",
+          "nullable": true,
+          "list": false,
+          "dbName": "released_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "safetyBoundaries",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "safety_boundaries",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sceneId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "scene_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "\"draft\"",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "updated_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type": "Int",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "visualContract",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "visual_contract",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "whenToUse",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "when_to_use",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "pack",
+          "to": "MediaScenePackRecord",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "packId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "sceneId",
+            "status"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "unique",
+          "fields": [
+            "packId",
+            "version"
           ],
           "name": null,
           "map": null

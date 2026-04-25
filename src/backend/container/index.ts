@@ -223,6 +223,7 @@ const llm = createLlmServices({
   mediaReusePolicyRepo: repos.mediaReusePolicyRepo,
   mediaGenerationJobRepo: repos.mediaGenerationJobRepo,
   mediaObservabilityEventRepo: repos.mediaObservabilityEventRepo,
+  mediaScenePackRepo: repos.mediaScenePackRepo,
   mediaRolloutControllerOverrideRepo: repos.mediaRolloutControllerOverrideRepo,
   mediaLineageEdgeRepo: repos.mediaLineageEdgeRepo,
   mediaCatalogCardRepo: repos.mediaCatalogCardRepo,
@@ -830,6 +831,7 @@ export const mediaGenerationGateway = llm.mediaGenerationGateway
 export const mediaGenerationService = llm.mediaGenerationService
 export const mediaObservabilityService = llm.mediaObservabilityService
 export const mediaRolloutControllerService = llm.mediaRolloutControllerService
+export const mediaScenePackService = llm.mediaScenePackService
 export const mediaLifecycleService = llm.mediaLifecycleService
 export const mediaLineageService = llm.mediaLineageService
 export const forumSceneMetadataRepo = repos.forumSceneMetadataRepo
