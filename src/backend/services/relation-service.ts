@@ -54,13 +54,6 @@ export interface RelationServiceDeps {
   statsService?: StatsService | null
   relationEngine?: RelationEngine
   metrics?: RelationMetrics
-  onStateChanged?: (input: {
-    from_agent_id: string
-    to_agent_id: string
-    previous_state: RelationState | null
-    next_state: RelationState
-    relation_id: string
-  }) => Promise<void> | void
   onDomainEventCreated?: (event: DomainEvent) => Promise<void> | void
 }
 
@@ -98,18 +91,6 @@ export class RelationService {
   constructor(private readonly deps: RelationServiceDeps) {
     this.engine = deps.relationEngine ?? new RelationEngine()
     this.metrics = deps.metrics ?? new RelationMetrics()
-  }
-
-  setStateChangeHook(
-    hook: (input: {
-      from_agent_id: string
-      to_agent_id: string
-      previous_state: RelationState | null
-      next_state: RelationState
-      relation_id: string
-    }) => Promise<void> | void,
-  ): void {
-    this.deps.onStateChanged = hook
   }
 
   setDomainEventCreatedHook(hook: (event: DomainEvent) => Promise<void> | void): void {
@@ -380,14 +361,7 @@ export class RelationService {
 
     await this.refreshPairHints(fromAgentId, toAgentId)
     if (result.domain_event_status === 'created' && result.domain_event) {
-      this.emitPostCommitStateChange({
-        event: result.domain_event,
-        previous_state: existing.state,
-        next_state: result.relation.state,
-        relation_id: result.relation.id,
-        from_agent_id: fromAgentId,
-        to_agent_id: toAgentId,
-      })
+      this.emitPostCommitDomainEvent(result.domain_event)
     }
 
     return result.relation
@@ -587,14 +561,7 @@ export class RelationService {
 
     await this.refreshPairHints(fromAgentId, toAgentId)
     if (emittedEvent) {
-      this.emitPostCommitStateChange({
-        event: emittedEvent,
-        previous_state: previousState,
-        next_state: next.state,
-        relation_id: next.id,
-        from_agent_id: fromAgentId,
-        to_agent_id: toAgentId,
-      })
+      this.emitPostCommitDomainEvent(emittedEvent)
     }
     return changed
   }
@@ -779,29 +746,10 @@ export class RelationService {
     return `${fromAgentId}:${toAgentId}`
   }
 
-  private emitPostCommitStateChange(input: {
-    event: DomainEvent
-    from_agent_id: string
-    to_agent_id: string
-    previous_state: RelationState | null
-    next_state: RelationState
-    relation_id: string
-  }): void {
+  private emitPostCommitDomainEvent(event: DomainEvent): void {
     if (this.deps.onDomainEventCreated) {
-      Promise.resolve(this.deps.onDomainEventCreated(input.event)).catch((hookError) => {
+      Promise.resolve(this.deps.onDomainEventCreated(event)).catch((hookError) => {
         console.error('[RelationService] domain-event hook failed:', hookError)
-      })
-    }
-
-    if (this.deps.onStateChanged) {
-      Promise.resolve(this.deps.onStateChanged({
-        from_agent_id: input.from_agent_id,
-        to_agent_id: input.to_agent_id,
-        previous_state: input.previous_state,
-        next_state: input.next_state,
-        relation_id: input.relation_id,
-      })).catch((hookError) => {
-        console.error('[RelationService] state-change hook failed:', hookError)
       })
     }
   }

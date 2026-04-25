@@ -21,6 +21,7 @@ import type { ChatService } from '../services/chat-service.js'
 import type { StatsService } from '../services/stats-service.js'
 import type { ConversationClock } from '../services/conversation-clock.js'
 import type { AchievementsOrchestrator } from '../services/achievements-orchestrator.js'
+import type { AgentBiographyService } from '../services/agent-biography-service.js'
 import type { GovernanceAdapter } from '../services/governance-adapter.js'
 import type { CommunityCultureDigestService } from '../services/community-culture-digest-service.js'
 import type { IncubationOrchestrator } from '../services/incubation-orchestrator.js'
@@ -70,6 +71,7 @@ export async function createNurtureEngines(deps: {
   agentPublicProjectionService: AgentPublicProjectionService
   conversationClock: ConversationClock
   achievementsOrchestrator: AchievementsOrchestrator
+  agentBiographyService: AgentBiographyService
   governanceAdapter: GovernanceAdapter
   communityCultureDigestService: CommunityCultureDigestService
   incubationOrchestrator: IncubationOrchestrator
@@ -84,13 +86,6 @@ export async function createNurtureEngines(deps: {
     achievements: LeaderElector
     cultureDigest: LeaderElector
   }
-  onRelationStateChanged?: (input: {
-    from_agent_id: string
-    to_agent_id: string
-    previous_state: import('../repos/types.js').RelationState | null
-    next_state: import('../repos/types.js').RelationState
-    relation_id: string
-  }) => Promise<void> | void
   onMemoryDigestCompleted?: (input: {
     agent_id: string
     session_id: string
@@ -224,13 +219,10 @@ export async function createNurtureEngines(deps: {
           },
         })
 
-        await deps.onRelationStateChanged?.({
-          from_agent_id: payload.from_agent_id,
-          to_agent_id: payload.to_agent_id,
-          previous_state: payload.previous_state,
-          next_state: payload.next_state,
-          relation_id: payload.relation_id,
-        })
+        await deps.agentBiographyService.markDirty(
+          payload.from_agent_id,
+          `relation:${payload.next_state.toLowerCase()}`,
+        )
 
         if (ownerRelationMilestoneConsumer) {
           await ownerRelationMilestoneConsumer.processDomainEvent(event)

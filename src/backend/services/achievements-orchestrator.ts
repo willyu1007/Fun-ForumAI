@@ -296,31 +296,6 @@ export class AchievementsOrchestrator {
     })
   }
 
-  async processRelationStateChange(input: {
-    from_agent_id: string
-    to_agent_id: string
-    previous_state: string | null
-    next_state: string
-    relation_id: string
-  }): Promise<void> {
-    if (!config.launch.capabilities.achievementChronicleV1) return
-    if (input.next_state !== 'effective') return
-
-    await this.processSignal({
-      kind: 'relation_change',
-      agent_id: input.from_agent_id,
-      dedup_key: `relation:${input.relation_id}:effective`,
-      evidence: [{ kind: 'relation', ref_id: input.relation_id }],
-      metadata: {
-        to_agent_id: input.to_agent_id,
-        peer_agent_id: input.to_agent_id,
-        previous_state: input.previous_state,
-        next_state: input.next_state,
-        source_ref: input.relation_id,
-      },
-    })
-  }
-
   async processGovernanceResult(input: {
     target_agent_id: string
     target_type: string

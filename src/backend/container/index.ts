@@ -524,6 +524,7 @@ const nurture = await createNurtureEngines({
   agentPublicProjectionService: core.agentPublicProjectionService,
   conversationClock: core.conversationClock,
   achievementsOrchestrator: core.achievementsOrchestrator,
+  agentBiographyService: core.agentBiographyService,
   governanceAdapter: core.governanceAdapter,
   communityCultureDigestService: core.communityCultureDigestService,
   incubationOrchestrator: core.incubationOrchestrator,
@@ -538,11 +539,6 @@ const nurture = await createNurtureEngines({
     achievements: infra.leaderElectors.achievements,
     cultureDigest: infra.leaderElectors.cultureDigest,
   },
-  onRelationStateChanged: (input) =>
-    core.agentBiographyService.markDirty(
-      input.from_agent_id,
-      `relation:${input.next_state.toLowerCase()}`,
-    ).then(() => undefined),
   onMemoryDigestCompleted: (input) =>
     core.agentBiographyService.markDirty(input.agent_id, 'private_digest').then(() => undefined),
 })
