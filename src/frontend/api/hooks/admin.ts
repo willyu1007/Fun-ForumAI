@@ -33,6 +33,12 @@ import type {
   ReviewEvidenceExport,
   RuntimeFeaturesData,
   MediaLifecycleRunResult,
+  MediaScenePack,
+  MediaScenePackCompilePreviewResult,
+  MediaScenePackDraftPayload,
+  MediaScenePackRoutePreviewResult,
+  MediaScenePackVersion,
+  MediaVisualBrief,
   TransferredReviewCase,
   WarmupVerifierRunDetail,
   WarmupRunDetail,
@@ -163,6 +169,108 @@ export function useAdminMediaRolloutController() {
         .get('admin/media/rollout-controller')
         .json<ApiResponse<AdminMediaRolloutControllerData>>(),
     refetchInterval: 15_000,
+  })
+}
+
+export function useAdminMediaScenePacks() {
+  return useQuery({
+    queryKey: queryKeys.adminMediaScenePacks,
+    queryFn: () => api.get('admin/media/scene-packs').json<ApiResponse<MediaScenePack[]>>(),
+  })
+}
+
+export function useAdminMediaScenePack(sceneId: string | null) {
+  return useQuery({
+    queryKey: sceneId
+      ? queryKeys.adminMediaScenePack(sceneId)
+      : ['admin', 'media-scene-pack', 'idle'],
+    queryFn: () => api.get(`admin/media/scene-packs/${sceneId}`).json<ApiResponse<MediaScenePack>>(),
+    enabled: Boolean(sceneId),
+  })
+}
+
+export function useCreateAdminMediaScenePackDraft() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { scene_id: string; patch: MediaScenePackDraftPayload }) =>
+      api
+        .post(`admin/media/scene-packs/${body.scene_id}/versions`, { json: body.patch })
+        .json<ApiResponse<MediaScenePackVersion>>(),
+    onSuccess: (_response, body) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaScenePacks })
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaScenePack(body.scene_id) })
+    },
+  })
+}
+
+export function useUpdateAdminMediaScenePackVersion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { scene_id: string; version: number; patch: MediaScenePackDraftPayload }) =>
+      api
+        .patch(`admin/media/scene-packs/${body.scene_id}/versions/${body.version}`, {
+          json: body.patch,
+        })
+        .json<ApiResponse<MediaScenePackVersion>>(),
+    onSuccess: (_response, body) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaScenePacks })
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaScenePack(body.scene_id) })
+    },
+  })
+}
+
+export function useActivateAdminMediaScenePackVersion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { scene_id: string; version: number }) =>
+      api
+        .post(`admin/media/scene-packs/${body.scene_id}/versions/${body.version}/activate`, {
+          json: {},
+        })
+        .json<ApiResponse<MediaScenePack>>(),
+    onSuccess: (_response, body) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaScenePacks })
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaScenePack(body.scene_id) })
+    },
+  })
+}
+
+export function useReleaseAdminMediaScenePackVersion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { scene_id: string; version: number; reason?: string | null }) =>
+      api
+        .post(`admin/media/scene-packs/${body.scene_id}/versions/${body.version}/release`, {
+          json: { reason: body.reason ?? null },
+        })
+        .json<ApiResponse<MediaScenePackVersion>>(),
+    onSuccess: (_response, body) => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaScenePacks })
+      qc.invalidateQueries({ queryKey: queryKeys.adminMediaScenePack(body.scene_id) })
+    },
+  })
+}
+
+export function useAdminMediaScenePackRoutePreview() {
+  return useMutation({
+    mutationFn: (body: { text?: string | null; visual_brief?: MediaVisualBrief | null }) =>
+      api
+        .post('admin/media/scene-packs/route-preview', { json: body })
+        .json<ApiResponse<MediaScenePackRoutePreviewResult>>(),
+  })
+}
+
+export function useAdminMediaScenePackCompilePreview() {
+  return useMutation({
+    mutationFn: (body: {
+      text?: string | null
+      scene_id?: string | null
+      visual_brief?: MediaVisualBrief | null
+      aspect_ratio_hint?: '1:1' | '4:5' | '16:9' | null
+    }) =>
+      api
+        .post('admin/media/scene-packs/compile-preview', { json: body })
+        .json<ApiResponse<MediaScenePackCompilePreviewResult>>(),
   })
 }
 

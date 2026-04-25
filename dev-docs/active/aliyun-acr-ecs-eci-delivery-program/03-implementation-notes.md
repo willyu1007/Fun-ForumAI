@@ -152,3 +152,9 @@
   - deployment mainline itself is repo-ready
   - auth delivery has been narrowed from “missing env keys” to one concrete staging secret drift: SMS is config-ready, SMTP reaches real auth but fails with the current Bitwarden-backed creds
   - therefore the remaining `T-128` blocker is no longer “deployment chain ambiguous”, but “staging SMTP secret pair must be corrected in operator secret storage”
+
+## 2026-04-25 (T-994 DB apply handoff)
+
+- `T-994 text-to-image-scene-pack-quality-upgrade` is complete on the repo side and is no longer blocked on target DB apply.
+- The release/deploy chain now owns target-environment execution of `pnpm db:migrate:deploy` for migration `20260424140000_t994_scene_pack_prompt_planning` during the next staging/prod release window.
+- Release evidence should record `_prisma_migrations` status for that migration, service image ref, DB compatibility assessment, post-migration health checks, and the admin `/v1/admin/media/scene-packs` smoke result.

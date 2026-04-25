@@ -34,7 +34,7 @@
 - 在 `T-128` 固化跨任务编排顺序：
   - 镜像发布
   - 在 operator-owned deploy workspace 上 compile env / inject api envfile
-  - `pnpm db:migrate:deploy`
+  - `pnpm db:migrate:deploy`，并确认已包含 `20260424140000_t994_scene_pack_prompt_planning`
   - ECS web
   - health/smoke
   - ECI worker

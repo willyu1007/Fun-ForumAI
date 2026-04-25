@@ -38,6 +38,8 @@ export { DashScopeQwenImageGateway } from './dashscope-qwen-image-gateway.js'
 export { FallbackMediaGenerationGateway } from './fallback-media-generation-gateway.js'
 export { MediaGenerationService } from './media-generation-service.js'
 export { compileMediaGenerationSpec, buildLegacyGenerationSpec } from './media-generation-compiler.js'
+export { MediaScenePackService } from './media-scene-pack-service.js'
+export { BUILTIN_MEDIA_SCENE_PACKS } from './media-scene-pack-seeds.js'
 export { SurfaceMediaPlanningService } from './surface-media-planning-service.js'
 export {
   MediaObservabilityService,

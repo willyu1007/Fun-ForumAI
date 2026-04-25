@@ -303,6 +303,27 @@ async function scaleDeploymentReplicas({
   })
 }
 
+async function setBackendDeploymentImage({
+  context,
+  namespace,
+  deployment,
+  imageTag,
+}) {
+  if (!imageTag) return
+  console.log(`[staging] Setting ${deployment} image to ${imageTag}`)
+  await runCommandCapture(
+    'kubectl',
+    kubectlArgs(context, [
+      'set',
+      'image',
+      `deploy/${String(deployment)}`,
+      `backend=${String(imageTag)}`,
+      '-n',
+      String(namespace),
+    ]),
+  )
+}
+
 async function startServicePortForward({
   context,
   namespace,
@@ -934,6 +955,12 @@ async function main() {
 
   console.log(`[staging] Applying overlay: ${overlayPath}`)
   await runCommandCapture('kubectl', kubectlArgs(args.k8sContext, ['apply', '-k', overlayPath]))
+  await setBackendDeploymentImage({
+    context: args.k8sContext,
+    namespace: args.k8sNamespace,
+    deployment: args.backendDeployment,
+    imageTag: String(args.imageTag || args.kindLoadImage),
+  })
 
   console.log('[staging] Waiting for postgres and redis rollouts...')
   await waitForDeploymentRollout({

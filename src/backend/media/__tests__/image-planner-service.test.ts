@@ -7,10 +7,12 @@ import { InMemoryForumSceneMetadataRepository } from '../../repos/forum-scene-me
 import { InMemoryMediaContextProjectionRepository } from '../../repos/media-context-projection-repository.js'
 import { InMemoryMediaGenerationJobRepository } from '../../repos/media-generation-job-repository.js'
 import { InMemoryMediaReusePolicyRepository } from '../../repos/media-reuse-policy-repository.js'
+import { InMemoryMediaScenePackRepository } from '../../repos/media-scene-pack-repository.js'
 import { MediaProjectionService } from '../media-projection-service.js'
 import { ImagePlannerService } from '../image-planner-service.js'
 import { MediaBindingService, buildOwnerPrivatePoolSceneId } from '../media-binding-service.js'
 import { MediaReuseGovernanceService } from '../media-reuse-governance-service.js'
+import { MediaScenePackService } from '../media-scene-pack-service.js'
 import type { PersistedVisualDirective } from '../../repos/types.js'
 import type { StorageAdapter } from '../../services/storage-adapter.js'
 import { buildMediaSemanticSummary } from '../../test-utils/media-fixtures.js'
@@ -160,6 +162,68 @@ async function seedPrivateRuntimeProjectionCandidate(input: {
 }
 
 describe('ImagePlannerService', () => {
+  it('adds scene pack prompt metadata to scratch generation plans', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+      mediaScenePackService: new MediaScenePackService({
+        repo: new InMemoryMediaScenePackRepository(),
+      }),
+    })
+    const directive = buildDirective()
+    directive.goal.need_image = 'required'
+    directive.narrative_context.hook = 'desktop workflow with notebook and reference papers'
+    directive.narrative_context.objective = 'show a grounded debugging workflow'
+    directive.narrative_context.semantic_query = 'desktop workflow tools notebook references'
+    directive.narrative_context.required_elements = ['desktop workflow', 'notebook', 'reference papers']
+    directive.sourcing_policy.allow_sources = []
+    directive.sourcing_policy.prefer_order = []
+    directive.sourcing_policy.allow_generation = true
+    directive.budget.generation_tier = 'medium'
+    directive.budget.async_generation_allowed = true
+    directive.budget.max_generation_attempts = 1
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+    })
+
+    expect(plan.decision).toBe('generate_from_scratch')
+    expect(plan.generation.compiled_prompt?.template_id).toBe('scene-pack-prompt-compiler')
+    expect(plan.generation.compiled_prompt?.scene_pack_ref).toEqual(expect.objectContaining({
+      scene_id: 'desktop_workflow_photo',
+      version: 1,
+    }))
+    expect(plan.generation.prompt_brief).toContain('scene_pack: desktop_workflow_photo@1')
+  })
+
   it('downgrades owner_private_pool usage to runtime-only and keeps owner note out of runtime cards', async () => {
     const imagePlanRepo = new InMemoryImagePlanRepository()
     const mediaAssetRepo = new InMemoryMediaAssetRepository()

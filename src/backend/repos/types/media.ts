@@ -443,9 +443,138 @@ export interface MediaGenerationSpec {
   }
 }
 
+export interface MediaVisualBrief {
+  visual_intent: string
+  emotional_kernel: string
+  real_world_anchor: string
+  communication_job: string
+  forbidden_claims: string[]
+}
+
+export interface MediaScenePackVisualContract {
+  surface: string
+  composition: string
+  text_policy: 'avoid' | 'allow_short_chinese' | 'allow'
+  real_world_anchor_required: boolean
+  required_information_layers: string[]
+  routing_keywords?: string[]
+}
+
+export interface MediaScenePackSafetyBoundaries {
+  no_price: boolean
+  no_efficacy_claim: boolean
+  no_real_brand_promo: boolean
+  no_purchase_guarantee: boolean
+  additional_boundaries: string[]
+}
+
+export interface MediaScenePackQualityGate {
+  must_have: string[]
+  reject_if: string[]
+}
+
+export type MediaScenePackStatus = 'active' | 'disabled' | 'archived'
+export type MediaScenePackVersionStatus = 'draft' | 'active' | 'released'
+
+export interface MediaScenePackVersion {
+  id: string
+  pack_id: string
+  scene_id: string
+  version: number
+  status: MediaScenePackVersionStatus
+  display_name: string
+  media_family: string
+  when_to_use: string[]
+  do_not_use_when: string[]
+  visual_contract: MediaScenePackVisualContract
+  safety_boundaries: MediaScenePackSafetyBoundaries
+  prompt_system: string
+  quality_gate: MediaScenePackQualityGate
+  created_by_user_id: string | null
+  activated_at: Date | null
+  released_at: Date | null
+  created_at: Date
+  updated_at: Date
+}
+
+export interface MediaScenePack {
+  id: string
+  scene_id: string
+  display_name: string
+  media_family: string
+  status: MediaScenePackStatus
+  active_version: number
+  created_at: Date
+  updated_at: Date
+}
+
+export interface MediaScenePackWithVersions extends MediaScenePack {
+  active_version_record: MediaScenePackVersion | null
+  versions: MediaScenePackVersion[]
+}
+
+export interface CreateMediaScenePackInput {
+  id?: string
+  scene_id: string
+  display_name: string
+  media_family: string
+  status?: MediaScenePackStatus
+  active_version?: number
+}
+
+export interface CreateMediaScenePackVersionInput {
+  id?: string
+  pack_id: string
+  scene_id: string
+  version: number
+  status?: MediaScenePackVersionStatus
+  display_name: string
+  media_family: string
+  when_to_use: string[]
+  do_not_use_when: string[]
+  visual_contract: MediaScenePackVisualContract
+  safety_boundaries: MediaScenePackSafetyBoundaries
+  prompt_system: string
+  quality_gate: MediaScenePackQualityGate
+  created_by_user_id?: string | null
+  activated_at?: Date | null
+  released_at?: Date | null
+}
+
+export interface UpdateMediaScenePackVersionPatch {
+  status?: MediaScenePackVersionStatus
+  display_name?: string
+  media_family?: string
+  when_to_use?: string[]
+  do_not_use_when?: string[]
+  visual_contract?: MediaScenePackVisualContract
+  safety_boundaries?: MediaScenePackSafetyBoundaries
+  prompt_system?: string
+  quality_gate?: MediaScenePackQualityGate
+  created_by_user_id?: string | null
+  activated_at?: Date | null
+  released_at?: Date | null
+}
+
+export interface MediaScenePackRef {
+  scene_id: string
+  version: number
+  display_name: string
+  media_family: string
+}
+
+export interface MediaScenePackRouteCandidate {
+  scene_id: string
+  version: number
+  display_name: string
+  media_family: string
+  confidence: number
+  reason: string
+}
+
 export interface CompiledMediaPrompt {
   schema_version: 'compiled-media-prompt.v1'
-  template_id: 'media-generation-compiler'
+  template_id: 'media-generation-compiler' | 'scene-pack-prompt-compiler'
   rendered_prompt: string
   sections: {
     intent: string
@@ -456,6 +585,10 @@ export interface CompiledMediaPrompt {
   }
   style_hint: string | null
   aspect_ratio_hint: AspectRatioHint | null
+  scene_pack_ref?: MediaScenePackRef | null
+  visual_brief?: MediaVisualBrief | null
+  route_candidates?: MediaScenePackRouteCandidate[]
+  quality_gate?: MediaScenePackQualityGate | null
 }
 
 export interface MediaGenerationJob {
@@ -1117,6 +1250,7 @@ export type MediaObservabilityEventType =
   | 'generation_cancelled'
   | 'generation_sync_degraded'
   | 'generation_output_rewritten'
+  | 'scene_pack_quality_audited'
   | 'display_attach_failed'
   | 'projection_recompiled'
   | 'public_prompt_audit_blocked'

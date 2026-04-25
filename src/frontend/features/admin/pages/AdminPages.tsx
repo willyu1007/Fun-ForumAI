@@ -5,6 +5,7 @@ import { FeedbackInboxTab } from './admin-panel/FeedbackInboxTab'
 import { HotTopicTab } from './admin-panel/HotTopicTab'
 import { InviteCodesTab } from './admin-panel/InviteCodesTab'
 import { ProgrammingTab } from './admin-panel/ProgrammingTab'
+import { MediaPromptsTab } from './admin-panel/MediaPromptsTab'
 import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
 import { RuntimeDashboard } from '../components/RuntimeDashboard'
 import { ReactNode } from 'react'
@@ -51,6 +52,14 @@ export function AdminProgrammingPage() {
   return (
     <AdminPageWrapper title="内容编排与排期">
       <ProgrammingTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminMediaPromptsPage() {
+  return (
+    <AdminPageWrapper title="文生图场景与提示词" description="管理根帖主图的场景配置、提示词编译和路由预览">
+      <MediaPromptsTab />
     </AdminPageWrapper>
   )
 }

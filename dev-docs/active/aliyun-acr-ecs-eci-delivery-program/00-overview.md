@@ -11,6 +11,7 @@
   - `T-936` 的 kind-staging live closeout 已完成；若后续仍要求云 staging 再跑一轮同名 gate，应明确视为 `T-128/T-935` 的 promote/backout 证据补充，而不是 `T-936` repo/blocker。
   - `T-930` 的 auth delivery 已完成真实联调收口；staging SMTP 与 staging 主流程均已验证完成，不再构成 `T-128` 阻塞。
   - 需求文档中 “接入 visibleProviderPin” 已被当前方案替换为“移除 visible pins 主路径语义”，并已在现行任务合同中作为 superseded 决策保留。
+- Release/deploy handoff: `T-994 text-to-image-scene-pack-quality-upgrade` 已完成 repo 侧实现与 kind-staging 验证；其目标环境 DB apply 不再阻塞 `T-994` 归档，改由本交付链在下一次 staging/prod release 中执行 `pnpm db:migrate:deploy`，覆盖 migration `20260424140000_t994_scene_pack_prompt_planning`，并按既有 DB 兼容/回退规则记录 release 证据。
 
 ## Goal
 
@@ -34,6 +35,7 @@
 - 仓库已有 CI 基线、服务 Dockerfile、packaging/deploy 目录与环境契约，但没有阿里云 ACR/ECS/ECI 的明确交付任务包。
 - 运行时代码已支持 `RUNTIME_ENABLED` 控制后台服务是否自启，因此 web 与 worker 可以先复用同一镜像。
 - README 已明确部署环境应使用 `pnpm db:migrate:deploy`，所以数据库迁移归属必须进入交付链设计。
+- `T-994` 的 scene pack migration 已作为下一次 release/deploy 的 DB apply 输入移交给本任务；repo 侧已完成 `prisma validate/generate`、kind migration deploy、真实 Qwen Image E2E 与 Admin API/UI 验证。
 - `env/contract.yaml` 与 `docs/env.md` 已定义运行时变量契约，因此 CI 配置、宿主机 `.env` 与 ECI 注入边界必须被明确分离。
 - 用户已明确接受 ACR 先行方案，并确认短期不采用 ACK。
 

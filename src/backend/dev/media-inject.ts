@@ -88,6 +88,7 @@ async function main(): Promise<void> {
       mediaReusePolicyRepo: repos.mediaReusePolicyRepo,
       mediaGenerationJobRepo: repos.mediaGenerationJobRepo,
       mediaObservabilityEventRepo: repos.mediaObservabilityEventRepo,
+      mediaScenePackRepo: repos.mediaScenePackRepo,
       mediaRolloutControllerOverrideRepo: repos.mediaRolloutControllerOverrideRepo,
       mediaLineageEdgeRepo: repos.mediaLineageEdgeRepo,
       mediaCatalogCardRepo: repos.mediaCatalogCardRepo,

@@ -440,6 +440,131 @@ export interface AdminMediaRolloutControllerData {
   effective_profile: MediaRolloutControllerProfileData
 }
 
+export type MediaScenePackStatus = 'active' | 'disabled' | 'archived'
+export type MediaScenePackVersionStatus = 'draft' | 'active' | 'released'
+export type MediaScenePackTextPolicy = 'avoid' | 'allow_short_chinese' | 'allow'
+
+export interface MediaVisualBrief {
+  visual_intent: string
+  emotional_kernel: string
+  real_world_anchor: string
+  communication_job: string
+  forbidden_claims: string[]
+}
+
+export interface MediaScenePackVisualContract {
+  surface: string
+  composition: string
+  text_policy: MediaScenePackTextPolicy
+  real_world_anchor_required: boolean
+  required_information_layers: string[]
+  routing_keywords?: string[]
+}
+
+export interface MediaScenePackSafetyBoundaries {
+  no_price: boolean
+  no_efficacy_claim: boolean
+  no_real_brand_promo: boolean
+  no_purchase_guarantee: boolean
+  additional_boundaries: string[]
+}
+
+export interface MediaScenePackQualityGate {
+  must_have: string[]
+  reject_if: string[]
+}
+
+export interface MediaScenePackVersion {
+  id: string
+  pack_id: string
+  scene_id: string
+  version: number
+  status: MediaScenePackVersionStatus
+  display_name: string
+  media_family: string
+  when_to_use: string[]
+  do_not_use_when: string[]
+  visual_contract: MediaScenePackVisualContract
+  safety_boundaries: MediaScenePackSafetyBoundaries
+  prompt_system: string
+  quality_gate: MediaScenePackQualityGate
+  created_by_user_id: string | null
+  activated_at: string | null
+  released_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MediaScenePack {
+  id: string
+  scene_id: string
+  display_name: string
+  media_family: string
+  status: MediaScenePackStatus
+  active_version: number
+  created_at: string
+  updated_at: string
+  active_version_record: MediaScenePackVersion | null
+  versions: MediaScenePackVersion[]
+}
+
+export interface MediaScenePackRef {
+  scene_id: string
+  version: number
+  display_name: string
+  media_family: string
+}
+
+export interface MediaScenePackRouteCandidate {
+  scene_id: string
+  version: number
+  display_name: string
+  media_family: string
+  confidence: number
+  reason: string
+}
+
+export interface CompiledMediaPrompt {
+  schema_version: 'compiled-media-prompt.v1'
+  template_id: 'media-generation-compiler' | 'scene-pack-prompt-compiler'
+  rendered_prompt: string
+  sections: {
+    intent: string
+    subject: string[]
+    scene: string[]
+    style: string[]
+    negative: string[]
+  }
+  style_hint: string | null
+  aspect_ratio_hint: '1:1' | '4:5' | '16:9' | null
+  scene_pack_ref?: MediaScenePackRef | null
+  visual_brief?: MediaVisualBrief | null
+  route_candidates?: MediaScenePackRouteCandidate[]
+  quality_gate?: MediaScenePackQualityGate | null
+}
+
+export interface MediaScenePackDraftPayload {
+  display_name?: string
+  media_family?: string
+  when_to_use?: string[]
+  do_not_use_when?: string[]
+  visual_contract?: MediaScenePackVisualContract
+  safety_boundaries?: MediaScenePackSafetyBoundaries
+  prompt_system?: string
+  quality_gate?: MediaScenePackQualityGate
+}
+
+export interface MediaScenePackRoutePreviewResult {
+  visual_brief: MediaVisualBrief
+  candidates: MediaScenePackRouteCandidate[]
+}
+
+export interface MediaScenePackCompilePreviewResult {
+  visual_brief: MediaVisualBrief
+  route_candidates: MediaScenePackRouteCandidate[]
+  compiled_prompt: CompiledMediaPrompt
+}
+
 export interface MediaLifecycleRunResult {
   run_at: string
   candidates: {

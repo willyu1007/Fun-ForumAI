@@ -18,6 +18,58 @@ import { config } from '../../lib/config.js'
 setupFeatureFlagGuard()
 
 describe('Admin media API', () => {
+  it('manages scene packs and prompt previews for admins', async () => {
+    const forbiddenRes = await request(app)
+      .get('/v1/admin/media/scene-packs')
+      .set('Authorization', `Bearer ${userToken}`)
+    expect(forbiddenRes.status).toBe(403)
+
+    const listRes = await request(app)
+      .get('/v1/admin/media/scene-packs')
+      .set('Authorization', `Bearer ${adminToken}`)
+    expect(listRes.status).toBe(200)
+    expect(listRes.body.data).toHaveLength(25)
+    expect(listRes.body.data.every((pack: { active_version_record: unknown }) => pack.active_version_record)).toBe(true)
+
+    const routeRes = await request(app)
+      .post('/v1/admin/media/scene-packs/route-preview')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        text: 'travel itinerary scrapbook with map fragments, tickets, and day plan',
+      })
+    expect(routeRes.status).toBe(200)
+    expect(routeRes.body.data.candidates[0].scene_id).toBe('itinerary_scrapbook_collage')
+
+    const draftRes = await request(app)
+      .post('/v1/admin/media/scene-packs/desktop_workflow_photo/versions')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        prompt_system:
+          'Photograph a realistic desktop workflow with documents, tools, visible work-in-progress evidence, and restrained lighting.',
+      })
+    expect(draftRes.status).toBe(201)
+    expect(draftRes.body.data.status).toBe('draft')
+
+    const activateRes = await request(app)
+      .post(`/v1/admin/media/scene-packs/desktop_workflow_photo/versions/${draftRes.body.data.version}/activate`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+    expect(activateRes.status).toBe(200)
+    expect(activateRes.body.data.active_version).toBe(draftRes.body.data.version)
+    expect(activateRes.body.data.versions.filter((version: { status: string }) => version.status === 'active')).toHaveLength(1)
+
+    const compileRes = await request(app)
+      .post('/v1/admin/media/scene-packs/compile-preview')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        scene_id: 'desktop_workflow_photo',
+        text: 'debugging workflow on a desk with notebook and reference papers',
+      })
+    expect(compileRes.status).toBe(200)
+    expect(compileRes.body.data.compiled_prompt.template_id).toBe('scene-pack-prompt-compiler')
+    expect(compileRes.body.data.compiled_prompt.scene_pack_ref.scene_id).toBe('desktop_workflow_photo')
+  })
+
   it('registers canonical and commons assets, patches policies, and revokes them', async () => {
     const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
     featureFlags.multimodalAgentMediaV1 = true

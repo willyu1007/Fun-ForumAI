@@ -15,6 +15,7 @@ import {
   DashScopeTextEmbeddingGateway,
   DashScopeQwenImageGateway,
   FallbackMediaGenerationGateway,
+  type MediaGenerationGateway,
   MediaAssetService,
   MediaCatalogService,
   MediaBindingService,
@@ -29,6 +30,7 @@ import {
   MediaObservabilityService,
   MediaRolloutControllerService,
   MediaRetrievalService,
+  MediaScenePackService,
   ImagePlannerService,
   MediaProjectionService,
   MediaReuseGovernanceService,
@@ -54,6 +56,7 @@ import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
 import type { MediaReusePolicyRepository } from '../repos/media-reuse-policy-repository.js'
 import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { MediaObservabilityEventRepository } from '../repos/media-observability-event-repository.js'
+import type { MediaScenePackRepository } from '../repos/media-scene-pack-repository.js'
 import type { MediaRolloutControllerOverrideRepository } from '../repos/media-rollout-controller-override-repository.js'
 import type { MediaLineageEdgeRepository } from '../repos/media-lineage-edge-repository.js'
 import type { MediaCatalogCardRepository } from '../repos/media-catalog-card-repository.js'
@@ -80,6 +83,7 @@ export function createLlmServices(deps: {
   mediaReusePolicyRepo: MediaReusePolicyRepository
   mediaGenerationJobRepo: MediaGenerationJobRepository
   mediaObservabilityEventRepo: MediaObservabilityEventRepository
+  mediaScenePackRepo: MediaScenePackRepository
   mediaRolloutControllerOverrideRepo: MediaRolloutControllerOverrideRepository
   mediaLineageEdgeRepo: MediaLineageEdgeRepository
   mediaCatalogCardRepo: MediaCatalogCardRepository
@@ -142,6 +146,9 @@ export function createLlmServices(deps: {
     mediaObservabilityService,
     mediaRolloutControllerOverrideRepo: deps.mediaRolloutControllerOverrideRepo,
   })
+  const mediaScenePackService = new MediaScenePackService({
+    repo: deps.mediaScenePackRepo,
+  })
   const mediaProjectionService = new MediaProjectionService({
     mediaContextProjectionRepo: deps.mediaContextProjectionRepo,
     mediaLineageService,
@@ -196,6 +203,7 @@ export function createLlmServices(deps: {
     mediaLineageService,
     storage: mediaAssetStorage,
     mediaRetrievalService,
+    mediaScenePackService,
   })
   const mediaWriteBridge = new MediaWriteBridge({
     mediaAssetRepo: deps.mediaAssetRepo,
@@ -226,8 +234,8 @@ export function createLlmServices(deps: {
     mediaLineageService,
   })
   const mediaGenerationGateway = new FallbackMediaGenerationGateway({
-    primary: new ArkSeedreamGateway(),
-    fallback: new DashScopeQwenImageGateway(),
+    primary: createPrimaryMediaGenerationGateway(),
+    fallback: createFallbackMediaGenerationGateway(),
   })
   const mediaGenerationService = new MediaGenerationService({
     imagePlanRepo: deps.imagePlanRepo,
@@ -244,6 +252,7 @@ export function createLlmServices(deps: {
     mediaLineageService,
     mediaRolloutControllerService,
     mediaRetrievalService,
+    mediaScenePackService,
   })
   const mediaImportArtifactService = new MediaImportArtifactService({
     storage: mediaAssetStorage,
@@ -313,6 +322,7 @@ export function createLlmServices(deps: {
     mediaInjectionWorker,
     mediaObservabilityService,
     mediaRolloutControllerService,
+    mediaScenePackService,
     mediaLineageService,
     mediaWriteBridge,
     visualDirectiveService,
@@ -325,6 +335,20 @@ export function createLlmServices(deps: {
     mediaAssetService,
     mediaAssetControlService,
   }
+}
+
+function createPrimaryMediaGenerationGateway(): MediaGenerationGateway {
+  if (config.mediaGeneration.provider === 'dashscope-qwen-image') {
+    return new DashScopeQwenImageGateway({ role: 'primary' })
+  }
+  return new ArkSeedreamGateway()
+}
+
+function createFallbackMediaGenerationGateway(): MediaGenerationGateway | null {
+  if (config.mediaGeneration.fallbackProvider === 'dashscope-qwen-image') {
+    return new DashScopeQwenImageGateway({ role: 'fallback' })
+  }
+  return null
 }
 
 function createMediaAssetStorage(): StorageAdapter {

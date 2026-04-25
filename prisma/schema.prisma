@@ -1018,6 +1018,50 @@ model MediaGenerationJobRecord {
   @@map("media_generation_jobs")
 }
 
+model MediaScenePackRecord {
+  id            String   @id @default(cuid())
+  sceneId       String   @unique @map("scene_id")
+  displayName   String   @map("display_name")
+  mediaFamily   String   @map("media_family")
+  status        String   @default("active")
+  activeVersion Int      @default(1) @map("active_version")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  versions MediaScenePackVersionRecord[]
+
+  @@index([status, sceneId])
+  @@map("media_scene_packs")
+}
+
+model MediaScenePackVersionRecord {
+  id               String    @id @default(cuid())
+  packId           String    @map("pack_id")
+  sceneId          String    @map("scene_id")
+  version          Int
+  status           String    @default("draft")
+  displayName      String    @map("display_name")
+  mediaFamily      String    @map("media_family")
+  whenToUse        Json      @map("when_to_use")
+  doNotUseWhen     Json      @map("do_not_use_when")
+  visualContract   Json      @map("visual_contract")
+  safetyBoundaries Json      @map("safety_boundaries")
+  promptSystem     String    @map("prompt_system") @db.Text
+  qualityGate      Json      @map("quality_gate")
+  createdByUserId  String?   @map("created_by_user_id")
+  activatedAt      DateTime? @map("activated_at")
+  releasedAt       DateTime? @map("released_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  pack MediaScenePackRecord @relation(fields: [packId], references: [id])
+
+  @@unique([packId, version])
+  @@index([sceneId, status])
+  @@index([status, createdAt])
+  @@map("media_scene_pack_versions")
+}
+
 model MediaCatalogCardRecord {
   id                 String   @id @default(cuid())
   assetId            String   @map("asset_id")

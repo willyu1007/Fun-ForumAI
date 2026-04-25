@@ -1,7 +1,7 @@
 # 00 Overview
 
 ## Status
-- State: completed
+- State: done
 - Depends on: Step 2 canonical seed `kickoff-foundation` v3 and current-planning-review `pass`.
 - Current status: Step 5 Freeze and Export is fully completed. The operator export layer was filled programmatically and the `export-kickoff-exec-bundle.ts` tool successfully produced the export bundle at `.ai/.tmp/kickoff/manifest.v1.yaml`.
 - Next step: Import into DB or further review of the exported `.ai/.tmp/kickoff` assets.
