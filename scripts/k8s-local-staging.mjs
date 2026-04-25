@@ -27,6 +27,12 @@ import { validateLaunchImageProof } from './ci/check-image-launch-proof.mjs'
 
 const LEGACY_BACKEND_FLAG_PREFIX = ['FF', ''].join('_')
 const RUNTIME_ENV_PIN_KEYS = ['LLM_PROVIDER', 'LLM_MODEL', 'LLM_BASE_URL']
+const LOCAL_CLUSTER_BOUND_SECRET_KEYS = [
+  'DATABASE_URL',
+  'REDIS_URL',
+  'RUNTIME_REDIS_URL',
+  'SSE_REDIS_URL',
+]
 const LOCAL_KIND_ADMIN_EMAIL = 'codex-admin+kind@local.test'
 const LOCAL_KIND_ADMIN_PASSWORD = 'CodexKind#2026'
 const LOCAL_KIND_ADMIN_DISPLAY_NAME = 'Codex Kind Admin'
@@ -915,7 +921,8 @@ async function main() {
     Object.entries(existingSecretData).filter(
       ([key]) =>
         !key.startsWith(LEGACY_BACKEND_FLAG_PREFIX) &&
-        !RUNTIME_ENV_PIN_KEYS.includes(key),
+        !RUNTIME_ENV_PIN_KEYS.includes(key) &&
+        !LOCAL_CLUSTER_BOUND_SECRET_KEYS.includes(key),
     ),
   )
 
@@ -1000,16 +1007,17 @@ async function main() {
     names: RUNTIME_ENV_PIN_KEYS,
   })
 
+  const databaseUrl = readEnvOverride('DATABASE_URL') ?? defaultDatabaseUrl(String(args.k8sNamespace))
+  const redisUrl = readEnvOverride('REDIS_URL') ?? defaultRedisUrl(String(args.k8sNamespace))
+  const runtimeRedisUrl = readEnvOverride('RUNTIME_REDIS_URL') ?? redisUrl
+  const sseRedisUrl = readEnvOverride('SSE_REDIS_URL') ?? runtimeRedisUrl
+
   const mergedSecretData = {
     ...preservedSecretData,
-    DATABASE_URL:
-      readEnvOverride('DATABASE_URL')
-      ?? existingSecretData.DATABASE_URL
-      ?? defaultDatabaseUrl(String(args.k8sNamespace)),
-    REDIS_URL:
-      readEnvOverride('REDIS_URL')
-      ?? existingSecretData.REDIS_URL
-      ?? defaultRedisUrl(String(args.k8sNamespace)),
+    DATABASE_URL: databaseUrl,
+    REDIS_URL: redisUrl,
+    RUNTIME_REDIS_URL: runtimeRedisUrl,
+    SSE_REDIS_URL: sseRedisUrl,
     JWT_SECRET:
       readEnvOverride('JWT_SECRET')
       ?? existingSecretData.JWT_SECRET
