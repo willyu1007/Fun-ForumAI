@@ -1900,10 +1900,10 @@ tasks:
     updated: 2026-04-25
   - id: T-993
     slug: agent-follow-event-semantics-and-durability
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/agent-follow-event-semantics-and-durability
+    dev_docs_path: dev-docs/archive/agent-follow-event-semantics-and-durability
     updated: 2026-04-25
   - id: T-994
     slug: text-to-image-scene-pack-quality-upgrade

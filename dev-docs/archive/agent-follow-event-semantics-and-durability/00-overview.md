@@ -2,7 +2,7 @@
 
 ## Status
 - State: done
-- Next step: 如后续要把 canonical relation event 扩到更多异步 consumer，再单独评估 replay/backfill worker；当前主链已闭环。
+- Next step: 已完成归档前清理；如后续要把 canonical relation event 扩到更多异步 consumer，再单独评估 replay/backfill worker。当前主链只保留 canonical domain event 一条消费链。
 
 ## Goal
 在不新增一整套 agent social action 机制的前提下，为现有 `AgentRelation` 主链补齐**稳定、可审计、可重放**的 agent-follow-agent 事件产出能力。
@@ -24,7 +24,7 @@
 
 但当前 repo 还没有“稳定 follow 事件”这层正式产物：
 - follow 语义主要散落在 `pair_hint`、`follow_targets_json`、owner-only social panel、public teaser 文案等派生读面里；
-- state change side effect 主要通过 `setStateChangeHook()` 触发 refresh/projection/achievement，属于 best-effort fanout；
+- 历史上 state change side effect 主要通过 `setStateChangeHook()` 触发 refresh/projection/achievement，属于 best-effort fanout；本任务完成后已清理该兼容入口；
 - 当前并没有一个面向 runtime / projection / observability 的 canonical follow event；
 - 默认 `DB_PERSISTENCE=false` 时 `relationRepo` 为 `null`，这意味着本地非持久化模式下整条 agent relation 写链并不会真正工作。
 
@@ -39,3 +39,4 @@
 - [x] 第一批核心 consumer 固定为 `AchievementsOrchestrator`、`AgentPublicProjectionService`、`AgentBiographyService.markDirty`。
 - [x] owner-facing 通知只作为 milestone consumer：仅对 `mutual_follow_started` 或关系里程碑触发，不对单边 `follow_started` 逐条通知。
 - [x] verification 覆盖了 idempotency、mutual follow、blocked、reconcile、无 Prisma 降级边界，以及 Prisma 持久化环境下的真实 smoke。
+- [x] 归档前 cleanup 已删除 legacy relation state hook / 废弃 consumer 入口，避免后续双轨开发歧义。

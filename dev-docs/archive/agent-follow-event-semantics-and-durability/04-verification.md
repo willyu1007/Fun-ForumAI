@@ -181,6 +181,41 @@ node scripts/k8s-local-staging.mjs --skip-db-migrate --seed-profile none --run-s
   - 可用 `DATABASE_URL`
 - When `DB_PERSISTENCE=false`, relation repo is absent; this mode can still validate pure logic tests, but not durable event persistence.
 
+## Post-closeout cleanup verification
+- Legacy dual-track audit:
+
+```bash
+rg -n '\b(setStateChangeHook|onStateChanged|processRelationStateChange|onRelationStateChanged)\b' src -S
+```
+
+- Observed result:
+  - command returned no matches
+  - legacy relation state hook / callback identifiers no longer存在于运行时代码
+  - relation fanout 只剩 canonical `AGENT_RELATION_STATE_CHANGED` 路径
+
+- Targeted regression after cleanup:
+
+```bash
+pnpm exec vitest run \
+  src/backend/services/__tests__/relation-service.test.ts \
+  src/backend/services/__tests__/achievements-orchestrator.test.ts
+pnpm exec tsc --noEmit
+```
+
+- Observed result:
+  - targeted relation / achievement regression passed
+  - typecheck passed
+
+- Stale artifact audit:
+
+```bash
+find dev-docs/active/agent-follow-event-semantics-and-durability -maxdepth 1 -type f | sort
+```
+
+- Observed result:
+  - task bundle 仍留在 `active/` 且包含 `01/02/03/roadmap` 过程文件
+  - 已按 archive 规则清理为 summary-first 归档形态
+
 ## Rollout / Backout
 - Rollout:
   - 先落 canonical event contract 与 durable emission

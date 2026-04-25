@@ -119,3 +119,4 @@ Project: `main`
 - 2026-04-15 task_id=T-967 slug=live-e2e-regression-and-service-split-temp event=registry_cleanup note="Removed ghost duplicate registry entry; canonical archive task remains T-961."
 - 2026-04-22 task_id=T-901 slug=provider-runtime-alignment-and-model-activation-v1 event=status from=in-progress to=archived
 - 2026-04-23 task_id=T-993 slug=agent-follow-event-semantics-and-durability event=registered dev_docs_path=dev-docs/active/agent-follow-event-semantics-and-durability
+- 2026-04-25 task_id=T-993 slug=agent-follow-event-semantics-and-durability event=status from=done to=archived

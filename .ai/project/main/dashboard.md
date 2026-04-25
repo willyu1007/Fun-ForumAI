@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 204 (planned: 1, in-progress: 5, blocked: 0, done: 2, archived: 196)
+- Tasks: 204 (planned: 1, in-progress: 5, blocked: 0, done: 1, archived: 197)
 
 ## Recent tasks
 
@@ -16,7 +16,7 @@ Project: `main`
 | --- | --- | --- | --- |
 | T-991 kickoff-live-run-v3 | done | F-000 | dev-docs/active/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
-| T-993 agent-follow-event-semantics-and-durability | done | F-000 | dev-docs/active/agent-follow-event-semantics-and-durability |
+| T-993 agent-follow-event-semantics-and-durability | archived | F-000 | dev-docs/archive/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |

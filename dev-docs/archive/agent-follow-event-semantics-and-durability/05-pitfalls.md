@@ -13,4 +13,14 @@ This file exists to prevent repeating mistakes within this task.
 
 ## Pitfall log (append-only)
 
-No resolved pitfalls yet. Append entries here only after a failed approach is fully understood and closed out.
+### 2026-04-25 — Leaving legacy compatibility seams after canonical-event cutover
+- Symptom:
+  - 虽然 runtime 已切到 `AGENT_RELATION_STATE_CHANGED`，代码里仍保留 `setStateChangeHook()`、`onRelationStateChanged` 和 `processRelationStateChange()` 等旧入口，文档也还写着“兼容 seam 保留”。
+- Root cause:
+  - 实现阶段先以“低风险迁移”为目标保留了旧接缝，但任务完成后没有做第二轮收口，导致代码和 dev-docs 同时保留双轨叙事。
+- What was tried:
+  - 先用 canonical domain event 把核心 consumer 接上，再观察 smoke 是否稳定。
+- Fix / workaround:
+  - 删除 `RelationService` 旧 state-change hook API，移除 `AchievementsOrchestrator.processRelationStateChange()`，把 biography dirtying 直接接到 nurture 里的 canonical relation event consumer，并将任务包归档为 summary-first 形态。
+- Prevention:
+  - 当 durable source-of-truth 完成切换后，下一轮必须显式检查并删除“临时兼容 seam”；已完成任务不得继续留在 `dev-docs/active/`。

@@ -131,7 +131,7 @@ Project: `main`
 | T-990 kickoff-step3-live-run-v2 | in-progress | dev-docs/active/kickoff-step3-live-run-v2 |
 | T-991 kickoff-live-run-v3 | done | dev-docs/active/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | dev-docs/archive/runtime-autonomous-vote-pipeline |
-| T-993 agent-follow-event-semantics-and-durability | done | dev-docs/active/agent-follow-event-semantics-and-durability |
+| T-993 agent-follow-event-semantics-and-durability | archived | dev-docs/archive/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 
 ### F-010 Agent Stats System
