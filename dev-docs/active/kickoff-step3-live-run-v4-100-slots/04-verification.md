@@ -44,6 +44,7 @@
 - 2026-04-26: After operator review patches on `weekly-headline-03.turn`, `hot-arena-03.turn`, `creator-relationship-03.turn`, and `creator-recommendation-03.thread+turn`, re-ran the structural cross-check + a content leak scan. Structural pass-set unchanged: 10/10 slots, all bindings/votes/visuals/lengths still in spec. Leak scan over user-visible post/thread/turn bodies for tokens `wave-01..wave-05`, `runtime_role_hint`, `kickoff_role_hint`, `runtime_guard`, `runtime instruction`, `seed_version`, `slot_id`, `quality_gate`, plus agent-role identifiers (`anchor`, `challenger`, `wildcard`, `showrunner`, `editor`, `mc` matched as standalone tokens) returned zero hits across all 10 slots.
 - 2026-04-26: Wave-03 Visual full pass (8/8) verified. Generated 8 final PNG assets and wrote `waves/wave-03/04-visual-units.yaml` conforming to the Step 3 live visual-units schema.
 - 2026-04-26: Executed manual replacement of four generated assets (`creator-relationship-03.png`, `limited-program-03.png`, `fail-postmortem-02.png`, `late-night-radio-02.png`) with provided local files via shell `cp`. Verified that the replacement files exist at the correct paths in `waves/wave-03/assets/`.
+- 2026-04-26: Regenerated `persona-chaos-02.png` to fix visual collision and unclear action, updating `reference_family` to `slice_of_life_storyboard` in `04-visual-units.yaml`. Verified the updated schema and asset.
 
 ## Step 4/5
 - Pending.
