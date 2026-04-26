@@ -141,15 +141,38 @@ export interface CueEditorServiceDeps {
   repo: CueRepository
   /** `now()` factory for testability. */
   now?: () => Date
+  /**
+   * T-212 cancel-cascade hook. When `rollbackSchedule` records the schedule
+   * transition, this handler walks the affected cues and cancels those
+   * still in pre-execution states (run-to-completion preserved for cues
+   * already `claimed` / `executing`). MVP without a handler keeps the old
+   * "schedule-only" behavior for backward compat with the T-210 test
+   * fixtures, but production wiring (`container/index.ts`) MUST supply it.
+   */
+  scheduleRollbackHandler?: {
+    apply(input: {
+      scheduleId: string
+      affectedCueIds: string[]
+      actor: { actor_type: 'agent' | 'human' | 'system'; actor_id: string | null }
+      reason?: string
+    }): Promise<{
+      cancelled: string[]
+      inFlight: string[]
+      noop: string[]
+      missing: string[]
+    }>
+  }
 }
 
 export class CueEditorService {
   private readonly repo: CueRepository
   private readonly now: () => Date
+  private readonly scheduleRollbackHandler?: CueEditorServiceDeps['scheduleRollbackHandler']
 
   constructor(deps: CueEditorServiceDeps) {
     this.repo = deps.repo
     this.now = deps.now ?? (() => new Date())
+    this.scheduleRollbackHandler = deps.scheduleRollbackHandler
   }
 
   // ---------------------------------------------------------------------------
@@ -611,6 +634,33 @@ export class CueEditorService {
       created_by_user_id: actor.userId,
     })
 
+    // T-212 cancel-cascade: enumerate cues attached to the original schedule
+    // and (where they're still pre-execution) flip them to `cancelled`,
+    // emitting per-cue `CueExecutionCancelled` events. In-flight cues
+    // (`claimed`/`executing`) run to completion against the original
+    // version. We capture the affected ids on the change row's patch_json
+    // so audit consumers can reconstruct the cascade without re-reading
+    // every cue (R6 — do not extend `RecordCueChangeInput`).
+    const affectedCues = await this.repo.listCuesForSchedule(original.id)
+    const affectedCueIds = affectedCues.map((c) => c.id)
+    let cascadeOutcome: {
+      cancelled: string[]
+      inFlight: string[]
+      noop: string[]
+      missing: string[]
+    } | null = null
+    if (this.scheduleRollbackHandler && affectedCueIds.length > 0) {
+      cascadeOutcome = await this.scheduleRollbackHandler.apply({
+        scheduleId: original.id,
+        affectedCueIds,
+        actor: {
+          actor_type: 'human',
+          actor_id: actor.userId ?? null,
+        },
+        reason: summary ?? `rollback of ${original.id}`,
+      })
+    }
+
     const change = await this.repo.recordChange({
       schedule_id: next.id,
       cue_id: null,
@@ -624,6 +674,8 @@ export class CueEditorService {
           from_schedule_id: original.id,
           new_schedule_id: next.id,
         },
+        affected_cue_ids: affectedCueIds,
+        ...(cascadeOutcome ? { cascade_outcome: cascadeOutcome } : {}),
       },
       validation_status: 'passed',
       approval_status: 'auto_applied',

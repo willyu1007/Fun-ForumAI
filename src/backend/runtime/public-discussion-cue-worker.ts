@@ -30,6 +30,7 @@ import type {
   PublicDiscussionCueMediaDomain,
 } from '../repos/cue-repository.js'
 import type { EventRepository } from '../repos/event-repository.js'
+import type { DomainEvent } from '../repos/types.js'
 import type { CommunityBudgetReservation } from '../services/community-budget-service.js'
 import type {
   CueAdmissionController,
@@ -128,6 +129,15 @@ export interface PublicDiscussionCueWorkerConfig {
   workerId?: string
 }
 
+/**
+ * Hook invoked once per persisted cue domain event so it fans out through
+ * the existing `forum-event-dispatcher` (search projection / achievements /
+ * SSE / stats / etc.). T-211 §F.4 mandates that the new cue event types are
+ * additive on the dispatcher; bypassing it would silently drop downstream
+ * consumers.
+ */
+export type CueEventDispatchHook = (event: DomainEvent) => Promise<void> | void
+
 export interface PublicDiscussionCueWorkerDeps {
   cueRepo: CueRepository
   admissionController: CueAdmissionController
@@ -139,6 +149,13 @@ export interface PublicDiscussionCueWorkerDeps {
   communityResolver: CueCommunityResolver
   castResolver: CueCastResolver
   contentGenerator: CueContentGenerator
+  /**
+   * Optional but production-required: invoked after every cue domain event
+   * is persisted so consumers downstream of `forum-event-dispatcher`
+   * observe `CueExecutionCompleted/Failed/Cancelled/Dispatched`. Tests may
+   * leave this unset to assert only the persistence side.
+   */
+  eventDispatcher?: CueEventDispatchHook
   leaderElector?: LeaderElector
   /** Override the wall clock for deterministic tests. */
   now?: () => Date
@@ -254,6 +271,11 @@ export class PublicDiscussionCueWorker {
         leaseSeconds: this.leaseSeconds,
         batchSize: this.batchSize,
       })
+      if (prewarmed > 0 || claims.length > 0) {
+        console.log(
+          `[PublicDiscussionCueWorker] tick prewarmed=${prewarmed} claims=${claims.length}`,
+        )
+      }
 
       for (const claim of claims) {
         try {
@@ -361,12 +383,14 @@ export class PublicDiscussionCueWorker {
     // ---- Resolve the community ----
     const communityId = resolveCueCommunityId(cue)
     if (!communityId) {
+      // Structural defect — no retry budget can fix a missing community_id.
       await this.failClaim(claim, {
         terminalCueStatus: 'failed',
         terminalAttemptStatus: 'failed',
         reasonCodes: ['cue_missing_community_id'],
         errorCode: 'cue_missing_community_id',
         errorText: 'cue has no resolvable community',
+        retryable: false,
       })
       return
     }
@@ -390,6 +414,10 @@ export class PublicDiscussionCueWorker {
         cueStatus: isDefer ? 'deferred' : 'skipped',
         attemptStatus: isDefer ? 'delayed' : 'skipped',
         reasonCodes: admission.result.reason_codes,
+        // T-212 Bug #4 fix — propagate the admission controller's hint so
+        // the cue isn't re-claimed on the next 10s tick when the gating
+        // condition is known to need a longer cooldown (e.g. budget defer).
+        recommendedNextTriggerAt: admission.result.recommended_next_trigger_at,
       })
       return
     }
@@ -415,8 +443,11 @@ export class PublicDiscussionCueWorker {
       cue,
       attemptId: attempt.id,
       media,
-      // M5 will pull change_ids from CueChange history; M4 leaves the audit
-      // hook unset.
+      // change_ids audit linkage is left unset for the MVP cue path; a
+      // post-T-212 follow-up wires `cueRepo.listChangesForCue(cue.id)`
+      // through the brief so the audit chain captures every CuePatch
+      // applied to this cue without having to re-walk the change table at
+      // read time.
     })
 
     // ---- Scene selection ----
@@ -523,7 +554,7 @@ export class PublicDiscussionCueWorker {
     }
 
     // ---- Trigger event for the agent run linkage ----
-    const triggerEvent = this.deps.eventRepo.create({
+    const triggerEvent = await this.emitCueEvent({
       event_type: 'CUE_EXECUTION_DISPATCHED',
       plane: 'CONTROL',
       schema_version: 'v1',
@@ -626,7 +657,7 @@ export class PublicDiscussionCueWorker {
         reason: 'cancelled_after_content_after_write',
         force_cancelled_post_write: true,
       })
-      this.deps.eventRepo.create(cancelledEvent)
+      await this.emitCueEvent(cancelledEvent)
       return
     }
     await this.deps.cueRepo.setCueStatus(cue.id, 'consumed')
@@ -644,7 +675,27 @@ export class PublicDiscussionCueWorker {
       post_id: writeResult.content_id,
       selected_cast: cast.map((agent) => ({ agent_id: agent.id })),
     })
-    this.deps.eventRepo.create(completedEvent)
+    await this.emitCueEvent(completedEvent)
+  }
+
+  /**
+   * Persist the event AND fan it out through the dispatcher hook so
+   * existing consumers (search projection / achievements / SSE / stats)
+   * observe the cue lifecycle. Hook errors are isolated — a downstream
+   * crash MUST NOT roll back the persisted attempt state.
+   */
+  private async emitCueEvent(input: Parameters<EventRepository['create']>[0]): Promise<DomainEvent> {
+    const event = this.deps.eventRepo.create(input)
+    if (this.deps.eventDispatcher) {
+      try {
+        await this.deps.eventDispatcher(event)
+      } catch (err) {
+        console.error(
+          `[PublicDiscussionCueWorker] event dispatcher failed for ${event.event_type} (${event.id}): ${(err as Error).message}`,
+        )
+      }
+    }
+    return event
   }
 
   /**
@@ -689,7 +740,7 @@ export class PublicDiscussionCueWorker {
       reason: input.reason,
       force_cancelled_post_write: input.forcePostWrite,
     })
-    this.deps.eventRepo.create(cancelledEvent)
+    await this.emitCueEvent(cancelledEvent)
   }
 
   // ===========================================================================
@@ -702,6 +753,13 @@ export class PublicDiscussionCueWorker {
       cueStatus: 'deferred' | 'skipped'
       attemptStatus: 'delayed' | 'skipped'
       reasonCodes: string[]
+      /**
+       * Optional ISO-8601 timestamp from `AdmissionResult.recommended_next_trigger_at`.
+       * When supplied + future, `cue.trigger_at` is bumped so the next claim
+       * window doesn't re-fire immediately. Without this, deferred cues
+       * with stale trigger_at re-claim every tick (busy-loop).
+       */
+      recommendedNextTriggerAt?: string
     },
   ): Promise<void> {
     const finishedAt = this.now()
@@ -714,6 +772,32 @@ export class PublicDiscussionCueWorker {
       lease_expires_at: null,
     })
     await this.deps.cueRepo.setCueStatus(claim.cue.id, input.cueStatus)
+    // T-212 Bug #4 fix: bump trigger_at on defer so the worker doesn't
+    // re-claim on the very next tick (would otherwise burn budget
+    // reservations + emit duplicate defer events in a loop). Prefer the
+    // admission controller's `recommended_next_trigger_at` (knows when the
+    // gating condition will plausibly clear); fall back to the cue's
+    // `dispatch_policy.retry_backoff_seconds` so even unannotated defers
+    // get a sane backoff rather than a tight loop (T-212 dynamic-bug fix).
+    if (input.cueStatus === 'deferred') {
+      let nextTriggerMs: number | null = null
+      if (input.recommendedNextTriggerAt) {
+        const parsed = Date.parse(input.recommendedNextTriggerAt)
+        if (Number.isFinite(parsed) && parsed > finishedAt.getTime()) {
+          nextTriggerMs = parsed
+        }
+      }
+      if (nextTriggerMs == null) {
+        const backoffSeconds = Math.max(
+          1,
+          claim.cue.dispatch_policy.retry_backoff_seconds,
+        )
+        nextTriggerMs = finishedAt.getTime() + backoffSeconds * 1000
+      }
+      await this.deps.cueRepo.updateCue(claim.cue.id, {
+        trigger_at: new Date(nextTriggerMs),
+      })
+    }
 
     // Defer is a recoverable terminal — the cue can be re-claimed at the
     // next trigger window. Skip is a one-shot give-up. Either way we emit
@@ -728,7 +812,7 @@ export class PublicDiscussionCueWorker {
       terminal_status: input.attemptStatus === 'skipped' ? 'skipped' : 'failed',
       reason_codes: input.reasonCodes,
     })
-    this.deps.eventRepo.create(failedEvent)
+    await this.emitCueEvent(failedEvent)
   }
 
   private async failClaim(
@@ -742,9 +826,67 @@ export class PublicDiscussionCueWorker {
       reasonCodes: string[]
       errorCode?: string
       errorText?: string
+      /**
+       * When `true` (the default for transient terminals like
+       * `write_failed`/`content_generator_error`/`community_not_found`), the
+       * worker honors `dispatch_policy.max_attempts`: if `attempt_no` is
+       * still under the budget, the cue rolls back to `deferred` with a
+       * backoff, leaving room for the next tick to retry. Set `false` for
+       * non-recoverable terminals (e.g. cue is structurally infeasible).
+       */
+      retryable?: boolean
     },
   ): Promise<void> {
     const finishedAt = this.now()
+
+    // T-212 Bug #3 fix — honor dispatch_policy.max_attempts. Transient
+    // failures within the budget retry on the next tick after a backoff;
+    // exhausted ones go terminal.
+    const retryable = input.retryable ?? input.terminalAttemptStatus === 'failed'
+    const maxAttempts = claim.cue.dispatch_policy.max_attempts
+    const backoffSeconds = claim.cue.dispatch_policy.retry_backoff_seconds
+    const shouldRetry =
+      retryable &&
+      input.terminalCueStatus === 'failed' &&
+      claim.attempt.attempt_no < maxAttempts
+
+    if (shouldRetry) {
+      const nextTrigger = new Date(
+        finishedAt.getTime() + Math.max(0, backoffSeconds) * 1000,
+      )
+      await this.deps.cueRepo.updateAttempt(claim.attempt.id, {
+        status: 'failed',
+        error_code: input.errorCode ?? null,
+        error_text: input.errorText ?? null,
+        finished_at: finishedAt,
+        lease_owner: null,
+        lease_expires_at: null,
+      })
+      // Cue goes back to `deferred`; the next claim picks it up after the
+      // backoff. attempt_no will increment via `claimDueCues`'s
+      // max(attempt_no)+1 logic.
+      await this.deps.cueRepo.setCueStatus(claim.cue.id, 'deferred')
+      await this.deps.cueRepo.updateCue(claim.cue.id, { trigger_at: nextTrigger })
+      const failedEvent = buildCueExecutionFailedEvent({
+        attempt_id: claim.attempt.id,
+        cue_id: claim.cue.id,
+        schedule_id: claim.cue.schedule_id,
+        community_id: resolveCueCommunityId(claim.cue),
+        occurred_at: finishedAt,
+        lease_owner: this.workerId,
+        terminal_status: 'failed',
+        reason_codes: [
+          ...input.reasonCodes,
+          `retry_in:${backoffSeconds}s`,
+          `attempt:${claim.attempt.attempt_no}/${maxAttempts}`,
+        ],
+        error_code: input.errorCode ?? null,
+        error_text: input.errorText ?? null,
+      })
+      await this.emitCueEvent(failedEvent)
+      return
+    }
+
     await this.deps.cueRepo.updateAttempt(claim.attempt.id, {
       status: input.terminalAttemptStatus,
       error_code: input.errorCode ?? null,
@@ -766,7 +908,7 @@ export class PublicDiscussionCueWorker {
       error_code: input.errorCode ?? null,
       error_text: input.errorText ?? null,
     })
-    this.deps.eventRepo.create(failedEvent)
+    await this.emitCueEvent(failedEvent)
   }
 
   private async releaseReservation(

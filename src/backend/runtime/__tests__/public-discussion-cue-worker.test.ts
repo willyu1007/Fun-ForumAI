@@ -152,8 +152,18 @@ function makeSceneSelector(
         description: string
         rules: string
       }
-    }) => {
+      dryRun?: boolean
+    }): Promise<CueSceneSelection | CueSceneDryRunResult> => {
       if (result) return result
+      if (input.dryRun) {
+        return {
+          kind: 'dry_run',
+          cue_id: input.cue.id,
+          brief_compiled: true,
+          candidate_pool_size: input.agents.length,
+          selected_cast_estimate: input.agents.slice(0, 8),
+        }
+      }
       const minimalScenePayload = {
         scene_metadata: {
           director_surface: 'forum' as const,
@@ -427,30 +437,45 @@ describe('PublicDiscussionCueWorker — failure terminals', () => {
     expect(w.dataPlaneWriter.write).not.toHaveBeenCalled()
   })
 
-  it('fails when community lookup returns null', async () => {
+  it('community lookup failure is retryable: attempt failed, cue deferred with backoff (within max_attempts)', async () => {
     const w = await setupWorld({ noCommunity: true })
     await w.worker.tick()
     const attempts = await w.cueRepo.listAttemptsForCue(w.cue.id)
     expect(attempts[0].status).toBe('failed')
     expect(attempts[0].error_code).toBe('community_not_found')
+    // T-212 Bug #3 — transient terminals roll back to deferred so the next
+    // tick re-claims with attempt_no+1, until max_attempts is exhausted.
     const cueAfter = await w.cueRepo.findCueById(w.cue.id)
-    expect(cueAfter?.status).toBe('failed')
+    expect(cueAfter?.status).toBe('deferred')
+    // trigger_at bumped by retry_backoff_seconds
+    expect(new Date(cueAfter!.trigger_at).getTime()).toBeGreaterThan(
+      new Date('2026-04-26T20:30:30.000Z').getTime(),
+    )
+    // Failed event reason_codes carry the retry annotation
+    const failed = w.eventRepo.findByIdempotencyKey(
+      `cue-execution-failed:${attempts[0].id}`,
+    )
+    expect(failed?.payload_json.reason_codes).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^retry_in:/)]),
+    )
   })
 
-  it('fails when DataPlaneWriter returns success=false; emits CueExecutionFailed', async () => {
+  it('write failure is retryable: attempt failed, cue deferred with backoff', async () => {
     const w = await setupWorld({ writeSuccess: false, writeError: 'moderation_blocked' })
     await w.worker.tick()
     const attempts = await w.cueRepo.listAttemptsForCue(w.cue.id)
     expect(attempts[0].status).toBe('failed')
     expect(attempts[0].error_code).toBe('write_failed')
     expect(attempts[0].error_text).toBe('moderation_blocked')
+    const cueAfter = await w.cueRepo.findCueById(w.cue.id)
+    expect(cueAfter?.status).toBe('deferred')
     const failed = w.eventRepo.findByIdempotencyKey(
       `cue-execution-failed:${attempts[0].id}`,
     )
     expect(failed?.payload_json.error_text).toBe('moderation_blocked')
   })
 
-  it('fails when content generator throws', async () => {
+  it('content generator throw is retryable: attempt failed, cue deferred', async () => {
     const w = await setupWorld()
     w.contentGenerator.generate.mockImplementation(async () => {
       throw new Error('llm_unavailable')
@@ -461,6 +486,88 @@ describe('PublicDiscussionCueWorker — failure terminals', () => {
     expect(attempts[0].error_code).toBe('content_generator_error')
     expect(attempts[0].error_text).toBe('llm_unavailable')
     expect(w.dataPlaneWriter.write).not.toHaveBeenCalled()
+    const cueAfter = await w.cueRepo.findCueById(w.cue.id)
+    expect(cueAfter?.status).toBe('deferred')
+  })
+
+  it('non-retryable structural failure (cue missing community_id) goes straight to failed', async () => {
+    const cueRepo = new InMemoryCueRepository()
+    const schedule = await cueRepo.createSchedule(makeScheduleInput())
+    // Cue with no community_id and runtime_select scope — community is unresolvable.
+    const cue = await cueRepo.createCue({
+      ...makeCueInput(schedule.id),
+      community_id: null,
+      scope: { mode: 'runtime_select' },
+    })
+    const eventRepo = new InMemoryEventRepository()
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const worker = new PublicDiscussionCueWorker(
+      {
+        cueRepo,
+        admissionController: new CueAdmissionController({
+          communityBudgetService: budget,
+          publicGrowthGate: alwaysAllowGate(),
+          loadSignalService: loadSignalServiceStub,
+        }),
+        directorCueBrief: new DirectorCueBriefServiceImpl(),
+        sceneSelector: makeSceneSelector(),
+        dataPlaneWriter: makeDataPlaneWriter(),
+        eventRepo,
+        communityBudgetService: budget,
+        communityResolver: makeCommunityResolver(),
+        castResolver: makeCastResolver(['agent-1']),
+        contentGenerator: makeContentGenerator(),
+        now: () => new Date('2026-04-26T20:30:30.000Z'),
+      },
+      { intervalMs: 60_000, startupDelayMs: 60_000 },
+    )
+    await worker.tick()
+    const attempts = await cueRepo.listAttemptsForCue(cue.id)
+    expect(attempts[0].status).toBe('failed')
+    expect(attempts[0].error_code).toBe('cue_missing_community_id')
+    const cueAfter = await cueRepo.findCueById(cue.id)
+    expect(cueAfter?.status).toBe('failed')
+  })
+
+  it('exhausts retries: after max_attempts ticks, cue moves to terminal failed', async () => {
+    const w = await setupWorld({ writeSuccess: false, writeError: 'persistent_error' })
+    // dispatch_policy.max_attempts = 3 in the fixture
+    let now = new Date('2026-04-26T20:30:30.000Z')
+    let workerNow = now
+    // Inject a mutable now() so we can advance past the backoff window
+    // on each tick. Worker uses deps.now() — we override via reconstruct.
+    const ws = await setupWorld({ writeSuccess: false, writeError: 'persistent_error' })
+    const cueRepo = ws.cueRepo
+    const eventRepo = ws.eventRepo
+    void w
+    void now
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const worker = new PublicDiscussionCueWorker(
+      {
+        ...ws.deps,
+        cueRepo,
+        eventRepo,
+        communityBudgetService: budget,
+        admissionController: new CueAdmissionController({
+          communityBudgetService: budget,
+          publicGrowthGate: alwaysAllowGate(),
+          loadSignalService: loadSignalServiceStub,
+        }),
+        now: () => workerNow,
+      },
+      { intervalMs: 60_000, startupDelayMs: 60_000 },
+    )
+    // Tick 3 times (max_attempts), advancing past the backoff each time.
+    for (let i = 0; i < 3; i++) {
+      await worker.tick()
+      // advance past retry_backoff_seconds (default 30s in fixture) and grace
+      workerNow = new Date(workerNow.getTime() + 5 * 60_000)
+    }
+    const cueAfter = await cueRepo.findCueById(ws.cue.id)
+    expect(cueAfter?.status).toBe('failed')
+    const attempts = await cueRepo.listAttemptsForCue(ws.cue.id)
+    expect(attempts.length).toBe(3)
+    expect(attempts.every((a) => a.status === 'failed')).toBe(true)
   })
 })
 
@@ -516,6 +623,146 @@ describe('PublicDiscussionCueWorker — selector skip', () => {
     expect(attempts[0].error_code).toBe('selector_skip')
     const cueAfter = await w.cueRepo.findCueById(w.cue.id)
     expect(cueAfter?.status).toBe('skipped')
+  })
+})
+
+// ===========================================================================
+// T-212 Bug #1 fix — event dispatcher fan-out (T-211 §F.4)
+// ===========================================================================
+
+describe('PublicDiscussionCueWorker — event dispatcher fan-out (Bug #1 fix)', () => {
+  it('invokes the event dispatcher for every cue domain event (Dispatched, Completed)', async () => {
+    const w = await setupWorld()
+    const dispatched: Array<{ event_type: string; idempotency_key: string | null }> = []
+    const dispatcher = vi.fn(async (event: { event_type: string; idempotency_key: string | null }) => {
+      dispatched.push({
+        event_type: event.event_type,
+        idempotency_key: event.idempotency_key,
+      })
+    })
+    const worker = new PublicDiscussionCueWorker(
+      { ...w.deps, eventDispatcher: dispatcher },
+      { intervalMs: 60_000, startupDelayMs: 60_000 },
+    )
+    await worker.tick()
+    const dispatchedTypes = dispatched.map((d) => d.event_type)
+    expect(dispatchedTypes).toContain('CUE_EXECUTION_DISPATCHED')
+    expect(dispatchedTypes).toContain('CUE_EXECUTION_COMPLETED')
+    // Idempotency keys are stable per attempt
+    const attempts = await w.cueRepo.listAttemptsForCue(w.cue.id)
+    const completedKey = `cue-execution-completed:${attempts[0].id}`
+    expect(dispatched.some((d) => d.idempotency_key === completedKey)).toBe(true)
+  })
+
+  it('isolates dispatcher errors — worker still terminates the attempt cleanly', async () => {
+    const w = await setupWorld()
+    const dispatcher = vi.fn(async () => {
+      throw new Error('dispatcher_crashed')
+    })
+    const worker = new PublicDiscussionCueWorker(
+      { ...w.deps, eventDispatcher: dispatcher },
+      { intervalMs: 60_000, startupDelayMs: 60_000 },
+    )
+    await worker.tick()
+    // Worker should still complete despite dispatcher failures
+    const attempts = await w.cueRepo.listAttemptsForCue(w.cue.id)
+    expect(attempts[0].status).toBe('succeeded')
+    const cueAfter = await w.cueRepo.findCueById(w.cue.id)
+    expect(cueAfter?.status).toBe('consumed')
+  })
+
+  it('dispatcher fan-out emits Failed event on transient terminal too', async () => {
+    const w = await setupWorld({ writeSuccess: false, writeError: 'transient' })
+    const dispatcher = vi.fn()
+    const worker = new PublicDiscussionCueWorker(
+      { ...w.deps, eventDispatcher: dispatcher },
+      { intervalMs: 60_000, startupDelayMs: 60_000 },
+    )
+    await worker.tick()
+    const callTypes = dispatcher.mock.calls.map(
+      (c) => (c[0] as { event_type: string }).event_type,
+    )
+    expect(callTypes).toContain('CUE_EXECUTION_FAILED')
+  })
+})
+
+// ===========================================================================
+// T-212 Bug #4 fix — recommended_next_trigger_at propagation on defer
+// ===========================================================================
+
+describe('PublicDiscussionCueWorker — admission defer trigger backoff (Bug #4 fix)', () => {
+  it('bumps cue.trigger_at by dispatch_policy.retry_backoff_seconds when admission defer omits recommended_next_trigger_at (regression: defer loop)', async () => {
+    const w = await setupWorld()
+    const futureNow = new Date('2026-04-26T20:30:30.000Z')
+    // Admission denies via growth gate (returns no recommended_next_trigger_at
+    // in the AdmissionResult shape — dynamic-bug regression).
+    const worker = new PublicDiscussionCueWorker(
+      {
+        ...w.deps,
+        admissionController: {
+          evaluate: async () => ({
+            result: {
+              granted: false,
+              decision: 'defer' as const,
+              reason_codes: ['growth_gate:warmup_layer_not_ready'],
+              // no recommended_next_trigger_at
+            },
+          }),
+        } as never,
+        now: () => futureNow,
+      },
+      { intervalMs: 60_000, startupDelayMs: 60_000 },
+    )
+    await worker.tick()
+    const cueAfter = await w.cueRepo.findCueById(w.cue.id)
+    expect(cueAfter?.status).toBe('deferred')
+    // trigger_at must be in the future (worker fell back to
+    // dispatch_policy.retry_backoff_seconds = 30 in fixture)
+    expect(new Date(cueAfter!.trigger_at).getTime()).toBeGreaterThan(
+      futureNow.getTime(),
+    )
+  })
+
+  it('bumps cue.trigger_at when admission defers with recommended_next_trigger_at', async () => {
+    const w = await setupWorld()
+    const futureNow = new Date('2026-04-26T20:30:30.000Z')
+    const recommendedAt = new Date(futureNow.getTime() + 5 * 60_000) // +5min
+    // Override admission to return defer with recommended_next_trigger_at
+    const exhaustedBudget = {
+      acquire: async () => ({
+        granted: false as const,
+        reason: 'budget_exhausted' as const,
+        retry_after_ms: 5 * 60_000,
+      }),
+      release: async () => {},
+      query: async () => ({
+        communityId: 'c1',
+        daily_remaining: 0,
+        window_remaining: 0,
+        autonomous_used_today: 0,
+        cue_used_today: 0,
+      }),
+    }
+    const worker = new PublicDiscussionCueWorker(
+      {
+        ...w.deps,
+        communityBudgetService: exhaustedBudget,
+        admissionController: new CueAdmissionController({
+          communityBudgetService: exhaustedBudget,
+          publicGrowthGate: alwaysAllowGate(),
+          loadSignalService: loadSignalServiceStub,
+        }),
+        now: () => futureNow,
+      },
+      { intervalMs: 60_000, startupDelayMs: 60_000 },
+    )
+    await worker.tick()
+    const cueAfter = await w.cueRepo.findCueById(w.cue.id)
+    expect(cueAfter?.status).toBe('deferred')
+    // trigger_at bumped to (or near) recommendedAt
+    expect(new Date(cueAfter!.trigger_at).getTime()).toBeGreaterThanOrEqual(
+      recommendedAt.getTime() - 1000,
+    )
   })
 })
 

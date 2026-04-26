@@ -716,7 +716,7 @@ core.warmupGovernanceService.attachRuntimeDeps({
   eventQueue: infra.eventQueue,
 })
 
-// ─── 7b. Public Discussion Cue Worker (T-212 M4) ───────────────
+// ─── 7b. Public Discussion Cue Worker (T-212 M4 / M5) ───────────
 // Independent lightweight loop that drives admin-authored cues from the
 // scheduled `triggerAt` window through admission → director brief → scene
 // selection → write. Runs only when explicitly enabled via
@@ -730,6 +730,18 @@ const cueAdmissionController = new CueAdmissionController({
   loadSignalService: loadSignalServiceStub,
 })
 const directorCueBriefService = new DirectorCueBriefServiceImpl()
+
+// `forumEventDispatcher` is declared further below (depends on services
+// that aren't yet built); the worker / rollback handler need to fan their
+// cue events through it. We capture the reference via a mutable holder so
+// the late-binding doesn't trip TDZ on the `const` dispatcher.
+const cueEventDispatcherRef: {
+  fn: ((event: import('./../repos/types.js').DomainEvent) => Promise<void> | void) | null
+} = { fn: null }
+const cueEventDispatcherProxy = (
+  event: import('./../repos/types.js').DomainEvent,
+): Promise<void> | void => cueEventDispatcherRef.fn?.(event)
+
 const publicDiscussionCueWorker = new PublicDiscussionCueWorker(
   {
     cueRepo: repos.cueRepo,
@@ -739,6 +751,7 @@ const publicDiscussionCueWorker = new PublicDiscussionCueWorker(
     dataPlaneWriter: rt.dataplaneWriter,
     eventRepo: repos.eventRepo,
     communityBudgetService,
+    eventDispatcher: cueEventDispatcherProxy,
     leaderElector: infra.leaderElectors.publicDiscussionCueWorker,
     // Community resolver — adapts the existing community read path so the
     // worker can target the cue's locked community without taking on a heavy
@@ -867,6 +880,10 @@ const forumEventDispatcher = createForumEventDispatcher({
 
 core.forumWriteService.setEventHook(forumEventDispatcher)
 core.viewerPublicWriteService.setAcceptedForumEventHook(forumEventDispatcher)
+// T-212 fix: bind the cue worker / rollback handler dispatcher proxy so cue
+// domain events fan out through the existing forum-event-dispatcher (I-9 /
+// T-211 §F.4 — additive event types on the existing dispatcher).
+cueEventDispatcherRef.fn = forumEventDispatcher
 core.viewerPublicWriteService.setAcceptedAudienceWriteHook(
   createAudienceWriteDispatcher({
     searchProjectionService,
@@ -895,6 +912,7 @@ export const communityProposalRepo = repos.communityProposalRepo
 export const roomRepo = repos.roomRepo
 export const userRepo = repos.userRepo
 export const eventRepo = repos.eventRepo
+export { forumEventDispatcher }
 export const agentRunRepo = repos.agentRunRepo
 export const riskGovernanceRepo = repos.riskGovernanceRepo
 export const searchDocRepo = repos.searchDocRepo

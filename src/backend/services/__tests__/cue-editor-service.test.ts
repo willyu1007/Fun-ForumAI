@@ -487,6 +487,86 @@ describe('CueEditorService — rollbackSchedule', () => {
     const updated = await repo.findScheduleById(original.id)
     expect(updated?.status).toBe('rolled_back')
   })
+
+  // T-212 Bug #2 fix — rollbackSchedule must invoke ScheduleRollbackHandler
+  // when one is provided, cascading cue cancellations + emitting per-cue
+  // CueExecutionCancelled events. Without this wiring, rolled-back schedules
+  // would leave their cues live (worker would happily execute them).
+  it('invokes ScheduleRollbackHandler with affected cue ids and records the cascade outcome', async () => {
+    const repo = new InMemoryCueRepository()
+    const original = await setupSchedule(repo)
+    // Seed a couple of cues on the original schedule.
+    const cueInputBase = {
+      schedule_id: original.id,
+      source_type: 'manual' as const,
+      community_id: 'c1',
+      scope: SCOPE,
+      trigger_at: new Date(Date.now() + 3_600_000),
+      dispatch_policy: makeDispatch(new Date(Date.now() + 3_600_000).toISOString()),
+      theme_intent: baselineTheme,
+      scene_constraints: baselineScene,
+      role_requirements: baselineRoles,
+    }
+    const cueA = await repo.createCue({ ...cueInputBase, status: 'scheduled' })
+    const cueB = await repo.createCue({ ...cueInputBase, status: 'scheduled' })
+    const calls: Array<{
+      scheduleId: string
+      affectedCueIds: string[]
+      actor: { actor_type: string; actor_id: string | null }
+      reason?: string
+    }> = []
+    const fakeHandler = {
+      apply: async (input: {
+        scheduleId: string
+        affectedCueIds: string[]
+        actor: { actor_type: 'agent' | 'human' | 'system'; actor_id: string | null }
+        reason?: string
+      }) => {
+        calls.push(input)
+        return {
+          cancelled: input.affectedCueIds,
+          inFlight: [],
+          noop: [],
+          missing: [],
+        }
+      },
+    }
+    const service = new CueEditorService({
+      repo,
+      scheduleRollbackHandler: fakeHandler,
+    })
+    const result = await service.rollbackSchedule(original.id, adminActor, 'incident')
+    expect(calls).toHaveLength(1)
+    expect(calls[0].scheduleId).toBe(original.id)
+    expect(new Set(calls[0].affectedCueIds)).toEqual(new Set([cueA.id, cueB.id]))
+    expect(calls[0].actor.actor_type).toBe('human')
+    // change.patch_json carries affected_cue_ids + cascade_outcome
+    const patch = result.change.patch_json as {
+      affected_cue_ids?: string[]
+      cascade_outcome?: { cancelled: string[] }
+    }
+    expect(new Set(patch.affected_cue_ids ?? [])).toEqual(new Set([cueA.id, cueB.id]))
+    expect(new Set(patch.cascade_outcome?.cancelled ?? [])).toEqual(
+      new Set([cueA.id, cueB.id]),
+    )
+  })
+
+  it('skips ScheduleRollbackHandler invocation when no cues exist (avoids empty-batch noise)', async () => {
+    const repo = new InMemoryCueRepository()
+    const original = await setupSchedule(repo)
+    let called = false
+    const service = new CueEditorService({
+      repo,
+      scheduleRollbackHandler: {
+        apply: async () => {
+          called = true
+          return { cancelled: [], inFlight: [], noop: [], missing: [] }
+        },
+      },
+    })
+    await service.rollbackSchedule(original.id, adminActor)
+    expect(called).toBe(false)
+  })
 })
 
 describe('CueEditorService — actor & approval semantics (DEC-T210-A)', () => {

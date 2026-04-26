@@ -18,11 +18,19 @@
 
 import type { CueRepository } from '../../repos/cue-repository.js'
 import type { EventRepository } from '../../repos/event-repository.js'
+import type { DomainEvent } from '../../repos/types.js'
 import type {
   PublicDiscussionCueDomain,
   PublicDiscussionCueStatus,
 } from './types.js'
 import { buildCueExecutionCancelledEvent } from './cue-domain-events.js'
+
+/**
+ * Hook invoked once per persisted Cancelled event so it fans out via
+ * `forum-event-dispatcher`. Mirrors the worker's `CueEventDispatchHook`
+ * (T-211 §F.4 — additive event types on the existing dispatcher).
+ */
+export type CueEventDispatchHook = (event: DomainEvent) => Promise<void> | void
 
 const PRE_EXECUTION_STATUSES: ReadonlySet<PublicDiscussionCueStatus> = new Set([
   'draft',
@@ -42,6 +50,12 @@ const IN_FLIGHT_STATUSES: ReadonlySet<PublicDiscussionCueStatus> = new Set([
 export interface ScheduleRollbackHandlerDeps {
   cueRepo: CueRepository
   eventRepo: EventRepository
+  /**
+   * Optional but production-required: invoked after every persisted
+   * Cancelled event so consumers downstream of `forum-event-dispatcher`
+   * observe the rollback cascade.
+   */
+  eventDispatcher?: CueEventDispatchHook
   now?: () => Date
 }
 
@@ -103,7 +117,16 @@ export class ScheduleRollbackHandler {
           reason:
             input.reason ?? `schedule_rollback:${input.scheduleId}`,
         })
-        this.deps.eventRepo.create(event)
+        const persisted = this.deps.eventRepo.create(event)
+        if (this.deps.eventDispatcher) {
+          try {
+            await this.deps.eventDispatcher(persisted)
+          } catch (err) {
+            console.error(
+              `[ScheduleRollbackHandler] event dispatcher failed for ${persisted.event_type} (${persisted.id}): ${(err as Error).message}`,
+            )
+          }
+        }
       } else if (IN_FLIGHT_STATUSES.has(cue.status)) {
         // Run-to-completion semantics — leave the cue alone. The audit
         // chain will still link via the original schedule version.

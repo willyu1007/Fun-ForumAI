@@ -58,6 +58,15 @@ export interface CueAdmissionControllerDeps {
    * possible but doesn't return a `retry_after_ms`. Defaults to 60.
    */
   defaultBudgetRetryBackoffSeconds?: number
+  /**
+   * Default backoff (in seconds) for growth-gate / load defers — these
+   * conditions are typically operational gates that need minutes to flip,
+   * so we don't want the worker to re-claim on every 10s tick (would
+   * create a busy-loop of CueExecutionFailed events). Defaults to 300s
+   * (5min). T-213's load service can supply finer-grained recommendations
+   * via the load snapshot if desired.
+   */
+  defaultOpsRetryBackoffSeconds?: number
 }
 
 export interface EvaluateAdmissionInput {
@@ -83,10 +92,12 @@ const PRODUCTION_PATH: ProductionPath = 'cue'
 export class CueAdmissionController {
   private readonly cost: number
   private readonly defaultRetryBackoffSeconds: number
+  private readonly defaultOpsRetryBackoffSeconds: number
 
   constructor(private readonly deps: CueAdmissionControllerDeps) {
     this.cost = deps.cuePathCost ?? 1
     this.defaultRetryBackoffSeconds = deps.defaultBudgetRetryBackoffSeconds ?? 60
+    this.defaultOpsRetryBackoffSeconds = deps.defaultOpsRetryBackoffSeconds ?? 300
   }
 
   async evaluate(input: EvaluateAdmissionInput): Promise<CueAdmissionEvaluation> {
@@ -122,12 +133,18 @@ export class CueAdmissionController {
     const growth = await this.deps.publicGrowthGate.getRuntimeBaselineAdmission()
     if (!growth.allow_public_growth) {
       await this.safeRelease(reservation.reservationId)
+      // T-212 dynamic-bug fix: growth-gate denials need a backoff window so
+      // the worker doesn't re-claim on every 10s tick (busy-loop). Operations
+      // gates flip on the order of minutes, so a 5-min default is right.
       return {
         result: defer({
           reasons:
             growth.reasons.length > 0
               ? growth.reasons.map((r) => `growth_gate:${r}`)
               : ['growth_gate:blocked'],
+          recommendedNextTriggerAt: new Date(
+            now.getTime() + this.defaultOpsRetryBackoffSeconds * 1000,
+          ),
         }),
       }
     }
@@ -147,6 +164,9 @@ export class CueAdmissionController {
       return {
         result: defer({
           reasons: [`load_signal_error:${(err as Error).message}`],
+          recommendedNextTriggerAt: new Date(
+            now.getTime() + this.defaultOpsRetryBackoffSeconds * 1000,
+          ),
         }),
       }
     }
@@ -157,6 +177,9 @@ export class CueAdmissionController {
         result: defer({
           reasons: ['load_red'],
           loadSnapshotRef: snapshotRef(snapshot),
+          recommendedNextTriggerAt: new Date(
+            now.getTime() + this.defaultOpsRetryBackoffSeconds * 1000,
+          ),
         }),
       }
     }

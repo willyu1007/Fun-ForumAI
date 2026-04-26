@@ -27,12 +27,15 @@ import { loadSignalServiceStub } from '../../services/__stubs__/load-signal-serv
 import { directorCueBriefStub } from '../../services/__stubs__/director-cue-brief-stub.js'
 import {
   cueRepo as containerCueRepo,
+  eventRepo as containerEventRepo,
+  forumEventDispatcher as containerForumEventDispatcher,
   mediaAssetRepo as containerMediaAssetRepo,
 } from '../../container.js'
 import type { CueRepository } from '../../repos/cue-repository.js'
 import { requireAdmin, requireHumanAuth } from '../../middleware/human-auth.js'
 import { requireProgrammingPermission } from '../../middleware/require-programming-permission.js'
 import { PROGRAMMING_PERMISSIONS } from '../../programming/cue/permissions.js'
+import { ScheduleRollbackHandler } from '../../programming/cue/schedule-rollback-handler.js'
 
 const SCOPE_SCHEMA = z
   .object({
@@ -141,7 +144,24 @@ export function registerAdminCueRoutes(
 ): void {
   const cueRepo = options?.cueRepo ?? containerCueRepo
   const mediaAssetRepo = containerMediaAssetRepo
-  const cueEditorService = options?.service ?? new CueEditorService({ repo: cueRepo })
+  // T-212 fix: production wiring threads the rollback handler so
+  // `rollbackSchedule` cascades cue cancellations + emits per-cue Cancelled
+  // events through the same dispatcher the worker uses. Tests that supply
+  // their own `options.service` keep the historical behavior.
+  const scheduleRollbackHandler =
+    options?.service != null
+      ? undefined
+      : new ScheduleRollbackHandler({
+          cueRepo,
+          eventRepo: containerEventRepo,
+          eventDispatcher: containerForumEventDispatcher,
+        })
+  const cueEditorService =
+    options?.service ??
+    new CueEditorService({
+      repo: cueRepo,
+      ...(scheduleRollbackHandler ? { scheduleRollbackHandler } : {}),
+    })
   const mediaPickerService =
     options?.mediaPicker ?? new MediaPickerService({ mediaAssetRepo })
   const cuePreviewService =
