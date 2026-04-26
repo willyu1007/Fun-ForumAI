@@ -45,6 +45,7 @@
 - 2026-04-26: Wave-03 Visual full pass (8/8) verified. Generated 8 final PNG assets and wrote `waves/wave-03/04-visual-units.yaml` conforming to the Step 3 live visual-units schema.
 - 2026-04-26: Executed manual replacement of four generated assets (`creator-relationship-03.png`, `limited-program-03.png`, `fail-postmortem-02.png`, `late-night-radio-02.png`) with provided local files via shell `cp`. Verified that the replacement files exist at the correct paths in `waves/wave-03/assets/`.
 - 2026-04-26: Regenerated `persona-chaos-02.png` to fix visual collision and unclear action, updating `reference_family` to `slice_of_life_storyboard` in `04-visual-units.yaml`. Verified the updated schema and asset.
+- 2026-04-26: Executed manual replacement of the regenerated `persona-chaos-02.png` with a provided local file via shell `cp`. Verified that the replacement file exists at the correct path in `waves/wave-03/assets/`.
 
 ## Step 4/5
 - Pending.
