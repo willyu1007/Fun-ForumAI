@@ -1443,7 +1443,7 @@ tasks:
     milestone_id: M-000
     feature_id: F-060
     dev_docs_path: dev-docs/active/admin-auto-programming
-    updated: 2026-04-26
+    updated: 2026-04-27
   - id: T-208
     slug: cue-shared-contract
     status: done
@@ -1460,53 +1460,53 @@ tasks:
     updated: 2026-04-26
   - id: T-210
     slug: cue-editor-admin
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-060
     dev_docs_path: dev-docs/active/cue-editor-admin
-    updated: 2026-04-25
+    updated: 2026-04-27
   - id: T-211
     slug: post-scheduler-boundary
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-060
     dev_docs_path: dev-docs/active/post-scheduler-boundary
-    updated: 2026-04-25
+    updated: 2026-04-27
   - id: T-212
     slug: cue-worker-runtime
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-060
     dev_docs_path: dev-docs/active/cue-worker-runtime
-    updated: 2026-04-25
+    updated: 2026-04-27
   - id: T-213
     slug: cue-load-control
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-060
     dev_docs_path: dev-docs/active/cue-load-control
-    updated: 2026-04-25
+    updated: 2026-04-27
   - id: T-214
     slug: cue-auto-editor
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-060
     dev_docs_path: dev-docs/active/cue-auto-editor
-    updated: 2026-04-25
+    updated: 2026-04-27
   - id: T-215
     slug: cue-public-projection
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-060
     dev_docs_path: dev-docs/active/cue-public-projection
-    updated: 2026-04-25
+    updated: 2026-04-27
   - id: T-216
     slug: cue-media-policy
-    status: planned
+    status: done
     milestone_id: M-000
     feature_id: F-060
     dev_docs_path: dev-docs/active/cue-media-policy
-    updated: 2026-04-25
+    updated: 2026-04-27
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: archived

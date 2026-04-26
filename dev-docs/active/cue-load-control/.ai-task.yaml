@@ -2,8 +2,8 @@ version: 1
 task_id: T-213
 project: main
 slug: cue-load-control
-status: planned
-updated: "2026-04-25"
+status: done
+updated: "2026-04-27"
 keywords:
   - load-snapshot
   - freshness

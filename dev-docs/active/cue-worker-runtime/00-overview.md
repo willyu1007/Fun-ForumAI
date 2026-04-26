@@ -1,12 +1,13 @@
 # 00 Overview — cue-worker-runtime (T-212)
 
 ## Status
-- State: done (M1–M5 shipped; closure verified by end-to-end review on 2026-04-26)
+- State: done
 - Parent: `T-207 admin-auto-programming`
 - Phase: **3** of 6 (heaviest, integration spine)
 - Type: code (worker + admission + director brief + selector + audit refs)
 - Estimate: 10-15 days (actual: ~12 days across M1–M5)
-- Implementation notes: see `03-implementation-notes.md`
+- Completed: 2026-04-26
+- Outcome: M1-M5 shipped; closure verified by end-to-end review on 2026-04-26. See `03-implementation-notes.md` and `04-verification.md`.
 
 ## Goal
 Connect the cue data layer to the existing director / allocator / runtime so a manually authored cue actually produces a forum post at `triggerAt`. This is the integration spine of the umbrella; downstream load control (T-213), auto-editor (T-214), and projections (T-215) all build on what ships here.
@@ -99,15 +100,15 @@ Connect the cue data layer to the existing director / allocator / runtime so a m
 - **`CueExecutionFailed` event NOT emitted** for admin-initiated cancels; only `CueExecutionCancelled` event fires (additive event type).
 
 ## Acceptance criteria
-- [ ] An admin-authored cue with `triggerAt = now() + 1m` produces a forum post within `triggerAt + grace_seconds`.
-- [ ] The post's `ForumSceneMetadata.payloadJson.programming` carries `production_path: 'cue'` and the full cue ref.
-- [ ] `CueExecutionAttempt` row exists with `status='succeeded'`, links to `cue_id`, contains `selected_cast`, and references the resulting `post_id`.
-- [ ] Audit chain test: from any cue-produced post id, reconstruct `Post → metadata → attempt → cue → schedule → change → actor` (umbrella §5).
-- [ ] `production_path: 'autonomous'` is written for PostScheduler-produced posts (no behavior change to PostScheduler beyond the metadata write).
-- [ ] No `PublicDiscussionCue*` import in `post-scheduler.ts` (invariant I-2 verification).
-- [ ] No `PostScheduler` import in `cue-worker.ts` (invariant I-3 verification).
-- [ ] Failure paths: cue with infeasible scene constraints lands in `failed` with reason; cue blocked by admission lands in `deferred` with `recommended_next_trigger_at`.
-- [ ] Concurrent worker test: two CueWorker instances do not double-claim the same cue (lease + skip-locked).
+- [x] An admin-authored cue with `triggerAt = now() + 1m` produces a forum post within `triggerAt + grace_seconds`.
+- [x] The post's `ForumSceneMetadata.payloadJson.programming` carries `production_path: 'cue'` and the full cue ref.
+- [x] `CueExecutionAttempt` row exists with `status='succeeded'`, links to `cue_id`, contains `selected_cast`, and references the resulting `post_id`.
+- [x] Audit chain test: from any cue-produced post id, reconstruct `Post → metadata → attempt → cue → schedule → change → actor` (umbrella §5).
+- [x] `production_path: 'autonomous'` is written for PostScheduler-produced posts (no behavior change to PostScheduler beyond the metadata write).
+- [x] No `PublicDiscussionCue*` import in `post-scheduler.ts` (invariant I-2 verification).
+- [x] No `PostScheduler` import in `cue-worker.ts` (invariant I-3 verification).
+- [x] Failure paths: cue with infeasible scene constraints lands in `failed` with reason; cue blocked by admission lands in `deferred` with `recommended_next_trigger_at`.
+- [x] Concurrent worker test: two CueWorker instances do not double-claim the same cue (lease + skip-locked).
 
 ## Risks
 - **Director overlay schema mismatch** — `EpisodeOverlayV1` does not cover all cue fields. Mitigation: extend overlay only via additive optional fields; cue concepts not directly representable get attached to a `programming` block on the overlay.

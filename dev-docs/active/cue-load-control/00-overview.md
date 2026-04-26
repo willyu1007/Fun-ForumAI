@@ -1,11 +1,13 @@
 # 00 Overview — cue-load-control (T-213)
 
 ## Status
-- State: planned
+- State: done
 - Parent: `T-207 admin-auto-programming`
 - Phase: **4** of 6
 - Type: code (load snapshot service split + admission decisions + heatmap UI)
 - Estimate: 5-7 days
+- Completed: 2026-04-27 (governance cleanup; implementation had already landed)
+- Outcome: Admission and signal load services, shared budget enforcement, admission decision table, PostScheduler budget gate, heatmap, synthetic load injector, and audit cleanup are implemented. See `03-implementation-notes.md` and `04-verification.md`.
 
 ## Goal
 Make the cue path **load-aware**. Replace T-212's green-only stub with real `CommunityRuntimeLoadSnapshot` computation, split into two services with distinct freshness contracts: `AdmissionLoadService` (live, hot path) and `LoadSignalService` (cached, ~30s TTL). Surface a load heatmap on the admin Cue Board so admins see total community load — including PostScheduler autonomous-path predicted occupancy (anti-double-track requirement I-7).
@@ -61,13 +63,13 @@ Make the cue path **load-aware**. Replace T-212's green-only stub with real `Com
 - **Tunable thresholds in admin UI** — initial thresholds are config-file-defined; runtime tuning UI deferred.
 
 ## Acceptance criteria
-- [ ] Admission path uses `AdmissionLoadService` and never reads cached snapshots.
-- [ ] Signal path uses `LoadSignalService`; cached entries respect TTL and refresh on schedule.
-- [ ] Admission decision table drives `CueAdmissionController`; T-212 stub removed.
-- [ ] `community-budget-service` enforces shared budget; synthetic test simulates 1 cue + 1 PostScheduler call competing for the last quota unit; one wins and the other receives a budget-exhausted reason.
-- [ ] Cue Board heatmap renders for at least one community over a 30-min window with mixed `cue` + `autonomous` predicted occupancy.
-- [ ] PostScheduler's only modification is the `community-budget-service.acquire` call site; no other behavior change (verified by `git diff` review against T-211 invariants).
-- [ ] Yellow / red admission outcomes reproducible via a synthetic load injector.
+- [x] Admission path uses `AdmissionLoadService` and never reads cached snapshots.
+- [x] Signal path uses `LoadSignalService`; cached entries respect TTL and refresh on schedule.
+- [x] Admission decision table drives `CueAdmissionController`; T-212 stub removed.
+- [x] `community-budget-service` enforces shared budget; synthetic test simulates 1 cue + 1 PostScheduler call competing for the last quota unit; one wins and the other receives a budget-exhausted reason.
+- [x] Cue Board heatmap renders for at least one community over a 30-min window with mixed `cue` + `autonomous` predicted occupancy.
+- [x] PostScheduler's only modification is the `community-budget-service.acquire` call site; no other behavior change (verified by `git diff` review against T-211 invariants).
+- [x] Yellow / red admission outcomes reproducible via a synthetic load injector.
 
 ## Risks
 - **Hot-path latency** of live `compute()` — Mitigation: query budget / scope minimal aggregations; cache only invariant fields (not freshness-dependent).

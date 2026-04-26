@@ -2,8 +2,8 @@ version: 1
 task_id: T-210
 project: main
 slug: cue-editor-admin
-status: planned
-updated: "2026-04-25"
+status: done
+updated: "2026-04-27"
 keywords:
   - public-discussion-cue
   - admin-editor

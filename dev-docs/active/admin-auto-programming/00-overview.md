@@ -4,7 +4,7 @@
 - State: in-progress
 - Role: **Umbrella** task. Coordinates 9 sub-bundles (T-208..T-216) that deliver the public-discussion-cue programming layer.
 - Source design doc: `~/Downloads/admin-auto-programming-design.md` (v1.0, 2026-04-25, ~3500 lines).
-- Progress (2026-04-26): T-208 done, T-209 done (post-closure deep audit applied), T-210/T-211 gated open. Remaining: T-210..T-216.
+- Progress (2026-04-27 governance cleanup): T-208..T-216 are closed from implementation evidence and verification notes. T-214 prompt template v1 is registered. T-216 cue-runtime media-planner wiring is closed on the write path before `dataPlaneWriter.write()`, with anchor / selected-only-pool enforcement covered by tests. Umbrella remains `in-progress` only until the optional `cue_auto_edit` intent split is shipped or split into a follow-on task ID.
 
 ## Goal
 Deliver an editable, auditable, admission-controlled **public discussion cue** programming layer that lets admins and an auto-editor shape the cadence and intent of forum public discussions, without ever authoring agent identity, post body, or output expectations. The runtime / director / allocator retain final cast selection and expression authority. All manual and auto edits flow through the same patch / validation / admission / audit chain.
@@ -14,7 +14,7 @@ Deliver an editable, auditable, admission-controlled **public discussion cue** p
 - Do **not** rebuild the existing director, allocator, or media subsystems. Reuse `public-director-contract` types, `DefaultCastingDirectorPolicy`, `MediaAsset / SceneMediaBinding` as-is.
 - Do **not** touch the chatroom `RoomProgram / RoomEpisode / RoomEpisodeBeat / RoomProgramEvent` runtime in MVP. Forum-only. (Shared **contract types** abstracted in T-208 so future Room unification is feasible.)
 - Do **not** replace `PostScheduler` autonomous cadence. Co-existence with explicit semantic separation is the chosen route (see §"PostScheduler vs CueWorker semantic boundary" below).
-- Do **not** ship `require_public_display` media policy enforcement in MVP. Routed to T-216 sub-bundle.
+- Do **not** ship `require_public_display` media policy enforcement in MVP. T-216 ships `selected_only_pool` / `anchor` strength tiering instead.
 
 ## Scope (umbrella)
 This umbrella owns:
@@ -31,13 +31,13 @@ This umbrella does **not** ship code. All implementation lives in T-208..T-216.
 |---|---|---|---|---|---|
 | T-208 | `cue-shared-contract` | Phase 0 | code (type-only) | 2-3 | **done** |
 | T-209 | `cue-data-and-board` | Phase 1 | code (DB + import + read-only UI) | 5-7 | **done** |
-| T-210 | `cue-editor-admin` | Phase 2 | code (admin UI + validation) | 7-10 | gated open |
-| T-211 | `post-scheduler-boundary` | Phase 2.5 | doc-only (boundary + budget plan) | 2 | gated open |
-| T-212 | `cue-worker-runtime` | Phase 3 | code (worker + admission + director brief) | 10-15 | planned |
-| T-213 | `cue-load-control` | Phase 4 | code (load snapshot + freshness) | 5-7 | planned |
-| T-214 | `cue-auto-editor` | Phase 5 | code (trigger detector + LLM patch + inbox) | 7-10 | planned |
-| T-215 | `cue-public-projection` | Phase 6 | code (programming projection cue facet) | 3-5 | planned |
-| T-216 | `cue-media-policy` | Sub (M0-M3) | code (usage_strength + plan resolution) | 5-7 | planned |
+| T-210 | `cue-editor-admin` | Phase 2 | code (admin UI + validation) | 7-10 | **done** |
+| T-211 | `post-scheduler-boundary` | Phase 2.5 | doc-only (boundary + budget plan) | 2 | **done** |
+| T-212 | `cue-worker-runtime` | Phase 3 | code (worker + admission + director brief) | 10-15 | **done** |
+| T-213 | `cue-load-control` | Phase 4 | code (load snapshot + freshness) | 5-7 | **done** |
+| T-214 | `cue-auto-editor` | Phase 5 | code (trigger detector + LLM patch + inbox) | 7-10 | **done** |
+| T-215 | `cue-public-projection` | Phase 6 | code (programming projection cue facet) | 3-5 | **done** |
+| T-216 | `cue-media-policy` | Sub (M0-M4) | code (usage_strength + plan resolution + write-path enforcement) | 5-7 | **done** |
 
 Total ~14 weeks (single-thread estimate; parallel paths in `01-plan.md` compress this).
 
@@ -67,7 +67,7 @@ Total ~14 weeks (single-thread estimate; parallel paths in `01-plan.md` compress
 10. **All 10 bundles register under feature `F-060` (Public Scene Pool & Director Orchestration), milestone `M-000`.** Requirement linkage TBD; sync will lint until `R-065` (or similar) is added in a follow-up registry update.
 
 ## Acceptance criteria (umbrella-level, high level)
-- [ ] All 9 sub-bundles registered in `.ai/project/main/registry.yaml` and pass `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` lint.
+- [x] All 9 sub-bundles registered in `.ai/project/main/registry.yaml` and pass `node .ai/scripts/ctl-project-governance.mjs sync --apply --project main` lint.
 - [ ] Umbrella `02-architecture.md` declares the cross-bundle handoff contract and the PostScheduler/CueWorker semantic boundary in language a future maintainer can apply without re-reading the design doc.
 - [ ] Each sub-bundle's `00-overview.md` carries the 5-item handoff contract (input contract, output contract, gate condition, frozen fields, deferred questions).
 - [ ] When all sub-bundles complete, every public root post produced by the cue path can be traced from `Post` → `ForumSceneMetadata.programming` → `CueExecutionAttempt` → `Cue` → `CueChange` → originating `Schedule` and `actor (admin user / auto-editor system id)`.

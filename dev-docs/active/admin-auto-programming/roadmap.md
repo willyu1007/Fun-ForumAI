@@ -15,7 +15,7 @@ Establish a `PublicDiscussionCue`-centered programming intermediate layer betwee
 - No chatroom `RoomProgram` refactor in MVP.
 - No PostScheduler replacement.
 - No new admin authority over cast / body / output.
-- No `require_public_display` media enforcement in MVP.
+- No `require_public_display` media enforcement in MVP. T-216 ships the strict `selected_only_pool` substitute instead.
 
 ## Sub-bundle map and sequencing
 
@@ -47,14 +47,14 @@ Establish a `PublicDiscussionCue`-centered programming intermediate layer betwee
         ▼                 ▼                  ▼                  ▼
 [T-214 cue-auto-     [T-215 cue-public-  [T-216 cue-media-   (verification)
  editor]              projection]          policy]
- (Phase 5)           (Phase 6)            (M0-M3 sub)
+ (Phase 5)           (Phase 6)            (M0-M4 sub)
 ```
 
 ### Parallel execution windows
 - **W4-5**: T-210 (UI code) ‖ T-211 (boundary doc).
 - **W10-11**: T-213 (load control) ‖ T-216 M0/M1 (media strength typing + plan resolution table).
 - **W12-13**: T-214 (auto editor) ‖ T-215 (public projection) ‖ T-216 M2 (anchor mode + image-planner derivative).
-- **W14**: T-216 M3 (selected_only_pool + admin UI surface) + umbrella-level e2e verification.
+- **W14**: T-216 M3/M4 (selected_only_pool + admin UI surface + pre-write enforcement) + umbrella-level e2e verification.
 
 ### Hard prerequisites
 - T-209 must finish before T-210 (DB schema must be stable).
@@ -107,11 +107,12 @@ Cue Detail Editor (theme intent, scene constraints, role requirements vector, lo
 - `HomeProgrammingSnapshotService` consumes the new facet without changing its event-emission contract
 - Public-facing UI: home tonight upcoming / community replay (sanitized per design doc §14.3)
 
-### M0-M3 — `cue-media-policy` (T-216, sub-bundle)
+### M0-M4 — `cue-media-policy` (T-216, sub-bundle)
 - M0: `usage_strength: 'optional' | 'preferred' | 'anchor' | 'selected_only_pool'` schema upgrade (cue table `usage_strength` enum reserved by T-209 with all four values; M0 unlocks anchor and selected_only_pool semantics)
 - M1: `MediaPlanResolution` table; media planner routes by strength
 - M2: `anchor` mode integrates with `imagePlannerService` derivative path (anchor asset is required, derivative may be generated based on it)
 - M3: `selected_only_pool` mode disables `imagePlannerService` text-to-image entirely; admin UI surfaces strength selection; full audit on `MediaPlanResolution`
+- M4: cue runtime invokes media planning before `DataPlaneWriter.write()` and fails strict media-policy violations before persistence
 
 ## Macro risks and rollback
 
@@ -122,9 +123,9 @@ Cue Detail Editor (theme intent, scene constraints, role requirements vector, lo
 | PostScheduler semantic drift (double-track) | T-211/T-212 | `production_path` column; shared budget; separate metric tracks | Disable `selectFromDiscussionCue`; cue path goes to no-op |
 | Auto-editor outputs forbidden fields | T-214 | All auto patches enter inbox; rejected on validation | Disable `TriggerDetector` |
 | Cue worker double-claim | T-212 | DB `FOR UPDATE SKIP LOCKED` + lease + `idempotency_key` | Lease timeout; idempotency rejection on retry |
-| `require_public_display` slip into MVP | T-216 | Excluded by schema until T-216 M3; MVP UI does not expose | Keep field nullable; remove enum value if needed |
+| `require_public_display` slip into MVP | T-216 | Excluded from MVP; `selected_only_pool` is the strict-selection substitute | Reject the field at patch validation; keep using strength tiers |
 | Forum / Room future unification blocked | T-208 | Shared contract types in Phase 0 | Future task can extend without re-doing Phase 0 |
-| Media planner conflict with cue media | T-216 M2/M3 | Strength-tiered router; `MediaPlanResolution` audits both paths | Set strength to `optional` / `preferred` only; planner ignores anchor |
+| Media planner conflict with cue media | T-216 M2-M4 | Strength-tiered router; pre-write `MediaPlanResolution` audits both paths | Set strength to `optional` / `preferred` only; planner ignores strict tiers |
 | Admin double-quota spend (autonomous + cue) | T-211/T-213 | Shared `community-budget-service`; cue board surfaces autonomous predicted load | Tighten budget cap; pause cue auto-create |
 
 ## Acceptance (umbrella)

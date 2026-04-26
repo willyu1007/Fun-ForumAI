@@ -26,7 +26,7 @@ Reviewers check these 5 items at sub-bundle start AND end. Drift between declare
 | T-213 | `cue-load-control` | T-212 | `LoadSnapshot` with `freshness`; `AdmissionLoadService` (live); `LoadSignalService` (cached); load heatmap UI | T-212 e2e green | `LoadSnapshot` schema with `freshness`; admission decision table |
 | T-214 | `cue-auto-editor` | T-213 | `TriggerDetector`; `LoadGate`; `AutoCueEditor` (structured `CuePatchV1`); `RiskClassifier`; `AutoPatchInbox` | T-213 admission decision table stable | Trigger type enum; `AutoCueEditorOutput` shape; risk levels |
 | T-215 | `cue-public-projection` | T-212 | `cue` facet on `ProgrammingProjection`; `ForumSceneMetadata` cue refs promoted from `payloadJson` to columns; public upcoming/replay UI | T-212 cue refs stable | Programming projection cue facet schema; promoted column names |
-| T-216 | `cue-media-policy` | T-209 (M0), T-212 (M1+) | M0: 4-tier `usage_strength` semantics; M1: `MediaPlanResolution` table; M2: anchor + image-planner derivative; M3: `selected_only_pool` + admin UI + audit | M0: T-209 enum reserved; M1+: T-212 `DirectorCueBrief.media_resource_pool` carries strength; M2: `imagePlannerService` change window | `MediaPlanResolution` schema; strength routing semantics |
+| T-216 | `cue-media-policy` | T-209 (M0), T-212 (M1+) | M0: 4-tier `usage_strength` semantics; M1: `MediaPlanResolution` table; M2: anchor + image-planner derivative; M3: `selected_only_pool` + admin UI + audit; M4: cue runtime pre-write media planning | M0: T-209 enum reserved; M1+: T-212 `DirectorCueBrief.media_resource_pool` carries strength; M2: `imagePlannerService` change window; M4: `DataPlaneWriter` accepts planned media refs | `MediaPlanResolution` schema; strength routing semantics |
 
 ## Parallel execution windows (assumed single-thread for serial path; parallel teams collapse this)
 
@@ -63,9 +63,9 @@ W12-13 │                      │
 │ auto-edit│  └────────────────────┘  │ anchor mode    │
 └──────────┘                          └────────────────┘
 W14
-   ┌──────────────────────────────────┐
-   │ T-216 M3 + umbrella e2e verify   │
-   └──────────────────────────────────┘
+   ┌──────────────────────────────────────────┐
+   │ T-216 M3/M4 + umbrella e2e verify        │
+   └──────────────────────────────────────────┘
 ```
 
 ## Cross-bundle decisions (recorded; do not re-litigate inside sub-bundles)
@@ -82,16 +82,15 @@ W14
 | D-8 | Forum vs Room programming | Share contract types only (T-208), data tables forked | Forces no Room refactor in MVP; future unification path open |
 | D-9 | MVP scope = forum only | Open question #1 resolved 2026-04-25 | Variance surface control |
 | D-10 | Cue scope = field, not schedule partition | Open question #3 resolved 2026-04-25 | One global schedule; cue applicability via scope field; avoids N×community schedule sprawl |
-| D-11 | `require_public_display` MVP exclusion | Open question #2 partially resolved: deferred to T-216 sub-bundle (M3) with explicit strength tiering | Direct enforcement creates conflict with `imagePlannerService`; tiering provides robust co-existence |
+| D-11 | `require_public_display` MVP exclusion | Open question #2 partially resolved: excluded from MVP; T-216 ships `selected_only_pool` / `anchor` strength tiering instead | Direct display compulsion creates conflict with `imagePlannerService`; tiering provides robust co-existence |
 | D-12 | Auto-apply for auto patches | All auto patches enter inbox in MVP; auto-apply deferred | Allows learning-curve observation; avoids early auto-patch incidents |
+| D-13 | Strict media policy enforcement point | T-216 M4 enforces `anchor` / `selected_only_pool` in `PublicDiscussionCueWorker` before `DataPlaneWriter.write()` | Prevents late-audit drift and keeps public output aligned with cue media policy |
 
 ## Open umbrella-level questions (must close before sub-bundle starts)
 
 - **U-1** Should umbrella also create requirement `R-065` ("Public Discussion Cue Programming Layer") under F-060? Currently sub-bundles register without `requirement_ids`; sync may emit lint warnings. Decision deferred until first sync run; if lint complains, add R-065 in registry under F-060 with status `planned`.
 - **U-2** Auto-editor LLM model selection (Phase 5) — which voice line / hidden line is responsible? Defer to T-214 `02-architecture.md`.
 - **U-3** Concrete budget caps for `community-budget-service` (T-211 / T-213) — initial values? Defer to T-211 boundary doc with proposed defaults.
-- **U-4** Exact `usage_strength` interpretation when admin sets `anchor` and `imagePlannerService` budget is exhausted (T-216 M2). Defer to T-216 M2 architecture.
-
 ## Metric ownership matrix (design doc §20)
 
 Each metric is emitted by exactly one sub-bundle; downstream dashboards aggregate but do not re-emit. Umbrella ensures no metric is missed and no metric is double-emitted.

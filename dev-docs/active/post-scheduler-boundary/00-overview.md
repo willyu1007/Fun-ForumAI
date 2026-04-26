@@ -1,11 +1,13 @@
 # 00 Overview — post-scheduler-boundary (T-211)
 
 ## Status
-- State: planned
+- State: done
 - Parent: `T-207 admin-auto-programming`
 - Phase: **2.5** of 6 (parallel with T-210)
 - Type: **doc-only** (no code in this bundle)
 - Estimate: 2 days
+- Completed: 2026-04-27 (governance cleanup; implementation evidence from T-212 closure folded into `02-architecture.md`)
+- Outcome: Boundary specification is complete and was verified against the shipped T-212 runtime, service interfaces, event fan-out, and invariants. See `02-architecture.md` revision log and `04-verification.md`.
 
 ## Goal
 Produce the boundary specification that prevents `PostScheduler` (autonomous tick) and `CueWorker` (scheduled cue) from collapsing into a redundant double-track system. This sub-bundle materializes the umbrella `02-architecture.md` §2 invariants into:
@@ -63,12 +65,12 @@ T-212 (`cue-worker-runtime`) starts after:
 - **Future merge of PostScheduler into cue model** — not on this umbrella's path; T-208 shared types leave the option open.
 
 ## Acceptance criteria
-- [ ] Boundary doc covers all §A-G sections with no `TBD` left except the items explicitly deferred to T-213.
-- [ ] Every umbrella invariant I-1..I-9 has a named owner sub-bundle and verification mechanism.
-- [ ] PostScheduler responsibility inventory is grounded in actual method names + line references in `src/backend/runtime/post-scheduler.ts` (not paraphrase).
-- [ ] `community-budget-service` API draft has at least one example call from each path.
-- [ ] Reviewers from both forum-side and runtime-side approve.
-- [ ] Document is short enough to be operationally useful (~3 pages target).
+- [x] Boundary doc covers all §A-G sections with no `TBD` left except the items explicitly deferred to T-213.
+- [x] Every umbrella invariant I-1..I-9 has a named owner sub-bundle and verification mechanism.
+- [x] PostScheduler responsibility inventory is grounded in actual method names + line references in `src/backend/runtime/post-scheduler.ts` (not paraphrase).
+- [x] `community-budget-service` API draft has at least one example call from each path.
+- [x] Reviewers from both forum-side and runtime-side approve.
+- [x] Document is short enough to be operationally useful (~3 pages target).
 
 ## Risks
 - **Document drifts from code reality** during long umbrella execution. Mitigation: when T-212 implements CueWorker, it must verify each §C interface and report discrepancies back; this sub-bundle's status remains `in-progress` until that verification clears.

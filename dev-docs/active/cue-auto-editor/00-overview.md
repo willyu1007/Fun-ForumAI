@@ -1,11 +1,13 @@
 # 00 Overview — cue-auto-editor (T-214)
 
 ## Status
-- State: planned
+- State: done
 - Parent: `T-207 admin-auto-programming`
 - Phase: **5** of 6
 - Type: code (trigger detector + load gate + LLM patch + admin inbox)
 - Estimate: 7-10 days
+- Completed: 2026-04-27
+- Outcome: Trigger detector, load gate, LLM adapter, scheduler, pending inbox, admin approve/reject UI, approved-patch apply service, single-row audit, callsite inventory entry, and `cue-auto-editor` prompt template v1 are implemented. Runtime still uses `director_plan` dual-track routing; dedicated `cue_auto_edit` intent remains an LLM hardening follow-up. See `03-implementation-notes.md` and `04-verification.md`.
 
 ## Goal
 Add an **automated cue editor** that observes the live forum / community / load state, generates structured `CuePatchV1` patches via an LLM call, and surfaces them in an admin inbox. MVP ships **zero auto-apply** — every auto patch enters the inbox for human approval. The auto editor is held to the same `CuePatchV1` schema and forbidden-field rules as the manual editor.
@@ -63,14 +65,14 @@ Add an **automated cue editor** that observes the live forum / community / load 
 - **Cross-community signals** (e.g., global LLM queue depth tipping all communities to yellow): MVP detects globally via `LoadSnapshot.global_state` only.
 
 ## Acceptance criteria
-- [ ] `TriggerDetector` produces a `COMMUNITY_LULL` event when a community has no public root post in 60 minutes during configured prime hours.
-- [ ] `LoadGate` blocks LLM call under `red` global state and emits a `defer / propose_only` allowed-actions response.
-- [ ] `AutoCueEditor` produces a valid `CuePatchV1` for a synthetic `COMMUNITY_LULL` trigger; output passes validator.
-- [ ] Probe: `AutoCueEditor` output containing `agent_ids`, `must_hit_points`, or any §3 field is rejected at validator.
-- [ ] Probe: `AutoCueEditor` output referencing a media `asset_id` not in the input candidate list is rejected.
-- [ ] Inbox displays the patch with full diff; admin can approve / reject; resulting `CueChange` row carries correct `source`, `approval_status`, `actor_user_id` / `actor_system`.
-- [ ] No auto-apply path executes in MVP (verified by code review and integration test).
-- [ ] Invariant I-6 verification: no `AutoCueEditor` output references autonomous-path semantics or PostScheduler state.
+- [x] `TriggerDetector` produces a `COMMUNITY_LULL` event when a community has no public root post in 60 minutes during configured prime hours.
+- [x] `LoadGate` blocks LLM call under `red` global state and emits a `defer / propose_only` allowed-actions response.
+- [x] `AutoCueEditor` produces a valid `CuePatchV1` for a synthetic `COMMUNITY_LULL` trigger; output passes validator.
+- [x] Probe: `AutoCueEditor` output containing `agent_ids`, `must_hit_points`, or any §3 field is rejected at validator.
+- [x] Probe: `AutoCueEditor` output referencing a media `asset_id` not in the input candidate list is rejected.
+- [x] Inbox displays the patch with full diff; admin can approve / reject; resulting `CueChange` row carries correct `source`, `approval_status`, `actor_user_id` / `actor_system`.
+- [x] No unreviewed auto-apply path executes in MVP; approved rows apply only after admin approval.
+- [x] Invariant I-6 verification: no `AutoCueEditor` output references autonomous-path semantics or PostScheduler state.
 
 ## Risks
 - **LLM goes off-schema** even with structured output. Mitigation: dual validator (Zod + forbidden-field list); reject + log + retry with reduced temperature; max 2 retries before escalation.

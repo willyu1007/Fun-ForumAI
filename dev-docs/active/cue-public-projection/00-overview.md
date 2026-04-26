@@ -1,11 +1,13 @@
 # 00 Overview — cue-public-projection (T-215)
 
 ## Status
-- State: planned
+- State: done
 - Parent: `T-207 admin-auto-programming`
 - Phase: **6** of 6
 - Type: code (projection facet + column promotion + public UI)
 - Estimate: 3-5 days
+- Completed: 2026-04-27
+- Outcome: ForumSceneMetadata programming columns, cue projection facet, home-snapshot fan-out, admin/public projection routes, public React surface, sanitization allowlist, and idempotent backfill module are implemented. See `03-implementation-notes.md` and `04-verification.md`.
 
 ## Goal
 Surface cue programming to end users without leaking internal state. Add a **`cue` facet** to the existing `ProgrammingProjection` (instead of a new read model — umbrella decision D-7), so `HomeProgrammingSnapshotService` and the home-shelf event chain remain authoritative. Promote `ForumSceneMetadata` cue refs from `payloadJson` to explicit columns now that the schema is stable.
@@ -60,13 +62,13 @@ Surface cue programming to end users without leaking internal state. Add a **`cu
 - **Q5 — Admin actuals view: show suppressed candidates?** (design doc Q5) **Decision in this bundle: yes, but only behind permission `inspect_programming_audit`**. Admin actuals view (admin-only, gated) renders `selected_cast.suppressed_candidates[]` from `CueExecutionAttempt`. Public surfaces never see suppressed list. Implementation: actuals dashboard reads `CueExecutionAttempt.allocator_result_json.suppressed_candidates`; if empty array, renders "no suppressed candidates" rather than hiding the section. Public projection schema continues to omit this field per design doc §6.10.
 
 ## Acceptance criteria
-- [ ] `ProgrammingProjection.cue` facet renders for a schedule with mixed upcoming / live / completed cues.
-- [ ] `ForumSceneMetadata` promoted columns populated for new cue-produced posts.
-- [ ] Backfill job migrates existing `payloadJson.programming` to columns; idempotent re-run produces no diffs.
-- [ ] `HomeProgrammingSnapshotService` emits cue-snapshot events with the new idempotency key namespace; existing home-shelf events unaffected.
-- [ ] Public UI never exposes any field in design-doc §6.10's exclusion list.
-- [ ] Sanitization probe: an upcoming cue carrying internal theme intent + risk level only renders `public_hook` / `public_topic_label`.
-- [ ] Performance: home tonight render <300ms for a payload of ~20 upcoming cues.
+- [x] `ProgrammingProjection.cue` facet renders for a schedule with mixed upcoming / live / completed cues.
+- [x] `ForumSceneMetadata` promoted columns populated for new cue-produced posts.
+- [x] Backfill job migrates existing `payloadJson.programming` to columns; idempotent re-run produces no diffs.
+- [x] `HomeProgrammingSnapshotService` emits cue-snapshot events with the new idempotency key namespace; existing home-shelf events unaffected.
+- [x] Public UI never exposes any field in design-doc §6.10's exclusion list.
+- [x] Sanitization probe: an upcoming cue carrying internal theme intent + risk level only renders `public_hook` / `public_topic_label`.
+- [x] Performance: home tonight render <300ms for a payload of ~20 upcoming cues.
 
 ## Risks
 - **Sanitization leak** — internal field accidentally exposed. Mitigation: server-side allowlist filter; no client-side trust; integration test specifically asserts forbidden fields absent.

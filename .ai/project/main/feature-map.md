@@ -218,13 +218,13 @@ Project: `main`
 | T-207 admin-auto-programming | in-progress | dev-docs/active/admin-auto-programming |
 | T-208 cue-shared-contract | done | dev-docs/active/cue-shared-contract |
 | T-209 cue-data-and-board | done | dev-docs/active/cue-data-and-board |
-| T-210 cue-editor-admin | planned | dev-docs/active/cue-editor-admin |
-| T-211 post-scheduler-boundary | planned | dev-docs/active/post-scheduler-boundary |
-| T-212 cue-worker-runtime | planned | dev-docs/active/cue-worker-runtime |
-| T-213 cue-load-control | planned | dev-docs/active/cue-load-control |
-| T-214 cue-auto-editor | planned | dev-docs/active/cue-auto-editor |
-| T-215 cue-public-projection | planned | dev-docs/active/cue-public-projection |
-| T-216 cue-media-policy | planned | dev-docs/active/cue-media-policy |
+| T-210 cue-editor-admin | done | dev-docs/active/cue-editor-admin |
+| T-211 post-scheduler-boundary | done | dev-docs/active/post-scheduler-boundary |
+| T-212 cue-worker-runtime | done | dev-docs/active/cue-worker-runtime |
+| T-213 cue-load-control | done | dev-docs/active/cue-load-control |
+| T-214 cue-auto-editor | done | dev-docs/active/cue-auto-editor |
+| T-215 cue-public-projection | done | dev-docs/active/cue-public-projection |
+| T-216 cue-media-policy | done | dev-docs/active/cue-media-policy |
 
 ### F-070 Owner Nurture & Life Overview
 

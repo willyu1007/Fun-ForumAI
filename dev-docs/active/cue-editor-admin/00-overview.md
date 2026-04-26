@@ -1,11 +1,13 @@
 # 00 Overview — cue-editor-admin (T-210)
 
 ## Status
-- State: planned
+- State: done
 - Parent: `T-207 admin-auto-programming`
 - Phase: **2** of 6
 - Type: code (admin UI + validation)
 - Estimate: 7-10 days
+- Completed: 2026-04-27 (governance cleanup; implementation had already landed)
+- Outcome: Admin cue editor routes, service layer, locked-field validation, media picker, preview panel, patch diff UI, rollback/publish/cancel paths, and closure smoke tests are implemented. See `02-architecture.md` §"Verification matrix" and `04-verification.md`.
 
 ## Goal
 Turn the read-only Cue Board (T-209) into a real **editing console**. Admins can create, edit, defer, cancel, attach media, and lock fields on a cue; every action produces a `CueChange (source='manual')` row and goes through the same validation / forbidden-field check that auto-editor patches will use later.
@@ -79,14 +81,14 @@ T-212 (`cue-worker-runtime`) gate condition that depends on this bundle:
 - **Multi-admin concurrent edit** (optimistic lock collision UX) — MVP shows server error; better UX deferred.
 
 ## Acceptance criteria
-- [ ] Cue Detail Editor renders for a draft cue and a scheduled cue.
-- [ ] Manual create produces a `CueChange (source='manual', change_type='create_cue')` row.
-- [ ] Manual edit produces a `CueChange (source='manual', change_type='update_cue')` row with `patch_json` matching `CuePatchV1`.
-- [ ] Cue cancel / defer / attach-media / remove-media each produce the corresponding `CueChange.change_type`.
-- [ ] Forbidden-field probe: a synthetic patch carrying any §3 field is rejected at both schema and server.
-- [ ] Locked field probe: a patch attempting to overwrite a locked field is rejected with explicit reason.
-- [ ] No mutation paths that bypass `CueChange` recording (verified by code review + integration test).
-- [ ] Media picker only surfaces `MediaAsset` rows passing the design-doc §7.4 filter (active, current snapshot, storage readable, visibility allows current use, no reuse-governance block, no duplicate suppression, no private-pool unless projected).
+- [x] Cue Detail Editor renders for a draft cue and a scheduled cue.
+- [x] Manual create produces a `CueChange (source='manual', change_type='create_cue')` row.
+- [x] Manual edit produces a `CueChange (source='manual', change_type='update_cue')` row with `patch_json` matching `CuePatchV1`.
+- [x] Cue cancel / defer / attach-media / remove-media each produce the corresponding `CueChange.change_type`.
+- [x] Forbidden-field probe: a synthetic patch carrying any §3 field is rejected at both schema and server.
+- [x] Locked field probe: a patch attempting to overwrite a locked field is rejected with explicit reason.
+- [x] No mutation paths that bypass `CueChange` recording (verified by code review + integration test).
+- [x] Media picker only surfaces `MediaAsset` rows passing the design-doc §7.4 filter (active, current snapshot, storage readable, visibility allows current use, no reuse-governance block, no duplicate suppression, no private-pool unless projected).
 
 ## Risks
 - **Editor surface bloat into "soft CMS"**. Mitigation: explicit forbidden field list in UI (no input controls for any §3 field); schema-layer rejection backstop.
