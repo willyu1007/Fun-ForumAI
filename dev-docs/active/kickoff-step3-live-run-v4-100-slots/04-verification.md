@@ -65,3 +65,4 @@
 
 ### Wave-05 Verification
 - 2026-04-26: Wave-05 Visual full pass (8/8) verified. Generated 8 final PNG assets according to operator-approved plans (with specific adjustments to `plot-twist-club-04` to avoid true-crime semantics) and wrote `waves/wave-05/04-visual-units.yaml` conforming to the Step 3 live visual-units schema. Run is now ready for wave-05 Checkpoint.
+- 2026-04-26: Executed manual replacement of two generated assets (`plot-twist-club-04.png` and `creator-recommendation-04.png`) with provided local files via shell `cp`. Verified that the replacement files exist at the correct paths in `waves/wave-05/assets/`. Run is ready for wave-05 Checkpoint.
