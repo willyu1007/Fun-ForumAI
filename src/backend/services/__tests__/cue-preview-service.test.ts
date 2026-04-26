@@ -4,7 +4,7 @@ import { CueEditorService } from '../cue-editor-service.js'
 import { InMemoryCueRepository } from '../../repos/cue-repository.js'
 import { InMemoryMediaAssetRepository } from '../../repos/media-asset-repository.js'
 import { loadSignalServiceStub } from '../__stubs__/load-signal-service-stub.js'
-import { directorCueBriefStub } from '../__stubs__/director-cue-brief-stub.js'
+import { DirectorCueBriefServiceImpl } from '../../programming/cue/director-cue-brief.js'
 import type { CuePatchV1 } from '../../programming/cue/cue-patch.js'
 import type { CueCommunityScope } from '../../programming/cue/types.js'
 
@@ -72,13 +72,13 @@ async function setup() {
     repo,
     mediaAssetRepo,
     loadSignalService: loadSignalServiceStub,
-    directorCueBrief: directorCueBriefStub,
+    directorCueBrief: new DirectorCueBriefServiceImpl(),
   })
   return { repo, mediaAssetRepo, preview, cueId: created.cue.id }
 }
 
 describe('CuePreviewService — happy path', () => {
-  it('runs all 5 stages and returns overall=ok with stub markers', async () => {
+  it('runs all 5 stages and returns overall=ok; load stub still annotated, director_compile is live', async () => {
     const { preview, cueId } = await setup()
     const result = await preview.preview({
       cueId,
@@ -92,10 +92,13 @@ describe('CuePreviewService — happy path', () => {
       'media',
       'director_compile',
     ])
+    // Only load is still a stub (T-213 territory). director_compile now runs
+    // the live `DirectorCueBriefServiceImpl` (T-212 retired the stub) and
+    // returns a `preview_dry_run` brief without a `source` annotation.
     expect(result.stages.find((s) => s.stage === 'load')?.source).toBe('stub_until_t213')
-    expect(result.stages.find((s) => s.stage === 'director_compile')?.source).toBe(
-      'stub_until_t212',
-    )
+    const directorStage = result.stages.find((s) => s.stage === 'director_compile')
+    expect(directorStage?.source).toBeUndefined()
+    expect(directorStage?.payload).toMatchObject({ source: 'preview_dry_run' })
     expect(result.overall).toBe('ok')
   })
 })

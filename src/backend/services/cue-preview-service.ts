@@ -24,7 +24,7 @@ import type {
 } from '../repos/cue-repository.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
 import type { LoadSignalService } from './__stubs__/load-signal-service-stub.js'
-import type { DirectorCueBriefService } from './__stubs__/director-cue-brief-stub.js'
+import type { DirectorCueBriefService } from '../programming/cue/director-cue-brief.js'
 import type { PublicDiscussionCueDomain } from '../programming/cue/types.js'
 
 export type PreviewStageId =
@@ -40,8 +40,13 @@ export interface PreviewStage {
   stage: PreviewStageId
   status: PreviewStageStatus
   payload: unknown
-  /** Present when the stage came from a stub (T-210 placeholder for T-212/T-213). */
-  source?: 'stub_until_t212' | 'stub_until_t213'
+  /**
+   * Present when the stage came from a stub. T-212 retired the
+   * `stub_until_t212` placeholder (director_compile now runs the live
+   * `DirectorCueBriefServiceImpl` in dryRun mode); only the load stage
+   * still uses a stub until T-213 ships the real load signal compute.
+   */
+  source?: 'stub_until_t213'
 }
 
 export interface PreviewResponse {
@@ -214,17 +219,20 @@ export class CuePreviewService {
     // ---- Stage 5: director_compile ----
     try {
       // Apply patch to a shallow copy of cue so the dry-run sees the would-be
-      // committed state; the director stub doesn't actually use this, but
-      // T-212's real implementation will.
+      // committed state. T-212 retired the stub: the live
+      // `DirectorCueBriefServiceImpl` now compiles the brief directly so
+      // admins see the real overlay + programming structure that the worker
+      // would produce at execution time. `dryRun: true` skips persistence
+      // and uses a synthetic attempt id (`'preview'`).
       const projected = projectCue(cue, patch)
-      const briefResult = await this.directorBrief.compile(projected, { dryRun: true })
+      const briefResult = await this.directorBrief.compile({
+        cue: projected,
+        dryRun: true,
+      })
       stages.push({
         stage: 'director_compile',
         status: 'ok',
         payload: briefResult,
-        ...(briefResult.source === 'stub_until_t212'
-          ? { source: 'stub_until_t212' as const }
-          : {}),
       })
     } catch (err) {
       stages.push({

@@ -3479,7 +3479,12 @@ export interface PreviewStage {
   stage: PreviewStageId
   status: PreviewStageStatus
   payload: unknown
-  source?: 'stub_until_t212' | 'stub_until_t213'
+  /**
+   * T-212 retired the `stub_until_t212` placeholder; only the load stage
+   * still annotates a stub source until T-213 ships real load-signal
+   * compute.
+   */
+  source?: 'stub_until_t213'
 }
 
 export interface CuePreviewPayload {

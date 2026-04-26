@@ -78,11 +78,9 @@ export function PreviewPanel({
                 </Badge>
               ) : null}
             </div>
-            {stage.source ? (
+            {stage.source === 'stub_until_t213' ? (
               <p className="mt-1 text-[10px] text-warning">
-                {stage.source === 'stub_until_t212'
-                  ? 'T-212 cue-worker-runtime 上线后此段才显示真实 director compile 结果'
-                  : 'T-213 cue-load-control 上线后此段才显示真实 load snapshot'}
+                T-213 cue-load-control 上线后此段才显示真实 load snapshot
               </p>
             ) : null}
             <pre className="mt-1 max-h-48 overflow-auto rounded bg-muted/30 p-2 text-[10px]">

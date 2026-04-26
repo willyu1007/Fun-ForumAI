@@ -32,7 +32,7 @@ import { MediaPickerService } from '../../services/media-picker-service.js'
 import { InMemoryCueRepository } from '../../repos/cue-repository.js'
 import { InMemoryMediaAssetRepository } from '../../repos/media-asset-repository.js'
 import { loadSignalServiceStub } from '../../services/__stubs__/load-signal-service-stub.js'
-import { directorCueBriefStub } from '../../services/__stubs__/director-cue-brief-stub.js'
+import { DirectorCueBriefServiceImpl } from '../../programming/cue/director-cue-brief.js'
 import { createDevToken } from '../../middleware/human-auth.js'
 import type { CueCommunityScope } from '../../programming/cue/types.js'
 
@@ -69,7 +69,7 @@ async function setup(): Promise<Harness> {
     repo: cueRepo,
     mediaAssetRepo,
     loadSignalService: loadSignalServiceStub,
-    directorCueBrief: directorCueBriefStub,
+    directorCueBrief: new DirectorCueBriefServiceImpl(),
   })
 
   const schedule = await cueRepo.createSchedule({
@@ -268,11 +268,17 @@ describe('T-210 closure — full editor lifecycle', () => {
       'media',
       'director_compile',
     ])
+    // T-212 retired the director_compile stub; only the load stage still
+    // carries a stub annotation (T-213 territory). director_compile now
+    // returns the live `DirectorCueBriefServiceImpl` brief in `dryRun` mode.
     const stubSources = previewClean.body.data.stages
       .map((s: { source?: string }) => s.source)
       .filter((s: string | undefined): s is string => Boolean(s))
-    expect(stubSources).toContain('stub_until_t213')
-    expect(stubSources).toContain('stub_until_t212')
+    expect(stubSources).toEqual(['stub_until_t213'])
+    const directorStage = previewClean.body.data.stages.find(
+      (s: { stage: string }) => s.stage === 'director_compile',
+    )
+    expect(directorStage?.payload).toMatchObject({ source: 'preview_dry_run' })
 
     // 9. Publish (draft -> scheduled). Audit row uses change_type='update_cue'
     //     with patch_json.transition.kind='publish_cue' (DRIFT-B fix).

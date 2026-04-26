@@ -24,7 +24,7 @@ import { CueEditorService } from '../../services/cue-editor-service.js'
 import { MediaPickerService } from '../../services/media-picker-service.js'
 import { CuePreviewService } from '../../services/cue-preview-service.js'
 import { loadSignalServiceStub } from '../../services/__stubs__/load-signal-service-stub.js'
-import { directorCueBriefStub } from '../../services/__stubs__/director-cue-brief-stub.js'
+import { DirectorCueBriefServiceImpl } from '../../programming/cue/director-cue-brief.js'
 import {
   cueRepo as containerCueRepo,
   eventRepo as containerEventRepo,
@@ -170,7 +170,7 @@ export function registerAdminCueRoutes(
       repo: cueRepo,
       mediaAssetRepo,
       loadSignalService: loadSignalServiceStub,
-      directorCueBrief: directorCueBriefStub,
+      directorCueBrief: new DirectorCueBriefServiceImpl(),
     })
   // POST /v1/admin/programming/cues — create draft cue
   router.post(
