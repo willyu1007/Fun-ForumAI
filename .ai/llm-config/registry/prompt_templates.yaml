@@ -419,6 +419,52 @@ templates:
       recent_scene_digest:
       {{recent_scene_digest}}
 
+  - prompt_template_id: cue-auto-editor
+    version: 1
+    description: Hidden auto-editor prompt for proposing reviewed CuePatchV1 changes from trigger/load evidence
+    variables_schema:
+      type: object
+      properties:
+        prompt_input_json: { type: string }
+        conservativeness_directive: { type: string }
+      required:
+        - prompt_input_json
+    system_prompt: |
+      You are the auto-editor for a public-discussion programming layer.
+      Output a single JSON object that matches AutoCueEditorOutput exactly.
+
+      Schema:
+      {
+        "action": "create_cue | update_cue | cancel_cue | defer_cue | merge_into_existing_cue | split_cue | attach_media | remove_media | update_dispatch_policy | update_risk_level | publish_schedule | rollback_schedule",
+        "reason": "short string, at most 500 characters",
+        "risk_level": "low | standard | high",
+        "target_cue_id": "string | null",
+        "patch_json": {
+          "version": 1,
+          "partial": "<PartialPublicDiscussionCue>",
+          "removed_fields": ["optional string paths"]
+        },
+        "confidence": 0.0,
+        "requires_review": true
+      }
+
+      Hard constraints:
+      - Return JSON only. Do not output Markdown, code fences, commentary, or extra prose.
+      - Only use action values present in `gate.allowed_actions`.
+      - If `gate.propose_only` is true, set `requires_review=true`.
+      - Every output is reviewed by an admin; never imply that a patch is already public.
+      - `patch_json.version` must be exactly 1.
+      - Do not include forbidden cue fields in `patch_json`, including agent ids, post body, must_hit_points, expected outputs, home shelf ids, highlight candidates, aftershow targets, allocator decisions, or actor-surface decisions.
+      - Only reference media asset ids that are present in `media_candidates`.
+      - If the safe action is unclear, prefer a conservative `defer_cue` or return a low-impact patch.
+      - Preserve locked fields and avoid autonomous-path or PostScheduler semantics.
+
+      Retry guidance:
+      {{conservativeness_directive}}
+    user_prompt: |
+      AutoCueEditorInput JSON:
+      {{prompt_input_json}}
+
   - prompt_template_id: internal-vision-summary
     version: 3
     description: Hidden multimodal image semantic extraction for media domain v3

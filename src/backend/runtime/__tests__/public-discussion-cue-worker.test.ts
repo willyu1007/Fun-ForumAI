@@ -532,7 +532,7 @@ describe('PublicDiscussionCueWorker — failure terminals', () => {
   it('exhausts retries: after max_attempts ticks, cue moves to terminal failed', async () => {
     const w = await setupWorld({ writeSuccess: false, writeError: 'persistent_error' })
     // dispatch_policy.max_attempts = 3 in the fixture
-    let now = new Date('2026-04-26T20:30:30.000Z')
+    const now = new Date('2026-04-26T20:30:30.000Z')
     let workerNow = now
     // Inject a mutable now() so we can advance past the backoff window
     // on each tick. Worker uses deps.now() — we override via reconstruct.
@@ -777,7 +777,7 @@ describe('PublicDiscussionCueWorker — admin cancel boundaries (M5)', () => {
     const w = await setupWorld()
     // Race: simulate admin cancel happening AFTER the worker transitioned
     // cue to executing but BEFORE the content generator runs.
-    let originalGenerate = w.contentGenerator.generate
+    const originalGenerate = w.contentGenerator.generate
     w.contentGenerator.generate.mockImplementation(async (...args) => {
       // Should never run because the cancel-detect helper aborts first.
       return originalGenerate(...args)
@@ -839,6 +839,45 @@ describe('PublicDiscussionCueWorker — admin cancel boundaries (M5)', () => {
       `cue-execution-cancelled:${attempts[0].id}`,
     )
     expect(cancelled?.payload_json.reason).toBe('cancelled_after_content_before_write')
+  })
+
+  it('aborts the write step when admin cancels after media planning but before write', async () => {
+    const w = await setupWorld()
+    const planForWrite = vi.fn(async ({ scenePayload }) => ({
+      kind: 'ready' as const,
+      scenePayload,
+      imagePlannerDecisionsByAssetId: {},
+      derivativeSourcedAnchorAssetIds: [],
+      mediaUsage: [],
+    }))
+    w.deps.cueMediaPlanner = {
+      planForWrite,
+      record: vi.fn(),
+    } as unknown as PublicDiscussionCueWorkerDeps['cueMediaPlanner']
+
+    const realFind = w.cueRepo.findCueById.bind(w.cueRepo)
+    let executingReads = 0
+    w.cueRepo.findCueById = async (id: string) => {
+      const cue = await realFind(id)
+      if (cue && cue.status === 'executing') {
+        executingReads += 1
+        if (executingReads >= 3) {
+          return { ...cue, status: 'cancelled' }
+        }
+      }
+      return cue
+    }
+
+    await w.worker.tick()
+
+    expect(planForWrite).toHaveBeenCalledTimes(1)
+    expect(w.dataPlaneWriter.write).not.toHaveBeenCalled()
+    const attempts = await w.cueRepo.listAttemptsForCue(w.cue.id)
+    expect(attempts[0].status).toBe('cancelled')
+    const cancelled = w.eventRepo.findByIdempotencyKey(
+      `cue-execution-cancelled:${attempts[0].id}`,
+    )
+    expect(cancelled?.payload_json.reason).toBe('cancelled_after_media_planning_before_write')
   })
 
   it('annotates force_cancelled_post_write when admin cancel races AFTER the write succeeds', async () => {
@@ -1007,4 +1046,3 @@ describe('PublicDiscussionCueWorker — prewarm sweep (M5)', () => {
     expect(result[0].cue.status).toBe('claimed')
   })
 })
-

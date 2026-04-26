@@ -751,6 +751,61 @@ export class PgCueRepository implements CueRepository {
     return rows.map((row) => this.changeToDomain(row))
   }
 
+  async listAutomatedChangesByApprovalStatus(input: {
+    approval_status: import('../cue-repository.js').CueChangeApprovalStatus
+    limit?: number
+  }): Promise<PublicDiscussionCueChangeDomain[]> {
+    const rows = await this.prisma.publicDiscussionCueChange.findMany({
+      where: {
+        source: CHANGE_SOURCE_TO_DB.automated,
+        approvalStatus: CHANGE_APPROVAL_TO_DB[input.approval_status],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: input.limit ?? 100,
+    })
+    return rows.map((row) => this.changeToDomain(row))
+  }
+
+  async findChangeById(
+    id: string,
+  ): Promise<PublicDiscussionCueChangeDomain | null> {
+    const row = await this.prisma.publicDiscussionCueChange.findUnique({
+      where: { id },
+    })
+    return row ? this.changeToDomain(row) : null
+  }
+
+  async updateChangeApproval(input: {
+    id: string
+    approval_status: import('../cue-repository.js').CueChangeApprovalStatus
+    applied_at?: Date | null
+    reason?: string | null
+    actor_user_id?: string | null
+    cue_id?: string | null
+  }): Promise<PublicDiscussionCueChangeDomain | null> {
+    try {
+      const row = await this.prisma.publicDiscussionCueChange.update({
+        where: { id: input.id },
+        data: {
+          approvalStatus: CHANGE_APPROVAL_TO_DB[input.approval_status],
+          ...(input.applied_at !== undefined ? { appliedAt: input.applied_at } : {}),
+          ...(input.reason !== undefined ? { reason: input.reason } : {}),
+          ...(input.actor_user_id !== undefined ? { actorUserId: input.actor_user_id } : {}),
+          ...(input.cue_id !== undefined ? { cueId: input.cue_id } : {}),
+        },
+      })
+      return this.changeToDomain(row)
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError
+        && err.code === 'P2025'
+      ) {
+        return null
+      }
+      throw err
+    }
+  }
+
   // ---- Media ----
 
   async attachMedia(

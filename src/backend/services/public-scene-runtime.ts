@@ -156,6 +156,22 @@ export function buildForumSceneMetadataInput(input: {
   turn_id?: string | null
   payload: PublicSceneWritePayload
 }): CreateForumSceneMetadataInput {
+  // T-215 B-M1 — promote the embedded programming block to explicit
+  // column inputs alongside the legacy payload_json.programming write.
+  // Missing programming → all five columns persist as NULL (legacy /
+  // pre-cue rows). The shape is intentionally additive so call sites
+  // upstream don't need to change their `programming` construction logic.
+  const programming = input.payload.programming ?? null
+  const programmingColumns = programming
+    ? {
+        programming_production_path: programming.production_path,
+        programming_cue_id: programming.cue?.cue_id ?? null,
+        programming_attempt_id: programming.cue?.attempt_id ?? null,
+        programming_schedule_id: programming.cue?.schedule_id ?? null,
+        programming_source_type: programming.cue?.source_type ?? null,
+      }
+    : {}
+
   return {
     target_type: input.target_type,
     community_id: input.community_id,
@@ -179,6 +195,7 @@ export function buildForumSceneMetadataInput(input: {
       ? new Date(input.payload.scene_metadata.expires_at)
       : null,
     payload_json: buildPublicScenePayloadJson(input.payload),
+    ...programmingColumns,
   }
 }
 

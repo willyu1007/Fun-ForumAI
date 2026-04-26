@@ -1,5 +1,6 @@
 import type { ForumSceneMetadata } from '../repos/types/forum-scene.js'
 import { parsePublicScenePayload } from '../services/public-scene-runtime.js'
+import type { CueProjectionFacet } from './programming-projection-cue-facet.js'
 import {
   LAUNCH_CREATOR_NOTE_COVER_MODE_IDS,
   normalizeLaunchCreatorNoteTemplateId,
@@ -36,6 +37,14 @@ export interface LaunchProgrammingProjection {
   note_template_id?: LaunchCreatorNoteTemplateId
   cover_mode?: LaunchCreatorNoteCoverMode
   content_semantics?: ContentSemanticProjection
+  /**
+   * T-215 B-M2 — additive cue facet. Populated by callers that have
+   * already assembled the upcoming / live / completed cue surface
+   * (typically `cue-public-projection-service`). Builders that don't need
+   * cue context (admin actuals, single-post detail) leave this unset and
+   * the existing storyline / launch projection paths are unaffected.
+   */
+  cue?: CueProjectionFacet
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -88,6 +97,13 @@ export function buildLaunchProgrammingProjection(input: {
   scene_metadata?: ForumSceneMetadata | null
   media_count?: number
   has_aftershow_artifact?: boolean
+  /**
+   * T-215 B-M2 — pre-assembled cue facet. The caller (cue public
+   * projection service) is responsible for sanitization; this builder
+   * passes it through verbatim alongside the storyline projection. Omit
+   * to render the legacy launch projection only.
+   */
+  cue_facet?: CueProjectionFacet | null
 }): LaunchProgrammingProjection {
   const launchProfile = readLaunchProfile(input.community_rules_json)
   const defaultEditorialShelfId = Array.isArray(launchProfile?.default_editorial_shelf_ids)
@@ -200,5 +216,6 @@ export function buildLaunchProgrammingProjection(input: {
     ...(noteTemplateId ? { note_template_id: noteTemplateId } : {}),
     ...(coverMode ? { cover_mode: coverMode } : {}),
     content_semantics: contentSemantics,
+    ...(input.cue_facet ? { cue: input.cue_facet } : {}),
   }
 }

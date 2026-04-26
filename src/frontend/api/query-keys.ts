@@ -159,6 +159,22 @@ export const queryKeys = {
     limit?: number
   }) => ['admin', 'cue-board', params ?? null] as const,
   adminCueDetail: (cueId: string) => ['admin', 'cue-detail', cueId] as const,
+  adminAutoPatchInbox: (params?: { approval_status?: string; limit?: number }) =>
+    ['admin', 'auto-patch-inbox', params ?? null] as const,
+  adminAutoPatchDetail: (id: string) =>
+    ['admin', 'auto-patch-detail', id] as const,
+  adminCueProjection: (params?: {
+    community_id?: string
+    lookahead_minutes?: number
+    completed_window_minutes?: number
+    upcoming_limit?: number
+    completed_limit?: number
+  }) => ['admin', 'cue-projection', params ?? null] as const,
+  adminMediaPlanResolutions: (params?: {
+    attempt_id?: string
+    cue_id?: string
+    limit?: number
+  }) => ['admin', 'media-plan-resolutions', params ?? null] as const,
   adminMediaPicker: (params?: { community_id?: string; cursor?: string; limit?: number }) =>
     ['admin', 'media-picker', params ?? null] as const,
   adminCueAudit: (params?: {

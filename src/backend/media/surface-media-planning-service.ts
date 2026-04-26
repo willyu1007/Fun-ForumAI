@@ -1,5 +1,6 @@
 import type { ChatMessageKind } from '../repos/types.js'
 import type {
+  ImagePlanSource,
   PersistedVisualDirective,
 } from '../repos/types.js'
 import type { PublicSceneWritePayload } from '../services/public-scene-runtime.js'
@@ -36,6 +37,12 @@ export interface PreparedSurfaceVisualPlan {
     display_variant: 'original' | 'generated_derivative'
   }>
   planning_audit: Record<string, unknown>
+  selected_sources: Array<{
+    asset_id?: string
+    reuse_mode?: ImagePlanSource['reuse_mode']
+    projection_id?: string
+    rejection_reason?: string | null
+  }>
 }
 
 export interface SurfaceMediaPlanningServiceDeps {
@@ -43,11 +50,60 @@ export interface SurfaceMediaPlanningServiceDeps {
   imagePlannerService: ImagePlannerService
   mediaProjectionService: MediaProjectionService
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record' | 'recordCriticalPrivateLeak'> | null
-  mediaRolloutControllerService?: Pick<MediaRolloutControllerService, 'getEffectiveProfile'> | null
+  mediaRolloutControllerService?: Pick<
+    MediaRolloutControllerService,
+    'getEffectiveProfile' | 'applyToScheduledPostDirective'
+  > | null
 }
+
+type MediaRolloutProfile = Awaited<ReturnType<MediaRolloutControllerService['getEffectiveProfile']>>
 
 export class SurfaceMediaPlanningService {
   constructor(private readonly deps: SurfaceMediaPlanningServiceDeps) {}
+
+  async prepareCueForumPostPlan(input: {
+    agent_id: string
+    community_id: string
+    payload: PublicSceneWritePayload
+    anchor_asset_id?: string | null
+    candidate_asset_ids?: ReadonlyArray<string>
+    forbid_generation?: boolean
+  }): Promise<PreparedSurfaceVisualPlan | null> {
+    const directive = await this.deps.visualDirectiveService.createScheduledPostDirective({
+      community_id: input.community_id,
+      payload: input.payload,
+    })
+    const rolloutAdjusted = this.deps.mediaRolloutControllerService
+      ? await this.deps.mediaRolloutControllerService.applyToScheduledPostDirective(directive)
+      : null
+    const controllerProfile = rolloutAdjusted?.profile ?? null
+    const effectiveDirective = input.forbid_generation
+      ? disableGenerationForDirective(rolloutAdjusted?.directive ?? directive)
+      : rolloutAdjusted?.directive ?? directive
+
+    await this.deps.mediaObservabilityService?.record({
+      event_type: 'root_post_visual_attempted',
+      surface: 'root_post',
+      agent_id: input.agent_id,
+      community_id: input.community_id,
+      payload_json: {
+        visual_directive_id: directive.id,
+        anchor_asset_id: input.anchor_asset_id ?? null,
+        candidate_asset_ids: input.candidate_asset_ids ?? [],
+        forbid_generation: input.forbid_generation === true,
+        controller_profile: controllerProfile?.profile ?? null,
+        controller_mode: controllerProfile?.mode ?? null,
+      },
+    })
+
+    return this.preparePlan({
+      agent_id: input.agent_id,
+      directive: effectiveDirective,
+      anchor_asset_id: input.anchor_asset_id ?? null,
+      candidate_asset_ids: input.candidate_asset_ids,
+      controllerProfile,
+    })
+  }
 
   async prepareForumThreadPlan(input: {
     agent_id: string
@@ -108,15 +164,20 @@ export class SurfaceMediaPlanningService {
   private async preparePlan(input: {
     agent_id: string
     directive: PersistedVisualDirective
+    anchor_asset_id?: string | null
+    candidate_asset_ids?: ReadonlyArray<string>
+    controllerProfile?: MediaRolloutProfile | null
   }): Promise<PreparedSurfaceVisualPlan | null> {
     const plan = await this.planWithDirectiveRetry(input)
     const surface = resolveMediaObservabilitySurface({
       actor_surface: input.directive.scene_ref.actor_surface,
       director_surface: input.directive.scene_ref.director_surface,
     })
-    const hardening = await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
-      .then((profile) => profile.effective)
-      .catch(() => null)
+    const controllerProfile = input.controllerProfile === undefined
+      ? await this.deps.mediaRolloutControllerService?.getEffectiveProfile()
+          .catch(() => null)
+      : input.controllerProfile
+    const hardening = controllerProfile?.effective ?? null
     const firstCard = plan.runtime.cards[0] ?? null
     const serialized = firstCard
       ? this.deps.mediaProjectionService.serializePublicCardForPrompt({
@@ -242,17 +303,27 @@ export class SurfaceMediaPlanningService {
           ? (promptSafe ? 'accepted' : 'blocked_by_audit')
           : 'not_requested',
       },
+      selected_sources: plan.selected_sources.map((source) => ({
+        ...(source.asset_id ? { asset_id: source.asset_id } : {}),
+        ...(source.reuse_mode ? { reuse_mode: source.reuse_mode } : {}),
+        ...(source.projection_id ? { projection_id: source.projection_id } : {}),
+        rejection_reason: source.rejection_reason ?? null,
+      })),
     }
   }
 
   private async planWithDirectiveRetry(input: {
     agent_id: string
     directive: PersistedVisualDirective
+    anchor_asset_id?: string | null
+    candidate_asset_ids?: ReadonlyArray<string>
   }) {
     try {
       return await this.deps.imagePlannerService.planWithDirective({
         agent_id: input.agent_id,
         directive: input.directive,
+        anchor_asset_id: input.anchor_asset_id ?? null,
+        candidate_asset_ids: input.candidate_asset_ids,
       })
     } catch (error) {
       if (!isImagePlanDirectiveConstraintError(error)) {
@@ -264,6 +335,28 @@ export class SurfaceMediaPlanningService {
     return this.deps.imagePlannerService.planWithDirective({
       agent_id: input.agent_id,
       directive: input.directive,
+      anchor_asset_id: input.anchor_asset_id ?? null,
+      candidate_asset_ids: input.candidate_asset_ids,
     })
+  }
+}
+
+function disableGenerationForDirective(
+  directive: PersistedVisualDirective,
+): PersistedVisualDirective {
+  return {
+    ...directive,
+    sourcing_policy: {
+      ...directive.sourcing_policy,
+      allow_generation: false,
+      allow_private_inspired_generation: false,
+    },
+    budget: {
+      ...directive.budget,
+      generation_tier: 'none',
+      sync_generation_ms_budget: 0,
+      async_generation_allowed: false,
+      max_generation_attempts: 0,
+    },
   }
 }

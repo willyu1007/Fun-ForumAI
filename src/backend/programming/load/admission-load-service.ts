@@ -28,6 +28,7 @@ import type {
   CountCuesForCommunityInput,
   CueRepository,
 } from '../../repos/cue-repository.js'
+import { IN_FLIGHT_ATTEMPT_STATUSES } from '../../repos/cue-repository.js'
 import type { PostRepository } from '../../repos/post-repository.js'
 import type { LoadSnapshot, LoadState } from './types.js'
 
@@ -100,7 +101,7 @@ const SCHEDULED_WINDOW_MS = 30 * 60 * 1000
 const RECENT_POST_WINDOW_MS = 20 * 60 * 1000
 
 const SCHEDULED_STATUSES = ['scheduled', 'due', 'prewarming'] as const
-const EXECUTING_STATUSES = ['executing', 'claimed'] as const
+const EXECUTING_STATUSES = IN_FLIGHT_ATTEMPT_STATUSES
 
 export class AdmissionLoadService {
   private readonly thresholds: LoadThresholds

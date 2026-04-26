@@ -391,10 +391,8 @@ describe('CueEditorService — attachMedia / removeMedia', () => {
     expect(result.change.approval_status).toBe('auto_applied')
   })
 
-  // T-216 M0: validator now accepts all four `usage_strength` values.
-  // Runtime planner still treats `anchor` / `selected_only_pool` as
-  // `preferred` (no behavior change); strength-aware routing lands in
-  // T-216 M2/M3.
+  // T-216: validator accepts all four `usage_strength` values. Runtime
+  // enforcement for strict strengths is covered by CueMediaPlanner tests.
   it.each([
     ['optional'],
     ['preferred'],

@@ -50,6 +50,7 @@ import type {
   ScenePayloadProgramming,
 } from '../services/public-scene-runtime.js'
 import type { PublicDiscussionCueDomain } from '../programming/cue/types.js'
+import type { CueMediaPlanForWrite } from '../media/cue-media-planner.js'
 import {
   buildCueExecutionCancelledEvent,
   buildCueExecutionCompletedEvent,
@@ -157,10 +158,10 @@ export interface PublicDiscussionCueWorkerDeps {
    */
   eventDispatcher?: CueEventDispatchHook
   /**
-   * T-216 M1 — optional planner that records `MediaPlanResolution` audit
-   * rows after the data plane write succeeds. Audit-only in M1; M2/M3 add
-   * real strength-aware routing. Tests that don't care about media audit
-   * leave this unset to keep fixture surface area minimal.
+   * T-216 — optional planner. In anchor mode it resolves cue media before
+   * the data-plane write, then records the pre-write decision after a
+   * successful write. Tests that don't care about media audit leave this
+   * unset to keep fixture surface area minimal.
    */
   cueMediaPlanner?: import('../media/cue-media-planner.js').CueMediaPlanner
   leaderElector?: LeaderElector
@@ -560,6 +561,45 @@ export class PublicDiscussionCueWorker {
       return
     }
 
+    // ---- Pre-write media planning ----
+    let mediaPlanForWrite: Extract<CueMediaPlanForWrite, { kind: 'ready' }> | null = null
+    let effectiveScenePayload = scenePayload
+    if (this.deps.cueMediaPlanner) {
+      const mediaPlan = await this.deps.cueMediaPlanner.planForWrite({
+        attemptId: attempt.id,
+        brief,
+        media,
+        scenePayload,
+        communityId,
+        agentId: primary.id,
+        degradedMedia: admission.result.degraded_media === true,
+      })
+      if (mediaPlan.kind === 'failed') {
+        await this.releaseReservation(reservation)
+        await this.failClaim(claim, {
+          terminalCueStatus: 'failed',
+          terminalAttemptStatus: 'failed',
+          reasonCodes: [mediaPlan.reasonCode],
+          errorCode: mediaPlan.reasonCode,
+          errorText: mediaPlan.errorText,
+          retryable: mediaPlan.retryable,
+        })
+        return
+      }
+      mediaPlanForWrite = mediaPlan
+      effectiveScenePayload = mediaPlan.scenePayload
+    }
+
+    // T-216 planning can call the media stack. Re-check admin cancel before
+    // we emit the dispatch event and publish the post.
+    if (this.deps.cueMediaPlanner && await this.observeAdminCancel(cue.id)) {
+      await this.handleAdminCancel(claim, reservation, {
+        forcePostWrite: false,
+        reason: 'cancelled_after_media_planning_before_write',
+      })
+      return
+    }
+
     // ---- Trigger event for the agent run linkage ----
     const triggerEvent = await this.emitCueEvent({
       event_type: 'CUE_EXECUTION_DISPATCHED',
@@ -585,12 +625,26 @@ export class PublicDiscussionCueWorker {
       title: content.title,
       body: content.body,
       tags: content.tags,
-      public_scene: scenePayload,
+      public_scene: effectiveScenePayload,
       audit_metadata: {
         cue_attempt_id: attempt.id,
         cue_id: cue.id,
         schedule_id: cue.schedule_id,
+        ...(mediaPlanForWrite?.imagePlanId
+          ? {
+              visual_directive_id: effectiveScenePayload.visual_ref?.directive_id,
+              image_plan_id: mediaPlanForWrite.imagePlanId,
+              planner_status: effectiveScenePayload.planning_audit?.planner_status,
+              planner_decision: effectiveScenePayload.planning_audit?.planner_decision,
+            }
+          : {}),
       },
+      ...(mediaPlanForWrite?.imagePlanId
+        ? {
+            image_plan_id: mediaPlanForWrite.imagePlanId,
+            display_attachment_refs: mediaPlanForWrite.displayAttachmentRefs ?? [],
+          }
+        : {}),
     }
 
     const writeStart = this.now()
@@ -671,16 +725,21 @@ export class PublicDiscussionCueWorker {
     await this.releaseReservation(reservation)
     void writeLatencyMs
 
-    // T-216 M1 — post-commit media planner audit. Best-effort: failure here
-    // MUST NOT roll back the consumed cue or block the completed event. The
-    // post is already published; the audit row gap is the worst case and is
-    // logged for ops triage.
+    // T-216 — persist the pre-write media decision after the post succeeds.
+    // Best-effort: failure here MUST NOT roll back the consumed cue or
+    // block the completed event. The post is already published; the audit
+    // row gap is the worst case and is logged for ops triage.
     if (this.deps.cueMediaPlanner) {
       try {
         await this.deps.cueMediaPlanner.record({
           attemptId: attempt.id,
           brief,
           degradedMedia: admission.result.degraded_media === true,
+          imagePlannerDecisionsByAssetId:
+            mediaPlanForWrite?.imagePlannerDecisionsByAssetId,
+          derivativeSourcedAnchorAssetIds:
+            mediaPlanForWrite?.derivativeSourcedAnchorAssetIds,
+          activePlanEnforced: Boolean(mediaPlanForWrite?.imagePlanId),
         })
       } catch (err) {
         console.error(
@@ -699,6 +758,7 @@ export class PublicDiscussionCueWorker {
       change_ids: brief.programming.audit_refs.change_ids,
       post_id: writeResult.content_id,
       selected_cast: cast.map((agent) => ({ agent_id: agent.id })),
+      media_usage: mediaPlanForWrite?.mediaUsage,
     })
     await this.emitCueEvent(completedEvent)
   }

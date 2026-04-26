@@ -72,6 +72,7 @@ import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import { HomeProgrammingService } from '../services/home-programming-service.js'
 import { HomeProgrammingSnapshotService } from '../services/home-programming-snapshot-service.js'
+import { CuePublicProjectionService } from '../services/cue-public-projection-service.js'
 import { LaunchProgrammingOpsService } from '../services/launch-programming-ops-service.js'
 import { CueBoardReadService } from '../services/cue-board-read-service.js'
 import { ViewerPublicViewService } from '../services/viewer-public-view-service.js'
@@ -389,9 +390,18 @@ export function createCoreServices(deps: {
     humanFollowRepo: repos.humanFollowRepo,
     pprSnapshotRepo: repos.pprSnapshotRepo,
   })
+  // T-215 B-M2 — public-facing cue facet assembled from cue repo state.
+  // Threaded into the snapshot service so the home shelf events fan
+  // cue cards through the same idempotency-keyed event stream that
+  // already powers must-watch / continue-storyline.
+  const cuePublicProjectionService = new CuePublicProjectionService({
+    cueRepo: repos.cueRepo,
+    forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
+  })
   const homeProgrammingSnapshotService = new HomeProgrammingSnapshotService({
     homeProgrammingService,
     eventRepo: repos.eventRepo,
+    cuePublicProjectionService,
   })
 
   const agentService = new AgentService({
@@ -801,6 +811,7 @@ export function createCoreServices(deps: {
     cueBoardReadService,
     homeProgrammingService,
     homeProgrammingSnapshotService,
+    cuePublicProjectionService,
     warmupGovernanceService,
     agentService,
     agentCommunityMembershipService,

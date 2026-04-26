@@ -442,7 +442,11 @@ export function useAdminCueAttachMedia() {
       cueId: string
       asset_id: string
       role: CueMediaItem['role']
-      usage_strength?: 'optional' | 'preferred'
+      // T-216 M3 — all four strengths now exposed. Server-side
+      // `manage_programming_media` permission still gates the
+      // operation as a whole; future fine-grained permission can
+      // restrict `anchor` / `selected_only_pool` to a stricter role.
+      usage_strength?: 'optional' | 'preferred' | 'anchor' | 'selected_only_pool'
       use_policy?:
         | 'runtime_only'
         | 'prefer_runtime_context'
@@ -719,6 +723,150 @@ export function useRunMediaLifecycle() {
       qc.invalidateQueries({ queryKey: queryKeys.adminMediaObservability })
       qc.invalidateQueries({ queryKey: queryKeys.adminMediaRolloutController })
     },
+  })
+}
+
+// =============================================================================
+// T-215 B-M3 — admin preview of public cue projection
+// =============================================================================
+
+export interface UseAdminCueProjectionParams {
+  community_id?: string
+  lookahead_minutes?: number
+  completed_window_minutes?: number
+  upcoming_limit?: number
+  completed_limit?: number
+  enabled?: boolean
+}
+
+export function useAdminCueProjection(params: UseAdminCueProjectionParams = {}) {
+  const { enabled = true, ...query } = params
+  return useQuery({
+    queryKey: queryKeys.adminCueProjection(query),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (query.community_id) search.set('community_id', query.community_id)
+      if (query.lookahead_minutes !== undefined) search.set('lookahead_minutes', String(query.lookahead_minutes))
+      if (query.completed_window_minutes !== undefined) search.set('completed_window_minutes', String(query.completed_window_minutes))
+      if (query.upcoming_limit !== undefined) search.set('upcoming_limit', String(query.upcoming_limit))
+      if (query.completed_limit !== undefined) search.set('completed_limit', String(query.completed_limit))
+      const path = `admin/programming/cue-projection${search.toString() ? `?${search.toString()}` : ''}`
+      return api.get(path).json<ApiResponse<import('../types').CueProjectionFacet>>()
+    },
+    enabled,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+}
+
+// =============================================================================
+// T-216 M3 closer — media plan resolution audit hook
+// =============================================================================
+
+export interface UseAdminMediaPlanResolutionsParams {
+  attempt_id?: string
+  cue_id?: string
+  limit?: number
+  enabled?: boolean
+}
+
+export function useAdminMediaPlanResolutions(params: UseAdminMediaPlanResolutionsParams = {}) {
+  const { enabled = true, ...query } = params
+  const ready = Boolean(query.attempt_id || query.cue_id)
+  return useQuery({
+    queryKey: queryKeys.adminMediaPlanResolutions(query),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (query.attempt_id) search.set('attempt_id', query.attempt_id)
+      if (query.cue_id) search.set('cue_id', query.cue_id)
+      if (query.limit !== undefined) search.set('limit', String(query.limit))
+      const path = `admin/programming/media-plan-resolutions?${search.toString()}`
+      return api.get(path).json<ApiResponse<{
+        items: import('../types').MediaPlanResolutionRow[]
+        total: number
+        attempt_id: string | null
+      }>>()
+    },
+    enabled: enabled && ready,
+    retry: false,
+  })
+}
+
+// =============================================================================
+// T-214 A-M3 — auto-patch inbox hooks
+// =============================================================================
+
+export type AdminAutoPatchInboxItem = CueChangeDomain
+
+export interface UseAdminAutoPatchInboxParams {
+  approval_status?: 'pending' | 'approved' | 'rejected' | 'auto_applied' | 'rolled_back'
+  limit?: number
+  enabled?: boolean
+}
+
+export function useAdminAutoPatchInbox(params: UseAdminAutoPatchInboxParams = {}) {
+  const { enabled = true, approval_status, limit } = params
+  return useQuery({
+    queryKey: queryKeys.adminAutoPatchInbox({
+      approval_status,
+      limit,
+    }),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (approval_status) search.set('approval_status', approval_status)
+      if (limit !== undefined) search.set('limit', String(limit))
+      const path = `admin/programming/auto-patches${search.toString() ? `?${search.toString()}` : ''}`
+      return api.get(path).json<ApiResponse<{
+        items: AdminAutoPatchInboxItem[]
+        total: number
+      }>>()
+    },
+    enabled,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+}
+
+export function useAdminAutoPatchDetail(id: string | null) {
+  return useQuery({
+    queryKey: id ? queryKeys.adminAutoPatchDetail(id) : ['admin', 'auto-patch-detail', 'idle'],
+    queryFn: () =>
+      api
+        .get(`admin/programming/auto-patches/${id}`)
+        .json<ApiResponse<{ change: AdminAutoPatchInboxItem }>>(),
+    enabled: Boolean(id),
+    retry: false,
+  })
+}
+
+function invalidateAutoPatchQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'auto-patch-inbox'] })
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'auto-patch-detail'] })
+}
+
+export function useApproveAutoPatch() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { id: string; reason?: string }) =>
+      api
+        .post(`admin/programming/auto-patches/${input.id}/approve`, {
+          json: input.reason ? { reason: input.reason } : {},
+        })
+        .json<ApiResponse<{ change: AdminAutoPatchInboxItem }>>(),
+    onSuccess: () => invalidateAutoPatchQueries(queryClient),
+  })
+}
+
+export function useRejectAutoPatch() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { id: string; reason: string }) =>
+      api
+        .post(`admin/programming/auto-patches/${input.id}/reject`, {
+          json: { reason: input.reason },
+        })
+        .json<ApiResponse<{ change: AdminAutoPatchInboxItem }>>(),
+    onSuccess: () => invalidateAutoPatchQueries(queryClient),
   })
 }
 

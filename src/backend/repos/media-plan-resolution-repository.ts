@@ -2,8 +2,8 @@
  * T-216 M1 — `MediaPlanResolutionRepository`.
  *
  * Audit log for cue-media planner decisions. One row per attempt × pool item.
- * Append-only: no update / delete API. Future milestones (M2/M3) extend the
- * outcome distribution; the row schema does not change.
+ * Append-only: no update / delete API. Later milestones extended the outcome
+ * distribution; the row schema stayed stable.
  */
 
 import type {

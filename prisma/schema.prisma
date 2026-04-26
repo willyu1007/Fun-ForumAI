@@ -1,7 +1,6 @@
 generator client {
   provider = "prisma-client-js"
 }
-
 datasource db {
   provider = "postgresql"
 }
@@ -688,6 +687,17 @@ model ForumSceneMetadata {
   selectionMode        String                       @map("selection_mode")
   expiresAt            DateTime?                    @map("expires_at")
   payloadJson          Json                         @map("payload_json")
+  // T-215 B-M1 — programming column promotion. The cue worker writes both
+  // `payloadJson.programming.*` (for backward compatibility during the
+  // dual-write window) and these explicit columns. Public projection +
+  // admin actuals read via the columns. After one full daypart of stable
+  // column writes, payloadJson reads are deprecated; column writes stay
+  // canonical thereafter.
+  programmingProductionPath String? @map("programming_production_path")
+  programmingCueId          String? @map("programming_cue_id")
+  programmingAttemptId      String? @map("programming_attempt_id")
+  programmingScheduleId     String? @map("programming_schedule_id")
+  programmingSourceType     String? @map("programming_source_type")
   createdAt            DateTime                     @default(now()) @map("created_at")
   updatedAt            DateTime                     @updatedAt @map("updated_at")
 
@@ -701,6 +711,8 @@ model ForumSceneMetadata {
   @@index([threadId])
   @@index([turnId])
   @@index([communityId, episodeId])
+  @@index([programmingCueId])
+  @@index([programmingAttemptId])
   @@map("forum_scene_metadata")
 }
 
@@ -4947,4 +4959,47 @@ model MediaPlanResolution {
   @@index([assetId, createdAt])
   @@index([planOutcome, createdAt])
   @@map("media_plan_resolutions")
+}
+
+// =============================================================================
+// T-214 cue-auto-editor — trigger event log.
+// One row per detected trigger window. The auto-editor scheduler dedupes
+// emissions via `dedup_key`; downstream LLM call output (if any) lands in
+// `PublicDiscussionCueChange` with `trigger_id = AutoEditorTriggerEvent.id`.
+// =============================================================================
+
+enum AutoEditorTriggerType {
+  COMMUNITY_LULL
+  SUPPLY_FLOOR_GAP
+  EVENING_DISCUSSION_GAP
+  FATIGUE_HIGH
+  MEDIA_OPPORTUNITY
+  GLOBAL_RUNTIME_IDLE
+}
+
+enum AutoEditorTriggerSeverity {
+  LOW
+  STANDARD
+  HIGH
+}
+
+enum AutoEditorTriggerSource {
+  SCAN
+  EVENT
+}
+
+model AutoEditorTriggerEvent {
+  id           String                       @id @default(cuid())
+  communityId  String?                      @map("community_id")
+  triggerType  AutoEditorTriggerType        @map("trigger_type")
+  severity     AutoEditorTriggerSeverity
+  source       AutoEditorTriggerSource
+  evidenceJson Json                         @map("evidence_json")
+  dedupKey     String                       @unique @map("dedup_key")
+  detectedAt   DateTime                     @map("detected_at")
+  createdAt    DateTime                     @default(now()) @map("created_at")
+
+  @@index([communityId, detectedAt])
+  @@index([triggerType, detectedAt])
+  @@map("auto_editor_trigger_events")
 }

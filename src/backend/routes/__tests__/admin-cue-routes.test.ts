@@ -218,9 +218,9 @@ describe('admin-cue-routes — happy paths through full cue lifecycle', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
 
-  // T-216 M0: route schema accepts all four usage_strength values. Runtime
-  // planner still treats anchor / selected_only_pool as preferred until
-  // T-216 M2/M3.
+  // T-216: route schema accepts all four usage_strength values. Runtime
+  // enforcement for anchor / selected_only_pool lives in CueMediaPlanner and
+  // worker tests; this route test only covers admin attach validation.
   it.each([['anchor'], ['selected_only_pool']] as const)(
     'attach accepts usage_strength=%s after T-216 M0 unlock',
     async (strength) => {

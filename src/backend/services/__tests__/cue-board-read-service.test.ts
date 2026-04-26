@@ -241,7 +241,7 @@ describe('CueBoardReadService', () => {
       const created = await postRepo.create({
         community_id: 'c1',
         author_agent_id: `agent-${i}`,
-        title: null,
+        title: `post ${i}`,
         body: 'b',
         visibility: 'PUBLIC',
         state: 'APPROVED',

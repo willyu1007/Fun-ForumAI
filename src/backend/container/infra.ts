@@ -46,6 +46,8 @@ export interface InfraResult {
     mediaLifecycleWorker: LeaderElector
     mediaImportJobWorker: LeaderElector
     publicDiscussionCueWorker: LeaderElector
+    /** T-214 — auto-editor periodic loop (independent from cue worker). */
+    autoCueEditorScheduler: LeaderElector
   }
 }
 
@@ -204,6 +206,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
       mediaLifecycleWorker: createLeaderElector('media-lifecycle-worker'),
       mediaImportJobWorker: createLeaderElector('media-import-job-worker'),
       publicDiscussionCueWorker: createLeaderElector('public-discussion-cue-worker'),
+      autoCueEditorScheduler: createLeaderElector('auto-cue-editor-scheduler'),
     },
   }
 }

@@ -65,6 +65,18 @@ export const AdminCueBoardPage = lazyWithDynamicImportRecovery(() =>
   import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminCueBoardPage })),
   'route:admin-cue-board',
 )
+export const AdminAutoPatchInboxPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminAutoPatchInboxPage })),
+  'route:admin-auto-patch-inbox',
+)
+export const AdminCueProjectionPreviewPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminCueProjectionPreviewPage })),
+  'route:admin-cue-projection-preview',
+)
+export const AdminMediaPlanAuditPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminMediaPlanAuditPage })),
+  'route:admin-media-plan-audit',
+)
 export const AdminMediaPromptsPage = lazyWithDynamicImportRecovery(() =>
   import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminMediaPromptsPage })),
   'route:admin-media-prompts',

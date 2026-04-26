@@ -503,6 +503,39 @@ export interface CueRepository {
   recordChange(input: RecordCueChangeInput): Promise<PublicDiscussionCueChangeDomain>
   listChangesForCue(cueId: string): Promise<PublicDiscussionCueChangeDomain[]>
   listChangesForSchedule(scheduleId: string): Promise<PublicDiscussionCueChangeDomain[]>
+  /**
+   * T-214 A-M3 — auto-patch inbox query. Filters by `source='automated'`
+   * and the requested approval status; sorted newest-first. Inbox UI
+   * filters further client-side by risk level / community.
+   */
+  listAutomatedChangesByApprovalStatus(input: {
+    approval_status: CueChangeApprovalStatus
+    limit?: number
+  }): Promise<PublicDiscussionCueChangeDomain[]>
+  /**
+   * T-214 A-M3 — single-row read for the inbox detail view + the
+   * approve / reject mutation paths.
+   */
+  findChangeById(id: string): Promise<PublicDiscussionCueChangeDomain | null>
+  /**
+   * T-214 A-M3 — flip approval status on an existing change row. Used
+   * by approve / reject route handlers; the route is responsible for
+   * deciding whether `applied_at` should be stamped (typically yes for
+   * `approved`, no for `rejected`).
+   *
+   * T-214 A-M3 closer: optional `cue_id` patches the row's cue link.
+   * Used by the `create_cue` apply path to bind the newly created
+   * cue's id onto the original automated row (which had `cue_id=null`
+   * at proposal time).
+   */
+  updateChangeApproval(input: {
+    id: string
+    approval_status: CueChangeApprovalStatus
+    applied_at?: Date | null
+    reason?: string | null
+    actor_user_id?: string | null
+    cue_id?: string | null
+  }): Promise<PublicDiscussionCueChangeDomain | null>
 
   // Media
   attachMedia(input: AttachCueMediaInput): Promise<PublicDiscussionCueMediaDomain>
@@ -983,6 +1016,46 @@ export class InMemoryCueRepository implements CueRepository {
     return Array.from(this.changes.values())
       .filter((c) => c.schedule_id === scheduleId)
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+  }
+
+  async listAutomatedChangesByApprovalStatus(input: {
+    approval_status: CueChangeApprovalStatus
+    limit?: number
+  }): Promise<PublicDiscussionCueChangeDomain[]> {
+    const limit = input.limit ?? 100
+    return Array.from(this.changes.values())
+      .filter((c) =>
+        c.source === 'automated' && c.approval_status === input.approval_status)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+      .slice(0, limit)
+  }
+
+  async findChangeById(
+    id: string,
+  ): Promise<PublicDiscussionCueChangeDomain | null> {
+    return this.changes.get(id) ?? null
+  }
+
+  async updateChangeApproval(input: {
+    id: string
+    approval_status: CueChangeApprovalStatus
+    applied_at?: Date | null
+    reason?: string | null
+    actor_user_id?: string | null
+    cue_id?: string | null
+  }): Promise<PublicDiscussionCueChangeDomain | null> {
+    const existing = this.changes.get(input.id)
+    if (!existing) return null
+    const next: PublicDiscussionCueChangeDomain = {
+      ...existing,
+      approval_status: input.approval_status,
+      applied_at: input.applied_at !== undefined ? input.applied_at : existing.applied_at,
+      reason: input.reason !== undefined ? input.reason : existing.reason,
+      actor_user_id: input.actor_user_id !== undefined ? input.actor_user_id : existing.actor_user_id,
+      cue_id: input.cue_id !== undefined ? input.cue_id : existing.cue_id,
+    }
+    this.changes.set(existing.id, next)
+    return next
   }
 
   // ---- Media ----

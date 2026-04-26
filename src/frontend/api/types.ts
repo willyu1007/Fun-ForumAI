@@ -3501,11 +3501,89 @@ export interface PreviewStage {
    * still annotates a stub source until T-213 ships real load-signal
    * compute.
    */
-  source?: 'stub_until_t213'
+  source?: 'stub_until_t213' | 'load_signal_service:cached'
 }
 
 export interface CuePreviewPayload {
   cue_id: string
   stages: PreviewStage[]
   overall: 'ok' | 'has_warnings' | 'has_errors'
+}
+
+// =============================================================================
+// T-215 B-M3 — public cue projection facet types
+// =============================================================================
+//
+// Mirrors the backend `CueProjectionFacet`. Public surfaces (home
+// tonight, community page) and the admin preview page consume this
+// shape directly. Field whitelist is enforced server-side via
+// `CUE_PROJECTION_FORBIDDEN_KEYS` — these types must NOT add internal
+// theme intent / risk_level / allocator fields.
+
+export type CueProjectionLane = 'prime' | 'standard' | 'background'
+
+export interface CueProjectionUpcomingItem {
+  cue_id: string
+  schedule_id: string
+  community_id: string | null
+  trigger_at: string
+  lane: CueProjectionLane
+  status: 'upcoming'
+}
+
+export interface CueProjectionLiveItem {
+  cue_id: string
+  schedule_id: string
+  community_id: string | null
+  trigger_at: string
+  lane: CueProjectionLane
+  status: 'live'
+  attempt_id: string
+}
+
+export interface CueProjectionCompletedItem {
+  cue_id: string
+  schedule_id: string
+  community_id: string | null
+  completed_at: string
+  status: 'completed'
+  result_post_id: string | null
+  result_thread_id: string | null
+  result_url: string | null
+}
+
+export interface CueProjectionFacet {
+  upcoming: CueProjectionUpcomingItem[]
+  live: CueProjectionLiveItem[]
+  completed: CueProjectionCompletedItem[]
+}
+
+// =============================================================================
+// T-216 M3 closer — media plan resolution audit row
+// =============================================================================
+
+export type MediaPlanOutcome =
+  | 'runtime_context'
+  | 'public_display'
+  | 'derivative_source'
+  | 'not_used'
+  | 'blocked'
+  | 'degraded'
+
+export interface MediaPlanResolutionRow {
+  id: string
+  attempt_id: string
+  asset_id: string
+  image_planner_decision_id: string | null
+  requested_strength: 'optional' | 'preferred' | 'anchor' | 'selected_only_pool'
+  requested_role:
+    | 'context_anchor'
+    | 'mood_reference'
+    | 'evidence_card'
+    | 'visual_seed'
+    | 'cover_candidate'
+    | 'continuity_anchor'
+  plan_outcome: MediaPlanOutcome
+  reason: string | null
+  created_at: string
 }

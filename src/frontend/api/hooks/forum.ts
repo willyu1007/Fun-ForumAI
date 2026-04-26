@@ -55,6 +55,35 @@ export function useHomeProgramming(enabled = true, params?: { viewer_agent_id?: 
   })
 }
 
+// T-215 B-M3 closer — public cue projection facet (sanitized).
+export interface UsePublicCueProjectionParams {
+  community_id?: string
+  lookahead_minutes?: number
+  completed_window_minutes?: number
+  upcoming_limit?: number
+  completed_limit?: number
+  enabled?: boolean
+}
+
+export function usePublicCueProjection(params: UsePublicCueProjectionParams = {}) {
+  const { enabled = true, ...query } = params
+  return useQuery({
+    queryKey: ['public', 'cue-projection', query],
+    queryFn: () => {
+      const search = new URLSearchParams()
+      if (query.community_id) search.set('community_id', query.community_id)
+      if (query.lookahead_minutes !== undefined) search.set('lookahead_minutes', String(query.lookahead_minutes))
+      if (query.completed_window_minutes !== undefined) search.set('completed_window_minutes', String(query.completed_window_minutes))
+      if (query.upcoming_limit !== undefined) search.set('upcoming_limit', String(query.upcoming_limit))
+      if (query.completed_limit !== undefined) search.set('completed_limit', String(query.completed_limit))
+      const path = `cue-projection${search.toString() ? `?${search.toString()}` : ''}`
+      return api.get(path).json<ApiResponse<import('../types').CueProjectionFacet>>()
+    },
+    enabled,
+    refetchInterval: 60_000,
+  })
+}
+
 export function usePost(postId: string, params?: ViewSourceParams) {
   return useQuery({
     queryKey: [...queryKeys.post(postId), params ?? null],

@@ -65,6 +65,22 @@ export interface CueEditorActor {
   role: 'admin' | 'user'
 }
 
+/**
+ * T-214 A-M3 follow-on closer — single-row audit. When `existingChangeId`
+ * is supplied to a mutation method, the service flips that existing
+ * CueChange row to `auto_applied` (stamping `applied_at` +
+ * `actor_user_id`) instead of recording a fresh `source='manual'`
+ * row. The auto-editor's original `source='automated'` row stays the
+ * canonical audit record for the patch — proposal + admin approval
+ * + actual mutation collapse into one row.
+ *
+ * Validation, locked-fields, and the deterministic checks all run as
+ * before; only the audit-row write path branches.
+ */
+export interface CueEditorOptions {
+  existingChangeId?: string
+}
+
 // =============================================================================
 // Inputs
 // =============================================================================
@@ -182,6 +198,7 @@ export class CueEditorService {
   async createCueDraft(
     bundle: CueCreateBundle,
     actor: CueEditorActor,
+    options?: CueEditorOptions,
   ): Promise<{ cue: PublicDiscussionCueDomain; change: PublicDiscussionCueChangeDomain }> {
     const patch = this.parsePatch(bundle.patch)
     this.assertNoForbiddenFields(patch)
@@ -254,6 +271,9 @@ export class CueEditorService {
         approval_status: 'auto_applied',
         applied_at: this.now(),
       },
+      ...(options?.existingChangeId
+        ? { existingChangeId: options.existingChangeId }
+        : {}),
     })
 
     return { cue, change }
@@ -267,6 +287,7 @@ export class CueEditorService {
     cueId: string,
     rawPatch: unknown,
     actor: CueEditorActor,
+    options?: CueEditorOptions,
   ): Promise<{ cue: PublicDiscussionCueDomain; change: PublicDiscussionCueChangeDomain }> {
     const patch = this.parsePatch(rawPatch)
     this.assertNoForbiddenFields(patch)
@@ -338,6 +359,9 @@ export class CueEditorService {
         approval_status: 'auto_applied',
         applied_at: this.now(),
       },
+      ...(options?.existingChangeId
+        ? { existingChangeId: options.existingChangeId }
+        : {}),
     })
 
     return { cue: updated, change }
@@ -351,6 +375,7 @@ export class CueEditorService {
     cueId: string,
     actor: CueEditorActor,
     reason?: string,
+    options?: CueEditorOptions,
   ): Promise<{ cue: PublicDiscussionCueDomain; change: PublicDiscussionCueChangeDomain }> {
     return this.transitionCueStatus({
       cueId,
@@ -358,6 +383,9 @@ export class CueEditorService {
       kind: 'cancel',
       targetStatus: 'cancelled',
       reason: reason ?? null,
+      ...(options?.existingChangeId
+        ? { existingChangeId: options.existingChangeId }
+        : {}),
     })
   }
 
@@ -365,6 +393,7 @@ export class CueEditorService {
     cueId: string,
     actor: CueEditorActor,
     reason?: string,
+    options?: CueEditorOptions,
   ): Promise<{ cue: PublicDiscussionCueDomain; change: PublicDiscussionCueChangeDomain }> {
     return this.transitionCueStatus({
       cueId,
@@ -372,6 +401,9 @@ export class CueEditorService {
       kind: 'force_skip',
       targetStatus: 'skipped',
       reason: reason ?? 'force_skip',
+      ...(options?.existingChangeId
+        ? { existingChangeId: options.existingChangeId }
+        : {}),
     })
   }
 
@@ -381,6 +413,7 @@ export class CueEditorService {
     kind: 'cancel' | 'force_skip'
     targetStatus: PublicDiscussionCueStatus
     reason: string | null
+    existingChangeId?: string
   }): Promise<{ cue: PublicDiscussionCueDomain; change: PublicDiscussionCueChangeDomain }> {
     const existing = await this.repo.findCueById(input.cueId)
     if (!existing) throw new NotFoundError('Cue', input.cueId)
@@ -432,6 +465,9 @@ export class CueEditorService {
         reason: input.reason,
         applied_at: this.now(),
       },
+      ...(input.existingChangeId
+        ? { existingChangeId: input.existingChangeId }
+        : {}),
     })
 
     return { cue: updated, change }
@@ -445,17 +481,16 @@ export class CueEditorService {
     cueId: string,
     input: Omit<AttachCueMediaInput, 'cue_id' | 'created_by_type' | 'created_by_id'>,
     actor: CueEditorActor,
+    options?: CueEditorOptions,
   ): Promise<{ media_id: string; change: PublicDiscussionCueChangeDomain }> {
     const cue = await this.repo.findCueById(cueId)
     if (!cue) throw new NotFoundError('Cue', cueId)
     this.assertCueEditable(cue)
 
-    // T-216 M0 (2026-04-26): semantics unlock — all four `usage_strength`
-    // values are now accepted at the validator. Runtime media planner still
-    // treats `anchor` and `selected_only_pool` as `preferred` (no behavior
-    // change); real strength-aware routing lands in T-216 M2/M3.
-    // TODO(T-216 M3): gate `anchor` / `selected_only_pool` behind the
-    // `manage_programming_media` permission once that permission ships.
+    // T-216: all four `usage_strength` values are accepted. Active runtime
+    // enforcement for `anchor` / `selected_only_pool` lives in CueMediaPlanner;
+    // this editor layer only rejects the forbidden `require_public_display`
+    // policy and records the admin-selected strength.
     if (input.use_policy === 'require_public_display') {
       throw new ValidationError(
         'use_policy "require_public_display" is not exposed in MVP (umbrella D-11)',
@@ -479,29 +514,33 @@ export class CueEditorService {
       created_by_id: actor.userId,
     })
 
-    const change = await this.repo.recordChange({
-      schedule_id: cue.schedule_id,
-      cue_id: cueId,
-      source: 'manual',
-      actor_user_id: actor.userId,
-      change_type: 'attach_media',
-      base_revision: cue.revision,
-      patch_json: {
-        version: 1,
-        partial: {},
-        media: {
-          op: 'attach',
-          asset_id: input.asset_id,
-          role: input.role,
-          usage_strength: input.usage_strength,
-          use_policy: input.use_policy,
-          media_id: media.id,
+    const change = await this.recordOrFlipChange({
+      existingChangeId: options?.existingChangeId,
+      actor,
+      input: {
+        schedule_id: cue.schedule_id,
+        cue_id: cueId,
+        source: 'manual',
+        actor_user_id: actor.userId,
+        change_type: 'attach_media',
+        base_revision: cue.revision,
+        patch_json: {
+          version: 1,
+          partial: {},
+          media: {
+            op: 'attach',
+            asset_id: input.asset_id,
+            role: input.role,
+            usage_strength: input.usage_strength,
+            use_policy: input.use_policy,
+            media_id: media.id,
+          },
         },
+        validation_status: 'passed',
+        risk_level: cue.risk_level,
+        approval_status: 'auto_applied',
+        applied_at: this.now(),
       },
-      validation_status: 'passed',
-      risk_level: cue.risk_level,
-      approval_status: 'auto_applied',
-      applied_at: this.now(),
     })
 
     return { media_id: media.id, change }
@@ -511,6 +550,7 @@ export class CueEditorService {
     cueId: string,
     mediaId: string,
     actor: CueEditorActor,
+    options?: CueEditorOptions,
   ): Promise<{ removed: boolean; change: PublicDiscussionCueChangeDomain }> {
     const cue = await this.repo.findCueById(cueId)
     if (!cue) throw new NotFoundError('Cue', cueId)
@@ -521,22 +561,26 @@ export class CueEditorService {
       throw new NotFoundError('CueMedia', mediaId)
     }
 
-    const change = await this.repo.recordChange({
-      schedule_id: cue.schedule_id,
-      cue_id: cueId,
-      source: 'manual',
-      actor_user_id: actor.userId,
-      change_type: 'remove_media',
-      base_revision: cue.revision,
-      patch_json: {
-        version: 1,
-        partial: {},
-        media: { op: 'remove', media_id: mediaId },
+    const change = await this.recordOrFlipChange({
+      existingChangeId: options?.existingChangeId,
+      actor,
+      input: {
+        schedule_id: cue.schedule_id,
+        cue_id: cueId,
+        source: 'manual',
+        actor_user_id: actor.userId,
+        change_type: 'remove_media',
+        base_revision: cue.revision,
+        patch_json: {
+          version: 1,
+          partial: {},
+          media: { op: 'remove', media_id: mediaId },
+        },
+        validation_status: 'passed',
+        risk_level: cue.risk_level,
+        approval_status: 'auto_applied',
+        applied_at: this.now(),
       },
-      validation_status: 'passed',
-      risk_level: cue.risk_level,
-      approval_status: 'auto_applied',
-      applied_at: this.now(),
     })
 
     return { removed, change }
@@ -804,12 +848,73 @@ export class CueEditorService {
     }
   }
 
+  /**
+   * T-214 A-M3 follow-on closer — single-row audit helper for media
+   * mutations (attach / remove). Unlike `recordChangeWithRollback`,
+   * media ops are atomic at the repo level (one row create / delete),
+   * so there is no compensating-rollback semantics. The branch is the
+   * same: when `existingChangeId` is set, flip the existing automated
+   * row to `auto_applied`; otherwise record a fresh manual row.
+   */
+  private async recordOrFlipChange(input: {
+    existingChangeId?: string | undefined
+    actor: CueEditorActor
+    input: Parameters<CueRepository['recordChange']>[0]
+  }): Promise<PublicDiscussionCueChangeDomain> {
+    if (input.existingChangeId) {
+      const flipped = await this.repo.updateChangeApproval({
+        id: input.existingChangeId,
+        approval_status: 'auto_applied',
+        applied_at: input.input.applied_at ?? this.now(),
+        actor_user_id: input.actor.userId,
+      })
+      if (!flipped) {
+        throw new NotFoundError(
+          'PublicDiscussionCueChange',
+          input.existingChangeId,
+        )
+      }
+      return flipped
+    }
+    return await this.repo.recordChange(input.input)
+  }
+
   private async recordChangeWithRollback(input: {
     previousCueState: PublicDiscussionCueDomain | null
     currentCueState: PublicDiscussionCueDomain
     input: Parameters<CueRepository['recordChange']>[0]
+    /**
+     * T-214 A-M3 follow-on closer — when supplied, the existing
+     * `PublicDiscussionCueChange` row is flipped to `auto_applied`
+     * (stamping `applied_at` + `actor_user_id`) instead of writing a
+     * new `source='manual'` row. The auto-editor's original automated
+     * row stays the canonical audit record.
+     */
+    existingChangeId?: string
   }): Promise<PublicDiscussionCueChangeDomain> {
     try {
+      if (input.existingChangeId) {
+        const flipped = await this.repo.updateChangeApproval({
+          id: input.existingChangeId,
+          approval_status: 'auto_applied',
+          applied_at: input.input.applied_at ?? this.now(),
+          actor_user_id: input.input.actor_user_id ?? null,
+          // T-214 A-M3 closer: bind the freshly-created cue id back
+          // onto the original automated row so `listChangesForCue`
+          // surfaces the apply audit. For non-create flows this is a
+          // no-op (cue_id matches existing).
+          ...(input.input.cue_id !== undefined && input.input.cue_id !== null
+            ? { cue_id: input.input.cue_id }
+            : {}),
+        })
+        if (!flipped) {
+          throw new NotFoundError(
+            'PublicDiscussionCueChange',
+            input.existingChangeId,
+          )
+        }
+        return flipped
+      }
       return await this.repo.recordChange(input.input)
     } catch (err) {
       // Best-effort rollback: restore previous state (ignore secondary failures —

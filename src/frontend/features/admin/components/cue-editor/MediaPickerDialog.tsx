@@ -1,14 +1,25 @@
 /**
- * T-210 M2 — media picker dialog.
+ * T-210 M2 — media picker dialog (T-216 M3 widened).
  *
  * Read-only listing of pickable media assets. Server-side filter is the SSOT;
  * UI mirrors but does not relax. Admin selects one asset + role + usage_strength
  * + use_policy; the parent component then calls useAdminCueAttachMedia.
  *
- * Per umbrella D-11, MVP only exposes:
- *   usage_strength ∈ {optional, preferred}
- *   use_policy ∈ {runtime_only, prefer_runtime_context, prefer_public_display, allow_generated_derivative}
- * `anchor` / `selected_only_pool` / `require_public_display` are deferred to T-216 M3.
+ * T-216 milestones:
+ *   - M0 (validator unlock): server accepts all four `usage_strength` values
+ *   - M1 (audit log): every attach produces a MediaPlanResolution row
+ *   - M2 (anchor → derivative): when feature flag is on, `anchor` strength
+ *     drives `imagePlannerService` derivative generation
+ *   - M3 (this UI): the four-way strength selector ships to admin, gated by
+ *     `manage_programming_media` (already required by the attach route).
+ *     `anchor` and `selected_only_pool` carry an inline hint so admins
+ *     understand the runtime difference.
+ *
+ * Strength semantics surfaced inline:
+ *   - `optional` — equal-priority candidate; planner may swap freely
+ *   - `preferred` — first-class candidate; planner picks if quality matches
+ *   - `anchor` — primary visual; derivative permitted but generated FROM it
+ *   - `selected_only_pool` — pool-only restriction; text-to-image disabled
  */
 
 import { useState } from 'react'
@@ -25,7 +36,20 @@ const ROLE_OPTIONS: Array<CueMediaItem['role']> = [
   'continuity_anchor',
 ]
 
-const USAGE_OPTIONS = ['optional', 'preferred'] as const
+const USAGE_OPTIONS = [
+  'optional',
+  'preferred',
+  'anchor',
+  'selected_only_pool',
+] as const
+
+const USAGE_DESCRIPTIONS: Record<(typeof USAGE_OPTIONS)[number], string> = {
+  optional: '与其它候选等权；planner 可自由替换',
+  preferred: '优先候选；质量匹配时 planner 选用',
+  anchor: '主视觉；如需衍生则以此为参考生成（消耗文生图预算）',
+  selected_only_pool: '仅使用池内素材；禁用文生图',
+}
+
 const POLICY_OPTIONS = [
   'runtime_only',
   'prefer_runtime_context',
@@ -137,7 +161,7 @@ export function MediaPickerDialog({
               ))}
             </select>
           </Field>
-          <Field label="usage_strength (optional / preferred)">
+          <Field label="usage_strength">
             <select
               value={usageStrength}
               onChange={(e) => setUsageStrength(e.target.value as (typeof USAGE_OPTIONS)[number])}
@@ -149,6 +173,9 @@ export function MediaPickerDialog({
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              {USAGE_DESCRIPTIONS[usageStrength]}
+            </p>
           </Field>
           <Field label="use_policy">
             <select

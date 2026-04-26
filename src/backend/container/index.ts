@@ -23,6 +23,11 @@ import { AdmissionLoadService } from '../programming/load/admission-load-service
 import { adaptAdmissionLoadAsLoadSignal } from '../programming/load/admission-load-signal-adapter.js'
 import { CachedLoadSignalService } from '../services/load-signal-service.js'
 import { CueMediaPlanner } from '../media/cue-media-planner.js'
+import { TriggerDetector as AutoEditorTriggerDetector } from '../programming/auto-editor/trigger-detector.js'
+import { LoadGate as AutoEditorLoadGate } from '../programming/auto-editor/load-gate.js'
+import { AutoCueEditor } from '../programming/auto-editor/auto-cue-editor.js'
+import { AutoCueEditorScheduler } from '../programming/auto-editor/auto-cue-editor-scheduler.js'
+import { LLMGatewayAutoCueEditorAdapter } from '../programming/auto-editor/llm-gateway-auto-cue-editor-adapter.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { AgentBioRefreshScheduler } from '../runtime/agent-bio-refresh-scheduler.js'
 import { AgentBiographyCompileScheduler } from '../runtime/agent-biography-compile-scheduler.js'
@@ -768,11 +773,14 @@ const cueAdmissionController = new CueAdmissionController({
 })
 const directorCueBriefService = new DirectorCueBriefServiceImpl()
 
-// T-216 M1 — audit-only media planner. Records `MediaPlanResolution` rows
-// after every successful cue execution. M2/M3 widen this to active strength
-// routing.
+// T-216 — cue media planner. Records `MediaPlanResolution` rows after
+// successful cue execution; when anchor mode is on it also resolves media
+// through SurfaceMediaPlanningService -> imagePlannerService before the
+// data-plane write so selected media policy can block or attach the post.
 const cueMediaPlanner = new CueMediaPlanner({
   mediaPlanResolutionRepo: repos.mediaPlanResolutionRepo,
+  anchorModeEnabled: config.runtime.cueMediaPolicyAnchorMode,
+  surfaceMediaPlanningService: llm.surfaceMediaPlanningService,
 })
 
 // `forumEventDispatcher` is declared further below (depends on services
@@ -859,6 +867,52 @@ const publicDiscussionCueWorker = new PublicDiscussionCueWorker(
     batchSize: config.runtime.publicDiscussionCueWorkerBatchSize,
   },
 )
+
+// ─── T-214 A-M3 — auto-editor scheduler (deterministic detector + LLM editor + inbox writer) ───
+// Pg trigger event repo lives in container/repos.ts; container exports it for
+// tests + observability. The scheduler is OFF by default
+// (`autoCueEditorSchedulerEnabled` flag) so each environment can opt in
+// explicitly after validating the hidden director lane.
+const autoEditorTriggerDetector = new AutoEditorTriggerDetector({
+  postRepo: repos.postRepo,
+  loadSignalService,
+  triggerRepo: repos.autoEditorTriggerEventRepo,
+})
+const autoEditorLoadGate = new AutoEditorLoadGate({
+  loadSignalService,
+})
+const autoCueEditorLlmClient = new LLMGatewayAutoCueEditorAdapter({
+  llmGateway: llm.llmGateway,
+})
+const autoCueEditor = new AutoCueEditor({
+  llmClient: autoCueEditorLlmClient,
+})
+export const autoCueEditorScheduler = new AutoCueEditorScheduler(
+  {
+    triggerDetector: autoEditorTriggerDetector,
+    loadGate: autoEditorLoadGate,
+    autoCueEditor,
+    cueRepo: repos.cueRepo,
+    leaderElector: infra.leaderElectors.autoCueEditorScheduler,
+    // MVP enumerates communities through the cue schedule list. A
+    // dedicated community-active-list provider is a follow-on so the
+    // scheduler can ride community lifecycle events instead of
+    // schedule presence.
+    communityProvider: async () => {
+      const schedules = await repos.cueRepo.listSchedules({ limit: 200 })
+      const ids = new Set<string>()
+      for (const sched of schedules) {
+        if (sched.community_id) ids.add(sched.community_id)
+      }
+      return [...ids]
+    },
+  },
+  {
+    intervalMs: config.runtime.autoCueEditorSchedulerIntervalMs,
+    startupDelayMs: config.runtime.autoCueEditorSchedulerStartupDelayMs,
+  },
+)
+
 core.warmupGovernanceService.attachProjectionDeps({
   searchProjectionService,
 })
@@ -1025,6 +1079,7 @@ export const launchProgrammingOpsService = core.launchProgrammingOpsService
 export const cueBoardReadService = core.cueBoardReadService
 export const homeProgrammingService = core.homeProgrammingService
 export const homeProgrammingSnapshotService = core.homeProgrammingSnapshotService
+export const cuePublicProjectionService = core.cuePublicProjectionService
 export const warmupGovernanceService = core.warmupGovernanceService
 export const agentService = core.agentService
 export const agentCommunityMembershipService = core.agentCommunityMembershipService

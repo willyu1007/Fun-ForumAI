@@ -46,7 +46,7 @@ export interface PreviewStage {
    * `DirectorCueBriefServiceImpl` in dryRun mode); only the load stage
    * still uses a stub until T-213 ships the real load signal compute.
    */
-  source?: 'stub_until_t213'
+  source?: 'stub_until_t213' | 'load_signal_service:cached'
 }
 
 export interface PreviewResponse {
@@ -257,7 +257,7 @@ function projectCue(cue: PublicDiscussionCueDomain, patch: CuePatchV1): PublicDi
   for (const removed of patch.removed_fields ?? []) {
     if (removed in merged) merged[removed] = undefined
   }
-  return merged as PublicDiscussionCueDomain
+  return merged as unknown as PublicDiscussionCueDomain
 }
 
 function finalize(cueId: string, stages: PreviewStage[]): PreviewResponse {

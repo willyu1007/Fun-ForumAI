@@ -355,6 +355,28 @@ export const config = {
       env.PUBLIC_DISCUSSION_CUE_WORKER_BATCH_SIZE,
       4,
     ),
+    /**
+     * T-216 — when on, `CueMediaPlanner` enforces `anchor` and
+     * `selected_only_pool` through pre-write media planning. Default is on
+     * after T-216 closure; set `CUE_MEDIA_POLICY_ANCHOR_MODE=false` for an
+     * environment-level rollback.
+     */
+    cueMediaPolicyAnchorMode: readBooleanFlag(env.CUE_MEDIA_POLICY_ANCHOR_MODE, true),
+    /**
+     * T-214 A-M3 — auto-editor periodic scheduler. Off by default even
+     * though `cue-auto-editor` is registered; each environment opts in
+     * explicitly after validating the hidden director lane.
+     */
+    autoCueEditorSchedulerEnabled:
+      env.AUTO_CUE_EDITOR_SCHEDULER_ENABLED === 'true',
+    autoCueEditorSchedulerIntervalMs: safeInt(
+      env.AUTO_CUE_EDITOR_SCHEDULER_INTERVAL_MS,
+      60_000,
+    ),
+    autoCueEditorSchedulerStartupDelayMs: safeInt(
+      env.AUTO_CUE_EDITOR_SCHEDULER_STARTUP_DELAY_MS,
+      7_000,
+    ),
   },
   sse: {
     broadcastBackend: env.SSE_BROADCAST_BACKEND === 'redis' ? 'redis' : 'local',

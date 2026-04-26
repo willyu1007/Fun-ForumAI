@@ -45,7 +45,10 @@ async function seedCue(
     priority: 50,
     lane: 'standard',
     dispatch_policy: {
-      mode: 'fixed',
+      trigger_at: partial.triggerAt.toISOString(),
+      timezone: 'Asia/Shanghai',
+      dispatch_mode: 'graceful',
+      grace_seconds: 60,
       lane: 'standard',
       priority: 50,
       misfire_policy: 'skip',
@@ -53,6 +56,18 @@ async function seedCue(
       retry_backoff_seconds: 30,
     },
     risk_level: 'standard',
+    theme_intent: { topic_seed: 'load test' },
+    scene_constraints: {
+      community_scope: { mode: 'single', community_id: partial.communityId ?? COMMUNITY },
+      public_stage_scope: ['forum'],
+      privacy_policy: 'public_only',
+      private_reference_policy: 'forbidden',
+      safety_profile: 'standard',
+    },
+    role_requirements: {
+      requirements: [{ role: 'anchor', weight: 0.7 }],
+      relationship_shape: 'contrast',
+    },
   })
   // createCue defaults to `status='draft'`; promote to the requested status
   // unconditionally so the test's intent is reflected in the row.
@@ -77,6 +92,7 @@ async function seedAttempt(
     cue_id: cueId,
     attempt_no: attemptNo,
     scheduled_trigger_at: now,
+    idempotency_key: `load-test:${cueId}:${attemptNo}`,
     lease_owner: 'test-worker',
     lease_expires_at: new Date(now.getTime() + 60_000),
     status: status === 'leased' ? undefined : status,
@@ -91,7 +107,7 @@ async function seedPost(
   const created = await repo.create({
     community_id: communityId,
     author_agent_id: `agent-${Math.random().toString(36).slice(2, 8)}`,
-    title: null,
+    title: 'load test post',
     body: 'load test post',
     visibility: 'PUBLIC',
     state: 'APPROVED',

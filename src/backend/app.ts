@@ -35,6 +35,7 @@ import {
   mediaImportJobWorker,
   mediaLifecycleWorker,
   publicDiscussionCueWorker,
+  autoCueEditorScheduler,
   promptOrchestrator,
   agentService,
   promptEngine,
@@ -640,6 +641,13 @@ export function startBackgroundServices(): void {
   if (config.runtime.publicDiscussionCueWorkerEnabled) {
     publicDiscussionCueWorker.start()
   }
+
+  // T-214 A-M3 — auto-editor scheduler. Off by default; the
+  // `cue-auto-editor` prompt template is registered, but ops still flips
+  // the scheduler explicitly per environment.
+  if (config.runtime.autoCueEditorSchedulerEnabled) {
+    autoCueEditorScheduler.start()
+  }
 }
 
 export function stopBackgroundServices(): void {
@@ -663,6 +671,7 @@ export function stopBackgroundServices(): void {
   mediaImportJobWorker?.stop()
   mediaLifecycleWorker?.stop()
   publicDiscussionCueWorker?.stop()
+  autoCueEditorScheduler?.stop()
 }
 
 // ─── Persistence initialization ─────────────────────────────

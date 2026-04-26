@@ -6,6 +6,9 @@ import { HotTopicTab } from './admin-panel/HotTopicTab'
 import { InviteCodesTab } from './admin-panel/InviteCodesTab'
 import { ProgrammingTab } from './admin-panel/ProgrammingTab'
 import { CueBoardTab } from './admin-panel/CueBoardTab'
+import { AutoPatchInboxTab } from './admin-panel/AutoPatchInboxTab'
+import { CueProjectionPreviewTab } from './admin-panel/CueProjectionPreviewTab'
+import { MediaPlanAuditTab } from './admin-panel/MediaPlanAuditTab'
 import { MediaPromptsTab } from './admin-panel/MediaPromptsTab'
 import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
 import { RuntimeDashboard } from '../components/RuntimeDashboard'
@@ -64,6 +67,39 @@ export function AdminCueBoardPage() {
       description="公共讨论 cue 时间轴（只读）。编辑能力即将上线。"
     >
       <CueBoardTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminAutoPatchInboxPage() {
+  return (
+    <AdminPageWrapper
+      title="Auto-patch Inbox"
+      description="自动编辑器生成的待审 cue 补丁（MVP 零 auto-apply）。"
+    >
+      <AutoPatchInboxTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminCueProjectionPreviewPage() {
+  return (
+    <AdminPageWrapper
+      title="Cue 公开投影预览"
+      description="预览 home tonight 与社区页将渲染的 cue facet（已脱敏，与公开消费一致）。"
+    >
+      <CueProjectionPreviewTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminMediaPlanAuditPage() {
+  return (
+    <AdminPageWrapper
+      title="Media Plan 审计"
+      description="按 cue_id / attempt_id 检视 MediaPlanResolution 行（T-216 audit 链）。"
+    >
+      <MediaPlanAuditTab />
     </AdminPageWrapper>
   )
 }

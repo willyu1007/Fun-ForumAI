@@ -1,5 +1,7 @@
 import type { IRouter } from 'express'
+import { z } from 'zod'
 import {
+  cuePublicProjectionService,
   forumReadService,
   globalHighlightsService,
   guidanceOrchestrator,
@@ -134,6 +136,48 @@ export function registerReadFeedRoutes(router: IRouter): void {
     )
     const publicData = serializeHomeProgrammingPayload(data)
     res.json({ data: publicData, meta: publicData.meta })
+  })
+
+  // T-215 B-M3 closer — public cue projection. Returns the same
+  // sanitized `CueProjectionFacet` the admin preview surface emits.
+  // Field whitelist enforced server-side via
+  // `CUE_PROJECTION_FORBIDDEN_KEYS`. No auth required (public surface);
+  // the facet builder is the single exit gate.
+  router.get('/cue-projection', async (req, res) => {
+    const QUERY = z
+      .object({
+        community_id: z.string().min(1).optional(),
+        lookahead_minutes: z.coerce.number().int().min(1).max(48 * 60).optional(),
+        completed_window_minutes: z.coerce.number().int().min(1).max(72 * 60).optional(),
+        upcoming_limit: z.coerce.number().int().min(1).max(100).optional(),
+        completed_limit: z.coerce.number().int().min(1).max(100).optional(),
+      })
+      .strict()
+    const parsed = QUERY.safeParse(req.query)
+    if (!parsed.success) {
+      throw new ValidationError(
+        parsed.error.issues
+          .map((i) => `${i.path.join('.') || 'query'}: ${i.message}`)
+          .join('; '),
+        parsed.error.issues,
+      )
+    }
+    const facet = await cuePublicProjectionService.assemble({
+      ...(parsed.data.community_id ? { communityId: parsed.data.community_id } : {}),
+      ...(parsed.data.lookahead_minutes
+        ? { lookaheadMs: parsed.data.lookahead_minutes * 60_000 }
+        : {}),
+      ...(parsed.data.completed_window_minutes
+        ? { completedWindowMs: parsed.data.completed_window_minutes * 60_000 }
+        : {}),
+      ...(parsed.data.upcoming_limit
+        ? { upcomingLimit: parsed.data.upcoming_limit }
+        : {}),
+      ...(parsed.data.completed_limit
+        ? { completedLimit: parsed.data.completed_limit }
+        : {}),
+    })
+    res.json({ data: facet })
   })
 
   router.get('/highlights', async (req, res) => {
