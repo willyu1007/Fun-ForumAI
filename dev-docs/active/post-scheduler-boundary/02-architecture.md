@@ -2,11 +2,12 @@
 
 **Type:** doc-only. No code in this bundle. **Scope:** boundary specification preventing `PostScheduler` (autonomous tick) and `CueWorker` (scheduled cue) from collapsing into a redundant double-track system. Materializes umbrella `02-architecture.md` §2 invariants I-1..I-9 into actionable owner / verification mappings, defines the shared `community-budget-service` interface, and corrects the design-doc claim that PostScheduler is a "downstream writer / fallback" — it is not.
 
-**Status:** in-progress until T-212 verifies §C interfaces against shipped code and reports back here.
+**Status:** done. T-212 shipped §B / §C / §D / §G semantics in M1–M5; the I-1..I-9 invariants in §E are all enforced in code (see revision log for the verification chain).
 
 **Revision log**:
 - 2026-04-26 (initial spec).
 - 2026-04-26 (audit fold-in). I-2 row in §E now references the shipped grep-based vitest at `src/backend/runtime/__tests__/post-scheduler-cue-isolation.test.ts` — locks the current clean state of `post-scheduler.ts` and `runtime-loop.ts` pre-T-212.
+- 2026-04-26 (T-212 closure). §B `CueWorker` responsibility inventory matches `src/backend/runtime/public-discussion-cue-worker.ts`; §C interface signatures verified against `src/backend/services/community-budget-service.ts`, `src/backend/programming/cue/cue-admission-controller.ts`, and the new `selectFromDiscussionCue` method on `PublicSceneSelectorService`. §F.4 cue domain events fan through `forum-event-dispatcher` (T-212 end-to-end review found and fixed the wiring in commit `fix(cue-worker): wire forumEventDispatcher into worker`). I-3 enforced by ESLint custom rule (`eslint.config.mjs`); I-9 verified by audit-chain e2e. Status changed from `in-progress` to `done`.
 
 ---
 

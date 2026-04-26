@@ -1,11 +1,12 @@
 # 00 Overview — cue-worker-runtime (T-212)
 
 ## Status
-- State: planned
+- State: done (M1–M5 shipped; closure verified by end-to-end review on 2026-04-26)
 - Parent: `T-207 admin-auto-programming`
 - Phase: **3** of 6 (heaviest, integration spine)
 - Type: code (worker + admission + director brief + selector + audit refs)
-- Estimate: 10-15 days
+- Estimate: 10-15 days (actual: ~12 days across M1–M5)
+- Implementation notes: see `03-implementation-notes.md`
 
 ## Goal
 Connect the cue data layer to the existing director / allocator / runtime so a manually authored cue actually produces a forum post at `triggerAt`. This is the integration spine of the umbrella; downstream load control (T-213), auto-editor (T-214), and projections (T-215) all build on what ships here.
