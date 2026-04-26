@@ -158,6 +158,15 @@ export const queryKeys = {
     to?: string
     limit?: number
   }) => ['admin', 'cue-board', params ?? null] as const,
+  adminCueDetail: (cueId: string) => ['admin', 'cue-detail', cueId] as const,
+  adminMediaPicker: (params?: { community_id?: string; cursor?: string; limit?: number }) =>
+    ['admin', 'media-picker', params ?? null] as const,
+  adminCueAudit: (params?: {
+    cue_id?: string
+    schedule_id?: string
+    actor_user_id?: string
+    limit?: number
+  }) => ['admin', 'cue-audit', params ?? null] as const,
   adminKickoffStatus: ['admin', 'kickoff-status'] as const,
   adminWarmupRuns: ['admin', 'warmup-runs'] as const,
   adminWarmupRunDetail: (runId: string) => ['admin', 'warmup-run-detail', runId] as const,

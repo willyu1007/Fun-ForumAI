@@ -154,6 +154,41 @@ export interface ListUpcomingCuesQuery {
   cursor?: string
 }
 
+/**
+ * T-210 M1 — selective cue update.
+ *
+ * Each field is optional. Set a value to overwrite the column; pass `null` to
+ * clear an optional column (only meaningful for optional fields). Omitted
+ * keys are left unchanged.
+ *
+ * The repository increments `revision` by 1 and refreshes `updated_at`.
+ *
+ * Required fields (`trigger_at`, `timezone`, `priority`, `lane`,
+ * `dispatch_policy`, `theme_intent`, `scene_constraints`, `role_requirements`,
+ * `risk_level`, `locked_fields`) cannot accept `null`. Service layer rejects
+ * `removed_fields` entries that target required keys.
+ */
+export interface UpdateCueInput {
+  trigger_at?: Date
+  timezone?: string
+  prewarm_at?: Date | null
+  latest_start_at?: Date | null
+  expire_at?: Date | null
+  priority?: number
+  lane?: CueLane
+  community_id?: string | null
+  dispatch_policy?: DispatchPolicy
+  admission_policy?: CueAdmissionPolicy | null
+  load_policy?: CueLoadPolicy | null
+  theme_intent?: CueThemeIntent
+  scene_constraints?: CueSceneConstraints
+  role_requirements?: CueRoleRequirementVector
+  media_policy?: CueMediaPolicy | null
+  safety?: CueSafetyPolicy | null
+  locked_fields?: string[]
+  risk_level?: CueRiskLevel
+}
+
 // =============================================================================
 // Change domain
 // =============================================================================
@@ -368,6 +403,10 @@ export interface CueRepository {
     id: string,
     status: PublicDiscussionCueStatus,
   ): Promise<PublicDiscussionCueDomain | null>
+  updateCue(
+    id: string,
+    input: UpdateCueInput,
+  ): Promise<PublicDiscussionCueDomain | null>
 
   // Change (audit log)
   recordChange(input: RecordCueChangeInput): Promise<PublicDiscussionCueChangeDomain>
@@ -453,6 +492,33 @@ function nowDate(): Date {
 
 function defaultedTimezone(input?: string): string {
   return input ?? 'Asia/Shanghai'
+}
+
+/**
+ * Snapshot a cue domain object before returning it from the in-memory repo.
+ *
+ * Why: prior to T-210 M1's defensive snapshot in CueEditorService, the
+ * in-memory repo returned references into its internal Map. Service callers
+ * that captured `existing` and then called `setCueStatus`/`updateCue`
+ * unintentionally observed mutated state through the captured reference,
+ * which broke transition-from audit fields. Cloning on read aligns the
+ * in-memory contract with PgCueRepository (which builds fresh objects on
+ * every call) and removes a subtle aliasing trap from the seam.
+ */
+function cloneCueDomain(cue: PublicDiscussionCueDomain): PublicDiscussionCueDomain {
+  return {
+    ...cue,
+    scope: { ...cue.scope },
+    dispatch_policy: { ...cue.dispatch_policy },
+    admission_policy: cue.admission_policy ? { ...cue.admission_policy } : undefined,
+    load_policy: cue.load_policy ? { ...cue.load_policy } : undefined,
+    theme_intent: { ...cue.theme_intent },
+    scene_constraints: { ...cue.scene_constraints },
+    role_requirements: { ...cue.role_requirements },
+    media_policy: cue.media_policy ? { ...cue.media_policy } : undefined,
+    safety: cue.safety ? { ...cue.safety } : undefined,
+    locked_fields: [...cue.locked_fields],
+  }
 }
 
 export class InMemoryCueRepository implements CueRepository {
@@ -594,11 +660,12 @@ export class InMemoryCueRepository implements CueRepository {
       updated_at: now.toISOString(),
     }
     this.cues.set(id, cue)
-    return cue
+    return cloneCueDomain(cue)
   }
 
   async findCueById(id: string): Promise<PublicDiscussionCueDomain | null> {
-    return this.cues.get(id) ?? null
+    const cue = this.cues.get(id)
+    return cue ? cloneCueDomain(cue) : null
   }
 
   async listCuesForSchedule(scheduleId: string): Promise<PublicDiscussionCueDomain[]> {
@@ -609,6 +676,7 @@ export class InMemoryCueRepository implements CueRepository {
           new Date(a.trigger_at).getTime() - new Date(b.trigger_at).getTime() ||
           a.id.localeCompare(b.id),
       )
+      .map(cloneCueDomain)
   }
 
   async listUpcomingCues(
@@ -634,7 +702,8 @@ export class InMemoryCueRepository implements CueRepository {
         new Date(a.trigger_at).getTime() - new Date(b.trigger_at).getTime() ||
         a.id.localeCompare(b.id),
     )
-    return query.limit ? items.slice(0, query.limit) : items
+    const sliced = query.limit ? items.slice(0, query.limit) : items
+    return sliced.map(cloneCueDomain)
   }
 
   async setCueStatus(
@@ -645,7 +714,55 @@ export class InMemoryCueRepository implements CueRepository {
     if (!cue) return null
     cue.status = status
     cue.updated_at = nowDate().toISOString()
-    return cue
+    return cloneCueDomain(cue)
+  }
+
+  async updateCue(
+    id: string,
+    input: UpdateCueInput,
+  ): Promise<PublicDiscussionCueDomain | null> {
+    const cue = this.cues.get(id)
+    if (!cue) return null
+
+    if (input.trigger_at !== undefined) cue.trigger_at = input.trigger_at.toISOString()
+    if (input.timezone !== undefined) cue.timezone = input.timezone
+    if (input.prewarm_at !== undefined) {
+      cue.prewarm_at = input.prewarm_at === null ? undefined : input.prewarm_at.toISOString()
+    }
+    if (input.latest_start_at !== undefined) {
+      cue.latest_start_at =
+        input.latest_start_at === null ? undefined : input.latest_start_at.toISOString()
+    }
+    if (input.expire_at !== undefined) {
+      cue.expire_at = input.expire_at === null ? undefined : input.expire_at.toISOString()
+    }
+    if (input.priority !== undefined) cue.priority = input.priority
+    if (input.lane !== undefined) cue.lane = input.lane
+    if (input.community_id !== undefined) {
+      cue.community_id = input.community_id === null ? undefined : input.community_id
+    }
+    if (input.dispatch_policy !== undefined) cue.dispatch_policy = input.dispatch_policy
+    if (input.admission_policy !== undefined) {
+      cue.admission_policy = input.admission_policy === null ? undefined : input.admission_policy
+    }
+    if (input.load_policy !== undefined) {
+      cue.load_policy = input.load_policy === null ? undefined : input.load_policy
+    }
+    if (input.theme_intent !== undefined) cue.theme_intent = input.theme_intent
+    if (input.scene_constraints !== undefined) cue.scene_constraints = input.scene_constraints
+    if (input.role_requirements !== undefined) cue.role_requirements = input.role_requirements
+    if (input.media_policy !== undefined) {
+      cue.media_policy = input.media_policy === null ? undefined : input.media_policy
+    }
+    if (input.safety !== undefined) {
+      cue.safety = input.safety === null ? undefined : input.safety
+    }
+    if (input.locked_fields !== undefined) cue.locked_fields = input.locked_fields
+    if (input.risk_level !== undefined) cue.risk_level = input.risk_level
+
+    cue.revision += 1
+    cue.updated_at = nowDate().toISOString()
+    return cloneCueDomain(cue)
   }
 
   // ---- Change ----

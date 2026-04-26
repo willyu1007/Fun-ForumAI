@@ -57,6 +57,7 @@ import type {
   PublicDiscussionCueScheduleDomain,
   RecordCueChangeInput,
   ScheduleScopeQuery,
+  UpdateCueInput,
 } from '../cue-repository.js'
 import {
   assertScopeConsistency,
@@ -572,6 +573,81 @@ export class PgCueRepository implements CueRepository {
       const row = await this.prisma.publicDiscussionCue.update({
         where: { id },
         data: { status: CUE_STATUS_TO_DB[status] },
+      })
+      return this.cueToDomain(row)
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        return null
+      }
+      throw err
+    }
+  }
+
+  async updateCue(
+    id: string,
+    input: UpdateCueInput,
+  ): Promise<PublicDiscussionCueDomain | null> {
+    const data: Prisma.PublicDiscussionCueUpdateInput = {
+      revision: { increment: 1 },
+    }
+    if (input.trigger_at !== undefined) data.triggerAt = input.trigger_at
+    if (input.timezone !== undefined) data.timezone = input.timezone
+    if (input.prewarm_at !== undefined) data.prewarmAt = input.prewarm_at
+    if (input.latest_start_at !== undefined) data.latestStartAt = input.latest_start_at
+    if (input.expire_at !== undefined) data.expireAt = input.expire_at
+    if (input.priority !== undefined) data.priority = input.priority
+    if (input.lane !== undefined) data.lane = LANE_TO_DB[input.lane]
+    if (input.community_id !== undefined) data.communityId = input.community_id
+    if (input.dispatch_policy !== undefined) {
+      data.dispatchPolicyJson = input.dispatch_policy as unknown as Prisma.InputJsonValue
+    }
+    if (input.admission_policy !== undefined) {
+      data.admissionPolicyJson =
+        input.admission_policy === null
+          ? Prisma.JsonNull
+          : (input.admission_policy as unknown as Prisma.InputJsonValue)
+    }
+    if (input.load_policy !== undefined) {
+      data.loadPolicyJson =
+        input.load_policy === null
+          ? Prisma.JsonNull
+          : (input.load_policy as unknown as Prisma.InputJsonValue)
+    }
+    if (input.theme_intent !== undefined) {
+      data.themeIntentJson = input.theme_intent as unknown as Prisma.InputJsonValue
+    }
+    if (input.scene_constraints !== undefined) {
+      data.sceneConstraintsJson =
+        input.scene_constraints as unknown as Prisma.InputJsonValue
+    }
+    if (input.role_requirements !== undefined) {
+      data.roleRequirementsJson =
+        input.role_requirements as unknown as Prisma.InputJsonValue
+    }
+    if (input.media_policy !== undefined) {
+      data.mediaPolicyJson =
+        input.media_policy === null
+          ? Prisma.JsonNull
+          : (input.media_policy as unknown as Prisma.InputJsonValue)
+    }
+    if (input.safety !== undefined) {
+      data.safetyJson =
+        input.safety === null
+          ? Prisma.JsonNull
+          : (input.safety as unknown as Prisma.InputJsonValue)
+    }
+    if (input.locked_fields !== undefined) {
+      data.lockedFieldsJson = input.locked_fields as unknown as Prisma.InputJsonValue
+    }
+    if (input.risk_level !== undefined) data.riskLevel = RISK_TO_DB[input.risk_level]
+
+    try {
+      const row = await this.prisma.publicDiscussionCue.update({
+        where: { id },
+        data,
       })
       return this.cueToDomain(row)
     } catch (err) {

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { useAdminCueBoard, useAdminCueBoardBaselineImport } from '@/api/hooks'
+import { CueDetailEditor } from '@/features/admin/components/cue-editor/CueDetailEditor'
 import type {
   CueBoardCueItem,
   CueBoardPayload,
@@ -218,6 +219,7 @@ export function CueBoardTab() {
   const importMutation = useAdminCueBoardBaselineImport()
   const payload = query.data?.data
   const [selectedCueId, setSelectedCueId] = useState<string | null>(null)
+  const [editingCueId, setEditingCueId] = useState<string | null>(null)
 
   const selectedCue = useMemo(() => {
     if (!payload || !selectedCueId) return null
@@ -255,12 +257,19 @@ export function CueBoardTab() {
     )
   }
 
+  if (editingCueId) {
+    return (
+      <CueDetailEditor cueId={editingCueId} onClose={() => setEditingCueId(null)} />
+    )
+  }
+
   return (
     <CueBoardContent
       payload={payload}
       selectedCueId={selectedCueId}
       onSelectCue={setSelectedCueId}
       selectedCue={selectedCue}
+      onEditCue={setEditingCueId}
       onImportBaseline={() => importMutation.mutate()}
       importInFlight={importMutation.isPending}
       importError={importMutation.error as Error | null}
@@ -273,6 +282,7 @@ function CueBoardContent({
   selectedCueId,
   onSelectCue,
   selectedCue,
+  onEditCue,
   onImportBaseline,
   importInFlight,
   importError,
@@ -281,6 +291,7 @@ function CueBoardContent({
   selectedCueId: string | null
   onSelectCue: (id: string | null) => void
   selectedCue: CueBoardCueItem | null
+  onEditCue: (id: string) => void
   onImportBaseline: () => void
   importInFlight: boolean
   importError: Error | null
@@ -336,16 +347,25 @@ function CueBoardContent({
             ))
           )}
         </ul>
-        <aside>
+        <aside className="space-y-3">
           {selectedCue ? (
-            <CueDetailDrawer cue={selectedCue} />
+            <>
+              <CueDetailDrawer cue={selectedCue} />
+              <button
+                type="button"
+                className="w-full rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary hover:bg-primary/20"
+                onClick={() => onEditCue(selectedCue.id)}
+              >
+                打开编辑器
+              </button>
+            </>
           ) : (
             <div
               data-ui="card"
               data-variant="outlined"
               className="border-dashed border-border/60 p-4 text-xs text-muted-foreground"
             >
-              点击左侧 cue 查看只读详情。
+              点击左侧 cue 查看详情，再点"打开编辑器"进入编辑界面。
             </div>
           )}
         </aside>

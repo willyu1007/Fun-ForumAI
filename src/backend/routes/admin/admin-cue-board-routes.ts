@@ -21,6 +21,8 @@ import { cueBoardReadService, cueRepo } from '../../container.js'
 import { BaselineCueImporter } from '../../programming/cue/baseline-cue-importer.js'
 import { AppError } from '../../lib/errors.js'
 import { requireAdmin, requireHumanAuth } from '../../middleware/human-auth.js'
+import { requireProgrammingPermission } from '../../middleware/require-programming-permission.js'
+import { PROGRAMMING_PERMISSIONS } from '../../programming/cue/permissions.js'
 
 const isoDateString = z
   .string()
@@ -87,6 +89,7 @@ export function registerAdminCueBoardRoutes(router: IRouter): void {
     '/admin/programming/cue-board',
     requireHumanAuth,
     requireAdmin,
+    requireProgrammingPermission(PROGRAMMING_PERMISSIONS.view_programming),
     async (req, res) => {
       const parsed = querySchema.safeParse(req.query)
       if (!parsed.success) {
@@ -114,6 +117,7 @@ export function registerAdminCueBoardRoutes(router: IRouter): void {
     '/admin/programming/cue-board/baseline-import',
     requireHumanAuth,
     requireAdmin,
+    requireProgrammingPermission(PROGRAMMING_PERMISSIONS.edit_programming_draft),
     async (_req, res) => {
       try {
         const importer = new BaselineCueImporter({ repo: cueRepo })

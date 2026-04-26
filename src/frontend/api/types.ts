@@ -3243,3 +3243,247 @@ export interface CueBoardPayload {
   load_state_per_community: null
   generated_at: string
 }
+
+// =============================================================================
+// T-210 M2 — admin cue editor types (FE-side mirror of backend domain shapes)
+// =============================================================================
+
+export type CueToneBand =
+  | 'calm'
+  | 'warm'
+  | 'tense_but_playful'
+  | 'sharp'
+  | 'reflective'
+  | 'story_like'
+
+export type CueCommunityScopeMode = 'single' | 'community_family' | 'runtime_select'
+
+export interface CueCommunityScope {
+  mode: CueCommunityScopeMode
+  community_id?: string
+  community_family_id?: string
+}
+
+export interface CueThemeIntent {
+  topic_seed: string
+  discussion_question?: string
+  angle_hint?: string
+  tone_band?: CueToneBand
+  public_context_refs?: Array<{ kind: string; id: string; note?: string }>
+}
+
+export interface CueSceneConstraints {
+  community_scope: CueCommunityScope
+  public_stage_scope: Array<'forum' | 'chat_room'>
+  allowed_scene_families?: CueSceneFamily[]
+  preferred_scene_family?: CueSceneFamily
+  disallowed_scene_families?: CueSceneFamily[]
+  tension_range?: { min: number; max: number }
+  privacy_policy: 'public_only' | 'public_plus_safe_projection'
+  private_reference_policy: 'forbidden' | 'allowed_only_if_projected'
+  safety_profile: 'standard' | 'strict' | 'high_review'
+  continuity_policy?: {
+    allow_public_thread_context: boolean
+    allow_private_memory: boolean
+    allow_storyline_callback: boolean
+  }
+  fatigue_constraints?: {
+    avoid_recent_topic_keys?: string[]
+    avoid_recent_scene_families?: CueSceneFamily[]
+    avoid_overused_frames?: string[]
+  }
+}
+
+export type CueRole =
+  | 'anchor'
+  | 'challenger'
+  | 'bridge'
+  | 'observer'
+  | 'comic_relief'
+  | 'skeptic'
+  | 'empath'
+  | 'wildcard'
+
+export interface CueRoleRequirementVector {
+  requirements: Array<{ role: CueRole; purpose?: string; weight: number; optional?: boolean }>
+  relationship_shape?:
+    | 'contrast'
+    | 'contrast_with_bridge'
+    | 'round_table'
+    | 'solo_reflection'
+    | 'call_and_response'
+  novelty_preference?:
+    | 'avoid_recently_overexposed'
+    | 'prefer_familiar_faces'
+    | 'balanced'
+}
+
+export type CueMediaUsageStrength = 'optional' | 'preferred'
+export type CueMediaUsePolicy =
+  | 'runtime_only'
+  | 'prefer_runtime_context'
+  | 'prefer_public_display'
+  | 'allow_generated_derivative'
+
+export type CueMediaRole =
+  | 'context_anchor'
+  | 'mood_reference'
+  | 'evidence_card'
+  | 'visual_seed'
+  | 'cover_candidate'
+  | 'continuity_anchor'
+
+export interface CueMediaItem {
+  id: string
+  cue_id: string
+  asset_id: string
+  semantic_snapshot_id: string | null
+  role: CueMediaRole
+  usage_strength: CueMediaUsageStrength | 'anchor' | 'selected_only_pool'
+  use_policy: CueMediaUsePolicy | 'require_public_display'
+  display_policy: string
+  selection_note: string | null
+  sort_order: number
+  reuse_limit: number | null
+  validation_status: 'valid' | 'invalid' | 'blocked' | 'degraded'
+  validation_reason: string | null
+  created_at: string
+}
+
+export interface DispatchPolicy {
+  trigger_at: string
+  timezone: string
+  dispatch_mode: 'strict' | 'graceful' | 'opportunistic'
+  not_before_at?: string
+  deadline_at?: string
+  grace_seconds: number
+  priority: number
+  lane: CueLane
+  misfire_policy: 'skip' | 'delay' | 'coalesce' | 'degrade'
+  max_attempts: number
+  retry_backoff_seconds: number
+}
+
+export interface PublicDiscussionCueDomain {
+  id: string
+  schedule_id: string
+  source_type: CueSourceType
+  status: PublicDiscussionCueStatus
+  community_id?: string
+  scope: CueCommunityScope
+  trigger_at: string
+  timezone: string
+  prewarm_at?: string
+  latest_start_at?: string
+  expire_at?: string
+  priority: number
+  lane: CueLane
+  dispatch_policy: DispatchPolicy
+  admission_policy?: Record<string, unknown>
+  load_policy?: Record<string, unknown>
+  theme_intent: CueThemeIntent
+  scene_constraints: CueSceneConstraints
+  role_requirements: CueRoleRequirementVector
+  media_policy?: Record<string, unknown>
+  safety?: Record<string, unknown>
+  locked_fields: string[]
+  risk_level: CueRiskLevel
+  revision: number
+  idempotency_key: string
+  created_by_user_id?: string
+  created_by_system?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CueChangeDomain {
+  id: string
+  schedule_id: string | null
+  cue_id: string | null
+  source: 'manual' | 'automated' | 'system'
+  actor_user_id: string | null
+  actor_system: string | null
+  trigger_id: string | null
+  trigger_type: string | null
+  change_type: string
+  base_revision: number | null
+  patch_json: unknown
+  diff_json: unknown
+  validation_status: 'pending' | 'passed' | 'failed'
+  validation_json: unknown
+  risk_level: CueRiskLevel
+  approval_status: 'pending' | 'auto_applied' | 'approved' | 'rejected' | 'rolled_back'
+  load_snapshot_json: unknown
+  reason: string | null
+  applied_at: string | null
+  created_at: string
+}
+
+export interface CueDetailPayload {
+  cue: PublicDiscussionCueDomain
+  media: CueMediaItem[]
+  recent_changes: CueChangeDomain[]
+}
+
+export interface CuePatchV1 {
+  version: 1
+  partial: Partial<{
+    trigger_at: string
+    timezone: string
+    prewarm_at: string
+    latest_start_at: string
+    expire_at: string
+    priority: number
+    lane: CueLane
+    dispatch_policy: DispatchPolicy
+    admission_policy: Record<string, unknown>
+    load_policy: Record<string, unknown>
+    community_id: string
+    theme_intent: CueThemeIntent
+    scene_constraints: CueSceneConstraints
+    role_requirements: CueRoleRequirementVector
+    media_policy: Record<string, unknown>
+    safety: Record<string, unknown>
+    locked_fields: string[]
+    risk_level: CueRiskLevel
+  }>
+  removed_fields?: string[]
+}
+
+export interface MediaPickerItem {
+  asset_id: string
+  source_kind: string
+  visibility_policy: string
+  storage_key: string | null
+  mime_type: string
+  width: number | null
+  height: number | null
+  created_at: string
+}
+
+export interface MediaPickerPayload {
+  items: MediaPickerItem[]
+  next_cursor: string | null
+}
+
+export type PreviewStageId =
+  | 'schema'
+  | 'deterministic'
+  | 'load'
+  | 'media'
+  | 'director_compile'
+
+export type PreviewStageStatus = 'ok' | 'warning' | 'error'
+
+export interface PreviewStage {
+  stage: PreviewStageId
+  status: PreviewStageStatus
+  payload: unknown
+  source?: 'stub_until_t212' | 'stub_until_t213'
+}
+
+export interface CuePreviewPayload {
+  cue_id: string
+  stages: PreviewStage[]
+  overall: 'ok' | 'has_warnings' | 'has_errors'
+}
