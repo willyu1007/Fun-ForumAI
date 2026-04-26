@@ -25,12 +25,13 @@ import type {
   CommunityBudgetService,
   ProductionPath,
 } from '../../services/community-budget-service.js'
-import type { LoadSignalService } from '../../services/__stubs__/load-signal-service-stub.js'
+import type { LoadSignalService } from '../../services/load-signal-service.js'
 import type {
   AdmissionDecision,
   AdmissionResult,
 } from '../contract/index.js'
 import type { PublicDiscussionCueDomain } from './types.js'
+import { lookupAdmissionAction } from '../load/admission-decisions.js'
 
 // =============================================================================
 // Public types
@@ -158,8 +159,10 @@ export class CueAdmissionController {
       )
     } catch (err) {
       // Defensive: if the load signal service throws, treat it as a deferral
-      // rather than crash the worker. T-213 should make this a hard signal
-      // when load is the gating concern.
+      // rather than crash the worker. Post-T-213 M1 the live path is the
+      // `AdmissionLoadService` adapter (4 parallel DB count queries) — a
+      // throw here typically indicates a transient DB hiccup; the ops
+      // backoff window gives the system time to recover.
       await this.safeRelease(reservation.reservationId)
       return {
         result: defer({
@@ -171,47 +174,93 @@ export class CueAdmissionController {
       }
     }
 
-    if (snapshot.status === 'red') {
-      await this.safeRelease(reservation.reservationId)
-      return {
-        result: defer({
-          reasons: ['load_red'],
-          loadSnapshotRef: snapshotRef(snapshot),
-          recommendedNextTriggerAt: new Date(
-            now.getTime() + this.defaultOpsRetryBackoffSeconds * 1000,
-          ),
-        }),
-      }
-    }
-    if (snapshot.status === 'yellow') {
-      // Yellow does not block admission but degrades media; degraded_media is
-      // signalled so the runtime can fall back to lighter media usage. Worker
-      // still gets the reservation.
-      return {
-        result: admit({
-          reasons: ['load_yellow_degraded_media'],
-          loadSnapshotRef: snapshotRef(snapshot),
-          degradedMedia: true,
-        }),
-        reservation,
-      }
-    }
+    // T-213 M5 — decision-table SSOT replaces the old hard-coded
+    // `red→defer / yellow→admit-degraded / green→admit` flow. The matrix in
+    // `programming/load/admission-decisions.ts` is shared with T-214's
+    // LoadGate so cue and trigger detector make consistent calls.
+    const action = lookupAdmissionAction({
+      loadState: snapshot.status,
+      cueLane: cue.lane,
+      cuePriority: cue.priority,
+    })
+    const reasonTag = `load_${snapshot.status}:${action}`
 
-    // green
-    return {
-      result: admit({
-        reasons: ['load_green'],
-        loadSnapshotRef: snapshotRef(snapshot),
-      }),
-      reservation,
+    switch (action) {
+      case 'admit':
+        // Yellow keeps the legacy `degraded_media` flag so the runtime falls
+        // back to lighter media usage even when the lane / priority cell
+        // grants admission.
+        return {
+          result: admit({
+            reasons: [reasonTag],
+            loadSnapshotRef: snapshotRef(snapshot),
+            degradedMedia: snapshot.status === 'yellow',
+          }),
+          reservation,
+        }
+      case 'skip':
+        await this.safeRelease(reservation.reservationId)
+        return { result: skip([reasonTag]) }
+      case 'defer':
+        await this.safeRelease(reservation.reservationId)
+        return {
+          result: defer({
+            reasons: [reasonTag],
+            loadSnapshotRef: snapshotRef(snapshot),
+            recommendedNextTriggerAt: new Date(
+              now.getTime() + this.defaultOpsRetryBackoffSeconds * 1000,
+            ),
+          }),
+        }
+      case 'merge':
+      case 'require_review':
+        // Reserved for T-214 cue coalescing (`merge`) and T-216 M3 high-risk
+        // review queue (`require_review`). Emit a console warning so an
+        // operator who flips one of these into the table sees that this
+        // path doesn't actually wire the action yet, then fall back to a
+        // safe `defer`. T-214 / T-216 M3 will replace this branch with
+        // dedicated handling and remove the warning.
+        console.warn(
+          `[CueAdmissionController] action='${action}' is reserved for ` +
+            'T-214 / T-216 M3 and is not yet wired; falling back to defer ' +
+            `(load=${snapshot.status}, lane=${cue.lane}, priority=${cue.priority}).`,
+        )
+        await this.safeRelease(reservation.reservationId)
+        return {
+          result: defer({
+            reasons: [reasonTag, 'unsupported_action_fallback'],
+            loadSnapshotRef: snapshotRef(snapshot),
+            recommendedNextTriggerAt: new Date(
+              now.getTime() + this.defaultOpsRetryBackoffSeconds * 1000,
+            ),
+          }),
+        }
+      default: {
+        // Exhaustiveness guard — if a new action value is added to
+        // `AdmissionAction` without updating this switch, TS catches it at
+        // compile time. Runtime branch is defensive only.
+        const _exhaustive: never = action
+        void _exhaustive
+        await this.safeRelease(reservation.reservationId)
+        return {
+          result: defer({
+            reasons: [reasonTag, 'unknown_action'],
+            loadSnapshotRef: snapshotRef(snapshot),
+            recommendedNextTriggerAt: new Date(
+              now.getTime() + this.defaultOpsRetryBackoffSeconds * 1000,
+            ),
+          }),
+        }
+      }
     }
   }
 
   /**
    * Best-effort release. Swallow errors so a failed release never masks the
-   * primary admission outcome — the budget service's stub is in-process and
-   * can never fail; T-213 may surface transient errors that the worker can
-   * recover from later via the soft-hold expiry.
+   * primary admission outcome — both budget service impls (trivial + real)
+   * are in-process and can't fail today, but the soft-hold sweep on the
+   * real impl auto-releases stuck reservations after `softHoldMs` so a
+   * dropped release just delays the rollback by a few minutes.
    */
   private async safeRelease(reservationId: string): Promise<void> {
     try {
@@ -237,9 +286,12 @@ function resolveCommunityId(cue: PublicDiscussionCueDomain): string | null {
 }
 
 function snapshotRef(snapshot: { source: string }): string {
-  // Stub returns `{ source: 'stub_until_t213' }`; T-213 will return a stable
-  // snapshot id. Until then we surface the source string so audit logs make
-  // it obvious where the load decision came from.
+  // Surface the snapshot's `source` tag so audit logs make it obvious
+  // where the load decision came from. Today the only sources reaching
+  // this controller in production are `admission_load_service:live`
+  // (admission hot path) and the stub `stub_until_t213` (test fixtures);
+  // T-215 may upgrade `source` to a stable snapshot id when the cached
+  // path persists rows for the public projection.
   return `load_signal:${snapshot.source}`
 }
 

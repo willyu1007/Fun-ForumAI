@@ -509,6 +509,12 @@ export interface CueRepository {
   removeMedia(id: string): Promise<boolean>
   listMediaForCue(cueId: string): Promise<PublicDiscussionCueMediaDomain[]>
 
+  // Load counters (T-213 M1) — community-scoped counts the live admission
+  // load service consumes on the hot path. Bounded windows / status filters
+  // keep each query O(index lookup).
+  countCuesForCommunity(input: CountCuesForCommunityInput): Promise<number>
+  countAttemptsForCommunity(input: CountAttemptsForCommunityInput): Promise<number>
+
   // Attempt (T-212 M2)
   listAttemptsForCue(cueId: string): Promise<CueExecutionAttemptDomain[]>
   /**
@@ -546,6 +552,24 @@ export interface CueRepository {
  */
 export const IN_FLIGHT_ATTEMPT_STATUSES: ReadonlyArray<CueExecutionAttemptStatus> =
   ['leased', 'admitted', 'allocating', 'compiling', 'executing']
+
+// =============================================================================
+// Load-counter inputs (T-213 M1)
+// =============================================================================
+
+export interface CountCuesForCommunityInput {
+  communityId: string
+  statuses: ReadonlyArray<PublicDiscussionCueStatus>
+  /** Inclusive lower bound on `trigger_at`; omit for no lower bound. */
+  triggerAtFrom?: Date
+  /** Exclusive upper bound on `trigger_at`; omit for no upper bound. */
+  triggerAtBefore?: Date
+}
+
+export interface CountAttemptsForCommunityInput {
+  communityId: string
+  statuses: ReadonlyArray<CueExecutionAttemptStatus>
+}
 
 /**
  * Build an idempotency key for a cue execution attempt.
@@ -1012,6 +1036,40 @@ export class InMemoryCueRepository implements CueRepository {
       .filter((a) => a.cue_id === cueId)
       .sort((a, b) => a.attempt_no - b.attempt_no)
       .map(cloneAttemptDomain)
+  }
+
+  // ---- Load counters (T-213 M1) ----
+
+  async countCuesForCommunity(
+    input: CountCuesForCommunityInput,
+  ): Promise<number> {
+    const statusSet = new Set(input.statuses)
+    const fromMs = input.triggerAtFrom?.getTime()
+    const beforeMs = input.triggerAtBefore?.getTime()
+    let total = 0
+    for (const cue of this.cues.values()) {
+      if (cue.community_id !== input.communityId) continue
+      if (!statusSet.has(cue.status)) continue
+      const triggerMs = new Date(cue.trigger_at).getTime()
+      if (fromMs !== undefined && triggerMs < fromMs) continue
+      if (beforeMs !== undefined && triggerMs >= beforeMs) continue
+      total++
+    }
+    return total
+  }
+
+  async countAttemptsForCommunity(
+    input: CountAttemptsForCommunityInput,
+  ): Promise<number> {
+    const statusSet = new Set(input.statuses)
+    let total = 0
+    for (const attempt of this.attempts.values()) {
+      if (!statusSet.has(attempt.status)) continue
+      const cue = this.cues.get(attempt.cue_id)
+      if (!cue || cue.community_id !== input.communityId) continue
+      total++
+    }
+    return total
   }
 
   async findPrewarmableCues(input: {

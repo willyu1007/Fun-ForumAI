@@ -218,25 +218,31 @@ describe('admin-cue-routes — happy paths through full cue lifecycle', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
 
-  it('rejects attach with anchor usage_strength (D-11)', async () => {
-    const create = await request(app)
-      .post('/v1/admin/programming/cues')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ schedule_id: scheduleId, scope: SCOPE, patch: buildPatchBody() })
-    const cueId = create.body.data.cue.id
+  // T-216 M0: route schema accepts all four usage_strength values. Runtime
+  // planner still treats anchor / selected_only_pool as preferred until
+  // T-216 M2/M3.
+  it.each([['anchor'], ['selected_only_pool']] as const)(
+    'attach accepts usage_strength=%s after T-216 M0 unlock',
+    async (strength) => {
+      const create = await request(app)
+        .post('/v1/admin/programming/cues')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ schedule_id: scheduleId, scope: SCOPE, patch: buildPatchBody() })
+      const cueId = create.body.data.cue.id
 
-    const res = await request(app)
-      .post(`/v1/admin/programming/cues/${cueId}/media`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        asset_id: 'asset-1',
-        role: 'context_anchor',
-        usage_strength: 'anchor',
-        use_policy: 'runtime_only',
-      })
-    // The route schema rejects 'anchor' before reaching the service.
-    expect(res.status).toBe(400)
-  })
+      const res = await request(app)
+        .post(`/v1/admin/programming/cues/${cueId}/media`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          asset_id: `asset-${strength}`,
+          role: 'context_anchor',
+          usage_strength: strength,
+          use_policy: 'runtime_only',
+        })
+      expect(res.status).toBe(201)
+      expect(res.body.data.media_id).toBeTruthy()
+    },
+  )
 
   it('rollback schedule creates new schedule version', async () => {
     const res = await request(app)

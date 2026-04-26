@@ -4,6 +4,7 @@ import { useAdminCueBoard, useAdminCueBoardBaselineImport } from '@/api/hooks'
 import { CueDetailEditor } from '@/features/admin/components/cue-editor/CueDetailEditor'
 import type {
   CueBoardCueItem,
+  CueBoardLoadStateEntry,
   CueBoardPayload,
   CueLane,
   CueRiskLevel,
@@ -328,6 +329,7 @@ function CueBoardContent({
         importInFlight={importInFlight}
         importError={importError}
       />
+      <LoadHeatmapPanel entries={payload.load_state_per_community} />
       <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,360px)]">
         <ul data-ui="list" data-variant="admin-rows" className="space-y-1">
           {payload.cues.length === 0 ? (
@@ -432,6 +434,82 @@ function ScheduleHeader({
           baseline 同步失败：{importError.message}
         </p>
       ) : null}
+    </div>
+  )
+}
+
+// =============================================================================
+// T-213 M4 — load heatmap panel
+// =============================================================================
+
+const LOAD_STATE_TONE: Record<'green' | 'yellow' | 'red', string> = {
+  green: 'border-success/40 bg-success/10 text-success',
+  yellow: 'border-warning/40 bg-warning/10 text-warning',
+  red: 'border-destructive/40 bg-destructive/10 text-destructive',
+}
+
+const LOAD_STATE_LABEL: Record<'green' | 'yellow' | 'red', string> = {
+  green: '空闲',
+  yellow: '吃紧',
+  red: '过载',
+}
+
+function LoadHeatmapPanel({
+  entries,
+}: {
+  entries: CueBoardLoadStateEntry[] | null
+}) {
+  // Backend without `LoadSignalService` returns null → no panel (legacy mode).
+  if (entries === null) return null
+  if (entries.length === 0) {
+    return (
+      <div
+        data-ui="card"
+        data-variant="outlined"
+        className="p-4 text-xs text-muted-foreground"
+      >
+        当前 schedule 无 community 范围；负载热度图暂无数据。
+      </div>
+    )
+  }
+
+  return (
+    <div data-ui="card" data-variant="outlined" className="space-y-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-foreground">负载热度图</h3>
+        <p className="text-[10px] text-muted-foreground">
+          来自缓存 ~30 秒；admission 路径独立读取实时 snapshot
+        </p>
+      </div>
+      <ul className="space-y-2">
+        {entries.map((entry) => (
+          <li
+            key={entry.community_id}
+            className="flex flex-wrap items-center gap-3 border-l-2 border-border/40 pl-3 py-1"
+          >
+            <Badge variant="outline" className={LOAD_STATE_TONE[entry.load_state]}>
+              {LOAD_STATE_LABEL[entry.load_state]} · {entry.load_state}
+            </Badge>
+            <span className="text-xs font-medium text-foreground">
+              {entry.community_id}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              30 分钟内 cue: {entry.scheduled_cue_count_30m}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              · 自主预测: {entry.predicted_autonomous_count_30m}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              · @ {new Intl.DateTimeFormat('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+              }).format(new Date(entry.computed_at))}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

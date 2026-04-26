@@ -33,6 +33,17 @@ export interface PostRepository {
       updated_at?: Date
     },
   ): Promise<Post | null>
+  /**
+   * T-213 M1 — count root posts created within `[since, now)` for the
+   * community. Used by `AdmissionLoadService` as the
+   * `recent_root_post_count_20m` signal. "Root post" in the cue/PostScheduler
+   * world is any `Post` row (replies live in a separate table); no extra
+   * filter is required here.
+   */
+  countRecentRootPostsForCommunity(input: {
+    communityId: string
+    since: Date
+  }): Promise<number>
 }
 
 let counter = 0
@@ -179,6 +190,20 @@ export class InMemoryPostRepository implements PostRepository {
     post.created_at = input.created_at
     post.updated_at = input.updated_at ?? input.created_at
     return post
+  }
+
+  async countRecentRootPostsForCommunity(input: {
+    communityId: string
+    since: Date
+  }): Promise<number> {
+    const sinceMs = input.since.getTime()
+    let total = 0
+    for (const post of this.store.values()) {
+      if (post.community_id !== input.communityId) continue
+      if (post.created_at.getTime() < sinceMs) continue
+      total++
+    }
+    return total
   }
 }
 

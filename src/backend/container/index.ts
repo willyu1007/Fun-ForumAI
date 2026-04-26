@@ -18,7 +18,11 @@ import {
 } from '../programming/cue/cue-admission-controller.js'
 import { DirectorCueBriefServiceImpl } from '../programming/cue/director-cue-brief.js'
 import { InProcessTrivialCommunityBudgetService } from '../services/community-budget-service.js'
-import { loadSignalServiceStub } from '../services/__stubs__/load-signal-service-stub.js'
+import { RealInProcessCommunityBudgetService } from '../services/community-budget-service-real.js'
+import { AdmissionLoadService } from '../programming/load/admission-load-service.js'
+import { adaptAdmissionLoadAsLoadSignal } from '../programming/load/admission-load-signal-adapter.js'
+import { CachedLoadSignalService } from '../services/load-signal-service.js'
+import { CueMediaPlanner } from '../media/cue-media-planner.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { AgentBioRefreshScheduler } from '../runtime/agent-bio-refresh-scheduler.js'
 import { AgentBiographyCompileScheduler } from '../runtime/agent-biography-compile-scheduler.js'
@@ -247,6 +251,19 @@ const llm = createLlmServices({
   usageLedgerRepo: pgUsageLedgerRepo,
 })
 
+// T-213 M1/M2 — load services are constructed up here so `createCoreServices`
+// can hand the cached `LoadSignalService` to `CueBoardReadService` (M4
+// heatmap). The admission seam still wires the live `AdmissionLoadService`
+// down at the worker construction site.
+const admissionLoadService = new AdmissionLoadService({
+  cueRepo: repos.cueRepo,
+  postRepo: repos.postRepo,
+})
+const loadSignalService = new CachedLoadSignalService({
+  admissionLoadService,
+  loadSnapshotRepo: repos.loadSnapshotRepo,
+})
+
 // ─── 4. Core Services ───────────────────────────────────────
 const core = createCoreServices({
   repos,
@@ -258,6 +275,7 @@ const core = createCoreServices({
   surfaceMediaPlanningService: llm.surfaceMediaPlanningService,
   mediaObservabilityService: llm.mediaObservabilityService,
   mediaRolloutControllerService: llm.mediaRolloutControllerService,
+  loadSignalService,
   usageLedgerRepo: llm.usageLedgerRepo,
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
@@ -663,6 +681,16 @@ const alloc = createAllocator({
   recallPolicyService: core.recallPolicyService,
 })
 
+// T-213 M3 — real per-community cap enforcement. Default `enforced=false`
+// so every deploy is no-op until ops flips `COMMUNITY_BUDGET_ENFORCED=true`.
+// The trivial in-process stub remains available when the flag is off.
+// Hoisted above `createRuntime` so PostScheduler picks it up via runtime deps.
+const communityBudgetEnforced =
+  process.env.COMMUNITY_BUDGET_ENFORCED === 'true'
+const communityBudgetService = communityBudgetEnforced
+  ? new RealInProcessCommunityBudgetService({ enforced: true })
+  : new InProcessTrivialCommunityBudgetService()
+
 // ─── 7. Agent Runtime ───────────────────────────────────────
 const rt = createRuntime({
   llmGateway: llm.llmGateway,
@@ -703,6 +731,10 @@ const rt = createRuntime({
   publicStageTurnRepo: repos.publicStageTurnRepo,
   statsService: core.statsService,
   publicGrowthGate: core.warmupGovernanceService,
+  // T-213 M3 — autonomous-path acquire wiring. Service honors `enforced`
+  // flag internally, so this can ship with the default-off flag and flip
+  // on at the deploy stage without code changes.
+  communityBudgetService,
   eventQueue: infra.eventQueue,
   allocator: alloc.allocator,
   degradationMonitor: alloc.degradationMonitor,
@@ -720,16 +752,28 @@ core.warmupGovernanceService.attachRuntimeDeps({
 // Independent lightweight loop that drives admin-authored cues from the
 // scheduled `triggerAt` window through admission → director brief → scene
 // selection → write. Runs only when explicitly enabled via
-// PUBLIC_DISCUSSION_CUE_WORKER_ENABLED=true (default off until T-213 lands
-// real load-aware admission). The worker stays out of RuntimeLoop so the
-// PostScheduler cue-isolation invariant (I-2) holds in both directions.
-const communityBudgetService = new InProcessTrivialCommunityBudgetService()
+// PUBLIC_DISCUSSION_CUE_WORKER_ENABLED=true (default off; flip on once
+// T-213 admission + budget caps are observed healthy in staging). The
+// worker stays out of RuntimeLoop so the PostScheduler cue-isolation
+// invariant (I-2) holds in both directions.
+// T-213 M1/M2 — admission consumes the live `AdmissionLoadService` (declared
+// near `createCoreServices` so the M4 heatmap can share the cached
+// `LoadSignalService`). Strict separation: admission MUST NOT read cached
+// snapshots; preview / Cue Board / TriggerDetector consume the cached
+// service only.
 const cueAdmissionController = new CueAdmissionController({
   communityBudgetService,
   publicGrowthGate: core.warmupGovernanceService,
-  loadSignalService: loadSignalServiceStub,
+  loadSignalService: adaptAdmissionLoadAsLoadSignal(admissionLoadService),
 })
 const directorCueBriefService = new DirectorCueBriefServiceImpl()
+
+// T-216 M1 — audit-only media planner. Records `MediaPlanResolution` rows
+// after every successful cue execution. M2/M3 widen this to active strength
+// routing.
+const cueMediaPlanner = new CueMediaPlanner({
+  mediaPlanResolutionRepo: repos.mediaPlanResolutionRepo,
+})
 
 // `forumEventDispatcher` is declared further below (depends on services
 // that aren't yet built); the worker / rollback handler need to fan their
@@ -752,6 +796,7 @@ const publicDiscussionCueWorker = new PublicDiscussionCueWorker(
     eventRepo: repos.eventRepo,
     communityBudgetService,
     eventDispatcher: cueEventDispatcherProxy,
+    cueMediaPlanner,
     leaderElector: infra.leaderElectors.publicDiscussionCueWorker,
     // Community resolver — adapts the existing community read path so the
     // worker can target the cue's locked community without taking on a heavy
@@ -943,6 +988,14 @@ export const mediaLifecycleService = llm.mediaLifecycleService
 export const mediaLineageService = llm.mediaLineageService
 export const forumSceneMetadataRepo = repos.forumSceneMetadataRepo
 export const cueRepo = repos.cueRepo
+// T-213 M1/M2 — load layer singletons.
+// Admission path consumes `admissionLoadService` (live); preview / Cue
+// Board / TriggerDetector consume `loadSignalService` (cached, ~30s TTL).
+export { admissionLoadService, loadSignalService }
+export const loadSnapshotRepo = repos.loadSnapshotRepo
+// T-216 M1 — media planner audit log + orchestrator.
+export const mediaPlanResolutionRepo = repos.mediaPlanResolutionRepo
+export { cueMediaPlanner }
 
 export const achievementChronicleService = core.achievementChronicleService
 export const forumReadService = core.forumReadService

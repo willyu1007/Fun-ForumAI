@@ -3,7 +3,7 @@
  * lifecycle (R4).
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { CueAdmissionController } from '../cue-admission-controller.js'
 import { InProcessTrivialCommunityBudgetService } from '../../../services/community-budget-service.js'
 import { loadSignalServiceStub } from '../../../services/__stubs__/load-signal-service-stub.js'
@@ -12,7 +12,7 @@ import type {
   CommunityBudgetAcquireResult,
   CommunityBudgetService,
 } from '../../../services/community-budget-service.js'
-import type { LoadSignalService } from '../../../services/__stubs__/load-signal-service-stub.js'
+import type { LoadSignalService } from '../../../services/load-signal-service.js'
 
 function makeCue(overrides: Partial<PublicDiscussionCueDomain> = {}): PublicDiscussionCueDomain {
   return {
@@ -87,7 +87,7 @@ describe('CueAdmissionController — happy path', () => {
     const evaluation = await ctrl.evaluate({ cue: makeCue(), now: NOW })
     expect(evaluation.result.granted).toBe(true)
     expect(evaluation.result.decision).toBe('admit')
-    expect(evaluation.result.reason_codes).toContain('load_green')
+    expect(evaluation.result.reason_codes).toContain('load_green:admit')
     expect(evaluation.reservation?.path).toBe('cue')
     // Reservation handed to caller — still tracked by budget
     const snapshot = await budget.query('c1')
@@ -228,7 +228,7 @@ describe('CueAdmissionController — short-circuit at load', () => {
     })
     const evaluation = await ctrl.evaluate({ cue: makeCue(), now: NOW })
     expect(evaluation.result.decision).toBe('defer')
-    expect(evaluation.result.reason_codes).toEqual(['load_red'])
+    expect(evaluation.result.reason_codes).toEqual(['load_red:defer'])
     expect(evaluation.reservation).toBeUndefined()
   })
 
@@ -314,5 +314,144 @@ describe('CueAdmissionController — reservation release semantics (R4)', () => 
     })
     await ctrl.evaluate({ cue: makeCue(), now: NOW })
     expect(releaseCalls).toBe(1)
+  })
+})
+
+// =============================================================================
+// T-213 M5 — decision-table-driven admission outcomes
+// =============================================================================
+
+function staticLoadSignal(state: 'green' | 'yellow' | 'red'): LoadSignalService {
+  return {
+    async get(communityId, triggerAtIso) {
+      return {
+        status: state,
+        community_id: communityId,
+        trigger_at_iso: triggerAtIso ?? null,
+        source: 'admission_load_service:live',
+      }
+    },
+  }
+}
+
+describe('CueAdmissionController — T-213 M5 decision-table outcomes', () => {
+  it('red + prime + high → admit (highest priority overrides red)', async () => {
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const ctrl = new CueAdmissionController({
+      communityBudgetService: budget,
+      publicGrowthGate: alwaysAllowGrowthGate(),
+      loadSignalService: staticLoadSignal('red'),
+    })
+    const cue = makeCue({ lane: 'prime', priority: 90 })
+    const evaluation = await ctrl.evaluate({ cue, now: NOW })
+    expect(evaluation.result.decision).toBe('admit')
+    expect(evaluation.result.reason_codes).toContain('load_red:admit')
+    expect(evaluation.reservation).toBeDefined()
+  })
+
+  it('red + standard + low → skip (drops the lowest tier first)', async () => {
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const ctrl = new CueAdmissionController({
+      communityBudgetService: budget,
+      publicGrowthGate: alwaysAllowGrowthGate(),
+      loadSignalService: staticLoadSignal('red'),
+    })
+    const cue = makeCue({ lane: 'standard', priority: 20 })
+    const evaluation = await ctrl.evaluate({ cue, now: NOW })
+    expect(evaluation.result.decision).toBe('skip')
+    expect(evaluation.result.reason_codes).toContain('load_red:skip')
+    expect(evaluation.reservation).toBeUndefined()
+    // T-213 M3 audit: trivial stub now rolls counters back on release,
+    // matching the real impl. The freed slot is observable via `query`.
+    const snap = await budget.query('c1')
+    expect(snap.cue_used_today).toBe(0)
+  })
+
+  it('yellow + standard + low → defer (downgrades, not skip)', async () => {
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const ctrl = new CueAdmissionController({
+      communityBudgetService: budget,
+      publicGrowthGate: alwaysAllowGrowthGate(),
+      loadSignalService: staticLoadSignal('yellow'),
+    })
+    const cue = makeCue({ lane: 'standard', priority: 20 })
+    const evaluation = await ctrl.evaluate({ cue, now: NOW })
+    expect(evaluation.result.decision).toBe('defer')
+    expect(evaluation.result.reason_codes).toContain('load_yellow:defer')
+  })
+
+  it('yellow + prime + normal → admit with degraded_media flag', async () => {
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const ctrl = new CueAdmissionController({
+      communityBudgetService: budget,
+      publicGrowthGate: alwaysAllowGrowthGate(),
+      loadSignalService: staticLoadSignal('yellow'),
+    })
+    const cue = makeCue({ lane: 'prime', priority: 50 })
+    const evaluation = await ctrl.evaluate({ cue, now: NOW })
+    expect(evaluation.result.decision).toBe('admit')
+    expect(evaluation.result.degraded_media).toBe(true)
+    expect(evaluation.result.reason_codes).toContain('load_yellow:admit')
+  })
+
+  it('green admits regardless of lane / priority (matrix smoke)', async () => {
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const ctrl = new CueAdmissionController({
+      communityBudgetService: budget,
+      publicGrowthGate: alwaysAllowGrowthGate(),
+      loadSignalService: staticLoadSignal('green'),
+    })
+    for (const cue of [
+      makeCue({ lane: 'prime', priority: 95 }),
+      makeCue({ lane: 'standard', priority: 50 }),
+      makeCue({ lane: 'background', priority: 10 }),
+    ]) {
+      const evaluation = await ctrl.evaluate({ cue, now: NOW })
+      expect(evaluation.result.decision).toBe('admit')
+      expect(evaluation.result.degraded_media).toBeUndefined()
+    }
+  })
+
+  // T-213 M5 / future-bundle safety net: if the table starts emitting
+  // `merge` or `require_review` (reserved for T-214 / T-216 M3) before the
+  // dedicated handling lands, the controller must NOT silently degrade —
+  // it should warn loudly and fall back to `defer` so cues stay safe.
+  it('falls back to defer with explicit reason when an unsupported action is selected', async () => {
+    // Smuggle a forced 'merge' decision through a custom matrix entry by
+    // monkey-patching the lookup module via vitest's mock. Cleaner approach:
+    // call the controller against a hand-crafted `LoadSignalService` whose
+    // status is interpreted by the table as `merge`. The default table never
+    // emits merge/require_review, so we exercise the fallback by spying on
+    // the controller's load signal and forcing the action via a custom cue
+    // that the table maps to a merge cell — but the default table has no
+    // such cell. The cleanest test is: monkey-patch ADMISSION_DECISIONS for
+    // this test, assert the behavior, restore.
+    const adm = await import('../../load/admission-decisions.js')
+    const original = adm.ADMISSION_DECISIONS.green.standard.normal
+    // @ts-expect-error: deliberately injecting an unsupported action to
+    // exercise the controller's fallback behavior.
+    adm.ADMISSION_DECISIONS.green.standard.normal = 'merge'
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const budget = new InProcessTrivialCommunityBudgetService()
+      const ctrl = new CueAdmissionController({
+        communityBudgetService: budget,
+        publicGrowthGate: alwaysAllowGrowthGate(),
+        loadSignalService: staticLoadSignal('green'),
+      })
+      const evaluation = await ctrl.evaluate({
+        cue: makeCue({ lane: 'standard', priority: 50 }),
+        now: NOW,
+      })
+      expect(evaluation.result.decision).toBe('defer')
+      expect(evaluation.result.reason_codes).toContain('unsupported_action_fallback')
+      expect(warn).toHaveBeenCalledOnce()
+      const warnArg = warn.mock.calls[0]?.[0] ?? ''
+      expect(warnArg).toMatch(/action='merge'/)
+    } finally {
+      // @ts-expect-error: restoring the original action.
+      adm.ADMISSION_DECISIONS.green.standard.normal = original
+      warn.mockRestore()
+    }
   })
 })

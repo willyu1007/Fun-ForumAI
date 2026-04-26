@@ -1,25 +1,27 @@
 /**
- * T-210 M3 — load-signal stub.
+ * T-210 M3 — load-signal stub (test fixture).
  *
- * Stub stays at the module path the real `LoadSignalService` (T-213) will
- * occupy. T-213's swap is a single-file replacement; the consumer's import
- * line never changes.
- *
- * Returns `green` unconditionally. Any consumer (preview chain, T-214
- * TriggerDetector load-gate) treats this as "load is fine".
+ * **Test-only.** Production code imports the contract types
+ * (`LoadSignalService`, `LoadSignalSnapshot`, `LoadSignalSource`) from
+ * `services/load-signal-service.ts` directly — that is the canonical home
+ * after T-213 M2 swapped the cached path in. This module exists solely to
+ * provide the `loadSignalServiceStub` value (always returns `green`) for
+ * unit tests that don't need the cached read-through machinery, and to
+ * re-export the contract types so existing test imports keep working.
  */
 
-export type LoadState = 'green' | 'yellow' | 'red'
+import type {
+  LoadSignalService,
+  LoadSignalSnapshot,
+  LoadSignalSource,
+} from '../load-signal-service.js'
+import type { LoadState } from '../../programming/load/types.js'
 
-export interface LoadSignalSnapshot {
-  status: LoadState
-  community_id: string
-  trigger_at_iso: string | null
-  source: 'stub_until_t213'
-}
-
-export interface LoadSignalService {
-  get(communityId: string, triggerAtIso?: string | null): Promise<LoadSignalSnapshot>
+export type {
+  LoadSignalService,
+  LoadSignalSnapshot,
+  LoadSignalSource,
+  LoadState,
 }
 
 export const loadSignalServiceStub: LoadSignalService = {

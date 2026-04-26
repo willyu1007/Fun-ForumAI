@@ -23,12 +23,12 @@ import { AppError, UnauthorizedError } from '../../lib/errors.js'
 import { CueEditorService } from '../../services/cue-editor-service.js'
 import { MediaPickerService } from '../../services/media-picker-service.js'
 import { CuePreviewService } from '../../services/cue-preview-service.js'
-import { loadSignalServiceStub } from '../../services/__stubs__/load-signal-service-stub.js'
 import { DirectorCueBriefServiceImpl } from '../../programming/cue/director-cue-brief.js'
 import {
   cueRepo as containerCueRepo,
   eventRepo as containerEventRepo,
   forumEventDispatcher as containerForumEventDispatcher,
+  loadSignalService as containerLoadSignalService,
   mediaAssetRepo as containerMediaAssetRepo,
 } from '../../container.js'
 import type { CueRepository } from '../../repos/cue-repository.js'
@@ -74,7 +74,12 @@ const ATTACH_MEDIA_BODY = z
       'cover_candidate',
       'continuity_anchor',
     ]),
-    usage_strength: z.enum(['optional', 'preferred']).optional(),
+    // T-216 M0: all four strength values accepted at the validator. Runtime
+    // planner still treats `anchor` / `selected_only_pool` as `preferred`
+    // until T-216 M2/M3.
+    usage_strength: z
+      .enum(['optional', 'preferred', 'anchor', 'selected_only_pool'])
+      .optional(),
     use_policy: z
       .enum([
         'runtime_only',
@@ -169,7 +174,9 @@ export function registerAdminCueRoutes(
     new CuePreviewService({
       repo: cueRepo,
       mediaAssetRepo,
-      loadSignalService: loadSignalServiceStub,
+      // T-213 M2: cached `LoadSignalService` (~30s TTL) replaces the stub.
+      // Admission path keeps reading the live `AdmissionLoadService`.
+      loadSignalService: containerLoadSignalService,
       directorCueBrief: new DirectorCueBriefServiceImpl(),
     })
   // POST /v1/admin/programming/cues — create draft cue

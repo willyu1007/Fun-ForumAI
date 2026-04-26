@@ -28,6 +28,8 @@ import { CueAdmissionController } from '../../programming/cue/cue-admission-cont
 import { InProcessTrivialCommunityBudgetService } from '../../services/community-budget-service.js'
 import { loadSignalServiceStub } from '../../services/__stubs__/load-signal-service-stub.js'
 import { DirectorCueBriefServiceImpl } from '../../programming/cue/director-cue-brief.js'
+import { CueMediaPlanner } from '../../media/cue-media-planner.js'
+import { InMemoryMediaPlanResolutionRepository } from '../../repos/media-plan-resolution-repository.js'
 import { CUE_EXECUTION_COMPLETED } from '../../programming/cue/cue-domain-events.js'
 import { buildForumSceneMetadataInput } from '../../services/public-scene-runtime.js'
 import type { DataPlaneWriter } from '../data-plane-writer.js'
@@ -452,5 +454,242 @@ describe('PublicDiscussionCueWorker — in-process audit-chain e2e (M5)', () => 
     expect(failed).not.toBeNull()
     // Confirm absence of any post-creation event.
     expect(failed?.payload_json.post_id).toBeUndefined()
+  })
+
+  // T-216 M1 — audit-only media planner integration. A successful cue with
+  // a 3-item pool (anchor + preferred + selected_only_pool) must produce
+  // exactly 3 MediaPlanResolution rows; admission deferrals must produce 0.
+  it('T-216 M1 — successful cue writes one MediaPlanResolution row per pool item', async () => {
+    const cueRepo = new InMemoryCueRepository()
+    const eventRepo = new InMemoryEventRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaPlanResolutionRepo = new InMemoryMediaPlanResolutionRepository()
+    const cueMediaPlanner = new CueMediaPlanner({ mediaPlanResolutionRepo })
+
+    const schedule = await cueRepo.createSchedule({
+      scope_type: 'community',
+      community_id: 'c_general',
+      date_range_start: new Date('2026-04-26T00:00:00.000Z'),
+      date_range_end: new Date('2026-04-27T00:00:00.000Z'),
+      source: 'manual',
+      created_by_user_id: 'user_admin_1',
+    })
+    const cue = await cueRepo.createCue({
+      schedule_id: schedule.id,
+      source_type: 'manual',
+      community_id: 'c_general',
+      scope: { mode: 'single', community_id: 'c_general' },
+      trigger_at: new Date('2026-04-26T20:30:00.000Z'),
+      status: 'scheduled',
+      dispatch_policy: {
+        trigger_at: '2026-04-26T20:30:00.000Z',
+        timezone: 'UTC',
+        dispatch_mode: 'graceful',
+        grace_seconds: 60,
+        priority: 50,
+        lane: 'standard',
+        misfire_policy: 'delay',
+        max_attempts: 3,
+        retry_backoff_seconds: 30,
+      },
+      theme_intent: { topic_seed: 'AI 陪伴' },
+      scene_constraints: {
+        community_scope: { mode: 'single', community_id: 'c_general' },
+        public_stage_scope: ['forum'],
+        privacy_policy: 'public_only',
+        private_reference_policy: 'forbidden',
+        safety_profile: 'standard',
+      },
+      role_requirements: { requirements: [{ role: 'anchor', weight: 0.7 }] },
+      created_by_user_id: 'user_admin_1',
+    })
+    // Three media items spanning all four-strength tiers (no point repeating).
+    await cueRepo.attachMedia({
+      cue_id: cue.id,
+      asset_id: 'asset-anchor',
+      role: 'context_anchor',
+      usage_strength: 'anchor',
+      use_policy: 'allow_generated_derivative',
+      created_by_type: 'admin',
+      created_by_id: 'user_admin_1',
+    })
+    await cueRepo.attachMedia({
+      cue_id: cue.id,
+      asset_id: 'asset-preferred',
+      role: 'mood_reference',
+      usage_strength: 'preferred',
+      use_policy: 'prefer_runtime_context',
+      created_by_type: 'admin',
+      created_by_id: 'user_admin_1',
+    })
+    await cueRepo.attachMedia({
+      cue_id: cue.id,
+      asset_id: 'asset-pool-only',
+      role: 'cover_candidate',
+      usage_strength: 'selected_only_pool',
+      use_policy: 'prefer_public_display',
+      created_by_type: 'admin',
+      created_by_id: 'user_admin_1',
+    })
+
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const worker = new PublicDiscussionCueWorker(
+      {
+        cueRepo,
+        admissionController: new CueAdmissionController({
+          communityBudgetService: budget,
+          publicGrowthGate: {
+            getRuntimeBaselineAdmission: async () => ({
+              allow_public_growth: true,
+              reasons: [],
+            }),
+          },
+          loadSignalService: loadSignalServiceStub,
+        }),
+        directorCueBrief: new DirectorCueBriefServiceImpl(),
+        sceneSelector: makeSelector(),
+        dataPlaneWriter: new AuditChainDataPlaneWriter(forumSceneMetadataRepo),
+        eventRepo,
+        communityBudgetService: budget,
+        cueMediaPlanner,
+        communityResolver: {
+          resolve: async (id) => ({
+            id,
+            slug: 'general',
+            name: 'General',
+            description: '',
+            rules: '',
+          }),
+        },
+        castResolver: {
+          resolveCast: async () => [
+            { id: 'agent-anchor-1', display_name: 'Anchor One' },
+            { id: 'agent-challenger-1', display_name: 'Challenger One' },
+          ],
+        },
+        contentGenerator: {
+          generate: async ({ cue: c }) => ({
+            title: c.theme_intent.topic_seed,
+            body: '让讨论从一个真实场景开始',
+          }),
+        },
+        now: () => new Date('2026-04-26T20:30:30.000Z'),
+      },
+      { intervalMs: 60_000, startupDelayMs: 60_000, batchSize: 5 },
+    )
+    const tickResult = await worker.tick()
+    expect(tickResult.processed).toBe(1)
+
+    const attempts = await cueRepo.listAttemptsForCue(cue.id)
+    expect(attempts[0].status).toBe('succeeded')
+    const attemptId = attempts[0].id
+
+    const resolutions = await mediaPlanResolutionRepo.findByAttempt(attemptId)
+    expect(resolutions).toHaveLength(3)
+    const byAsset = new Map(resolutions.map((r) => [r.asset_id, r]))
+    expect(byAsset.get('asset-anchor')?.requested_strength).toBe('anchor')
+    expect(byAsset.get('asset-preferred')?.requested_strength).toBe('preferred')
+    expect(byAsset.get('asset-pool-only')?.requested_strength).toBe('selected_only_pool')
+    // M1 collapses every outcome to runtime_context (admission was green).
+    expect(resolutions.every((r) => r.plan_outcome === 'runtime_context')).toBe(true)
+    expect(resolutions.every((r) => r.attempt_id === attemptId)).toBe(true)
+  })
+
+  it('T-216 M1 — admission-deferred cue writes zero MediaPlanResolution rows', async () => {
+    const cueRepo = new InMemoryCueRepository()
+    const eventRepo = new InMemoryEventRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaPlanResolutionRepo = new InMemoryMediaPlanResolutionRepository()
+    const cueMediaPlanner = new CueMediaPlanner({ mediaPlanResolutionRepo })
+
+    const schedule = await cueRepo.createSchedule({
+      scope_type: 'global',
+      date_range_start: new Date('2026-04-26T00:00:00.000Z'),
+      date_range_end: new Date('2026-04-27T00:00:00.000Z'),
+      source: 'manual',
+    })
+    const cue = await cueRepo.createCue({
+      schedule_id: schedule.id,
+      source_type: 'manual',
+      community_id: 'c1',
+      scope: { mode: 'single', community_id: 'c1' },
+      trigger_at: new Date('2026-04-26T20:30:00.000Z'),
+      status: 'scheduled',
+      dispatch_policy: {
+        trigger_at: '2026-04-26T20:30:00.000Z',
+        timezone: 'UTC',
+        dispatch_mode: 'graceful',
+        grace_seconds: 60,
+        priority: 50,
+        lane: 'standard',
+        misfire_policy: 'delay',
+        max_attempts: 3,
+        retry_backoff_seconds: 30,
+      },
+      theme_intent: { topic_seed: 'topic' },
+      scene_constraints: {
+        community_scope: { mode: 'single', community_id: 'c1' },
+        public_stage_scope: ['forum'],
+        privacy_policy: 'public_only',
+        private_reference_policy: 'forbidden',
+        safety_profile: 'standard',
+      },
+      role_requirements: { requirements: [{ role: 'anchor', weight: 0.7 }] },
+    })
+    await cueRepo.attachMedia({
+      cue_id: cue.id,
+      asset_id: 'asset-1',
+      role: 'context_anchor',
+      usage_strength: 'preferred',
+      use_policy: 'runtime_only',
+      created_by_type: 'admin',
+    })
+
+    const budget = new InProcessTrivialCommunityBudgetService()
+    const worker = new PublicDiscussionCueWorker(
+      {
+        cueRepo,
+        admissionController: new CueAdmissionController({
+          communityBudgetService: budget,
+          publicGrowthGate: {
+            getRuntimeBaselineAdmission: async () => ({
+              allow_public_growth: false,
+              reasons: ['warmup_layer_not_ready'],
+            }),
+          },
+          loadSignalService: loadSignalServiceStub,
+        }),
+        directorCueBrief: new DirectorCueBriefServiceImpl(),
+        sceneSelector: makeSelector(),
+        dataPlaneWriter: new AuditChainDataPlaneWriter(forumSceneMetadataRepo),
+        eventRepo,
+        communityBudgetService: budget,
+        cueMediaPlanner,
+        communityResolver: {
+          resolve: async (id) => ({
+            id,
+            slug: 'general',
+            name: 'General',
+            description: '',
+            rules: '',
+          }),
+        },
+        castResolver: {
+          resolveCast: async () => [{ id: 'agent-1', display_name: 'A' }],
+        },
+        contentGenerator: {
+          generate: async () => ({ title: 't', body: 'b' }),
+        },
+        now: () => new Date('2026-04-26T20:30:30.000Z'),
+      },
+      { intervalMs: 60_000, startupDelayMs: 60_000 },
+    )
+    await worker.tick()
+
+    const attempts = await cueRepo.listAttemptsForCue(cue.id)
+    // Deferred path leaves the attempt in a non-succeeded terminal; the
+    // planner's post-commit hook is unreachable, so the audit log stays empty.
+    expect(attempts[0].status).not.toBe('succeeded')
+    expect(await mediaPlanResolutionRepo.findByAttempt(attempts[0].id)).toHaveLength(0)
   })
 })

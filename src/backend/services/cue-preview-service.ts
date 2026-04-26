@@ -4,13 +4,13 @@
  * Runs the 5-stage preview chain per cue-editor-admin/02-architecture.md §6:
  *   1. schema           - CuePatchV1Schema.parse(body.patch)
  *   2. deterministic    - forbidden, locked, time bounds, community existence
- *   3. load             - LoadSignalService.get (stub returns green)
+ *   3. load             - LoadSignalService.get (cached path post-T-213 M2)
  *   4. media            - re-run picker filter on cue's currently attached media
- *   5. director_compile - DirectorCueBrief.compile(dryRun=true) (stub)
+ *   5. director_compile - DirectorCueBrief.compile(dryRun=true)
  *
  * Stage 1 / 2 short-circuit on `error`. Stages 3 / 4 / 5 are non-fatal:
- * stage 4 emits warnings; 3 and 5 always succeed under stubs and emit a
- * `source: 'stub_until_t21X'` marker so frontend can render an info banner.
+ * stage 4 emits warnings; 3 returns the cached load snapshot (admission keeps
+ * reading the live `AdmissionLoadService`); 5 emits the real director brief.
  */
 
 import { ZodError } from 'zod'
@@ -23,7 +23,7 @@ import type {
   PublicDiscussionCueChangeDomain,
 } from '../repos/cue-repository.js'
 import type { MediaAssetRepository } from '../repos/media-asset-repository.js'
-import type { LoadSignalService } from './__stubs__/load-signal-service-stub.js'
+import type { LoadSignalService } from './load-signal-service.js'
 import type { DirectorCueBriefService } from '../programming/cue/director-cue-brief.js'
 import type { PublicDiscussionCueDomain } from '../programming/cue/types.js'
 

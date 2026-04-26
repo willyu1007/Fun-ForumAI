@@ -17,7 +17,7 @@ const STATUS_TONE: Record<PreviewStage['status'], string> = {
 const STAGE_LABEL: Record<PreviewStage['stage'], string> = {
   schema: '1. Schema validation',
   deterministic: '2. Deterministic checks (forbidden / locked / time / scope)',
-  load: '3. Load preview (T-213 supplies live; stub returns green)',
+  load: '3. Load preview (cached ~30 秒 TTL；admission 路径独立读取实时 snapshot)',
   media: '4. Media revalidation',
   director_compile: '5. Director brief dry-run (T-212 supplies; stub placeholder)',
 }
@@ -81,6 +81,11 @@ export function PreviewPanel({
             {stage.source === 'stub_until_t213' ? (
               <p className="mt-1 text-[10px] text-warning">
                 T-213 cue-load-control 上线后此段才显示真实 load snapshot
+              </p>
+            ) : null}
+            {stage.source === 'load_signal_service:cached' ? (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                来自缓存（~30 秒 TTL）；admission 路径读取实时 snapshot
               </p>
             ) : null}
             <pre className="mt-1 max-h-48 overflow-auto rounded bg-muted/30 p-2 text-[10px]">

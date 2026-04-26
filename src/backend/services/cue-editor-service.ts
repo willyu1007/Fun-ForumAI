@@ -450,12 +450,12 @@ export class CueEditorService {
     if (!cue) throw new NotFoundError('Cue', cueId)
     this.assertCueEditable(cue)
 
-    if (input.usage_strength === 'anchor' || input.usage_strength === 'selected_only_pool') {
-      throw new ValidationError(
-        'usage_strength values "anchor" and "selected_only_pool" are not exposed in MVP (umbrella D-11; T-216 M3)',
-        { rejected_value: input.usage_strength },
-      )
-    }
+    // T-216 M0 (2026-04-26): semantics unlock — all four `usage_strength`
+    // values are now accepted at the validator. Runtime media planner still
+    // treats `anchor` and `selected_only_pool` as `preferred` (no behavior
+    // change); real strength-aware routing lands in T-216 M2/M3.
+    // TODO(T-216 M3): gate `anchor` / `selected_only_pool` behind the
+    // `manage_programming_media` permission once that permission ships.
     if (input.use_policy === 'require_public_display') {
       throw new ValidationError(
         'use_policy "require_public_display" is not exposed in MVP (umbrella D-11)',

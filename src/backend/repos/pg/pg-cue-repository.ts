@@ -36,6 +36,8 @@ import type {
   AttachCueMediaInput,
   ClaimDueCuesInput,
   ClaimedCue,
+  CountAttemptsForCommunityInput,
+  CountCuesForCommunityInput,
   CreateCueAttemptInput,
   CreateCueInput,
   CreateCueScheduleInput,
@@ -816,6 +818,40 @@ export class PgCueRepository implements CueRepository {
       orderBy: [{ attemptNo: 'asc' }],
     })
     return rows.map((row) => this.attemptToDomain(row))
+  }
+
+  // ---- Load counters (T-213 M1) ----
+
+  async countCuesForCommunity(
+    input: CountCuesForCommunityInput,
+  ): Promise<number> {
+    if (input.statuses.length === 0) return 0
+    return this.prisma.publicDiscussionCue.count({
+      where: {
+        communityId: input.communityId,
+        status: { in: input.statuses.map((s) => CUE_STATUS_TO_DB[s]) },
+        ...(input.triggerAtFrom || input.triggerAtBefore
+          ? {
+              triggerAt: {
+                ...(input.triggerAtFrom ? { gte: input.triggerAtFrom } : {}),
+                ...(input.triggerAtBefore ? { lt: input.triggerAtBefore } : {}),
+              },
+            }
+          : {}),
+      },
+    })
+  }
+
+  async countAttemptsForCommunity(
+    input: CountAttemptsForCommunityInput,
+  ): Promise<number> {
+    if (input.statuses.length === 0) return 0
+    return this.prisma.cueExecutionAttempt.count({
+      where: {
+        status: { in: input.statuses.map((s) => ATTEMPT_STATUS_TO_DB[s]) },
+        cue: { communityId: input.communityId },
+      },
+    })
   }
 
   async findPrewarmableCues(input: {

@@ -1,21 +1,26 @@
 /**
  * T-212 M1 — community-budget-service (in-process trivial stub).
  *
- * Interface frozen by T-211 boundary doc §C.1; T-213 replaces this in-process
- * stub with the real per-community caps + rate-limit enforcement at the same
- * module path so callers' import lines never change.
+ * Interface frozen by T-211 boundary doc §C.1. The real per-community
+ * cap-enforcing implementation lives in `community-budget-service-real.ts`
+ * (T-213 M3); this trivial stub stays around as the default-off mode and
+ * for tests that don't need cap enforcement. Both impls share the same
+ * `CommunityBudgetService` interface — call sites never see a difference.
  *
- * MVP behavior:
- *   - `acquire` ALWAYS grants. Records the (community, path) tuple in memory
- *     so dashboards can project utilization before T-213 enforces caps.
- *   - `release` is real (idempotent) — must drop the reservation from the
- *     in-memory map. T-213's real service must honor the same release call;
- *     a leaky stub here would mask the contract gap when T-213 swaps in.
- *   - `query` returns a per-community snapshot built from in-memory state.
+ * Behavior contract:
+ *   - `acquire` ALWAYS grants. Records the `(community, path, cost)` tuple
+ *     in memory so dashboards can project utilization before caps enforce.
+ *   - `release` (T-213 M3 audit): rolls back the per-path daily counters
+ *     and drops the reservation from the in-memory map (idempotent). Prior
+ *     to M3 the counters stayed elevated on release, which diverged from
+ *     the real impl's behavior; aligning them eliminates that semantic split.
+ *   - `query` returns per-community totals; `daily_remaining` and
+ *     `window_remaining` are `Infinity` (no cap on this stub).
  *
- * Invariant I-4 (T-211 §E): both autonomous (PostScheduler — wired by T-213)
- * and cue (T-212 CueWorker) paths must `acquire` against this same service so
- * caps cover the union of both production paths.
+ * Invariant I-4 (T-211 §E): both autonomous (PostScheduler) and cue
+ * (CueWorker) paths must `acquire` against this same service so caps cover
+ * the union of both production paths. T-213 M3 wired the autonomous-side
+ * call site at `runtime/post-scheduler.ts`.
  */
 
 import { randomUUID } from 'node:crypto'
@@ -113,7 +118,27 @@ export class InProcessTrivialCommunityBudgetService
   }
 
   async release(reservationId: string): Promise<void> {
+    const reservation = this.reservations.get(reservationId)
+    if (!reservation) return
     this.reservations.delete(reservationId)
+    // T-213 M3 audit — keep release symmetric with the real impl so tests
+    // that exercise rollback semantics see the same observable state on
+    // both stubs. Prior to this fix the counters stayed elevated on
+    // release; that produced a subtle semantic split between the trivial
+    // and real services that could mask production bugs.
+    const counters = this.counters.get(reservation.communityId)
+    if (!counters) return
+    if (reservation.path === 'autonomous') {
+      counters.autonomous_used_today = Math.max(
+        0,
+        counters.autonomous_used_today - reservation.cost,
+      )
+    } else {
+      counters.cue_used_today = Math.max(
+        0,
+        counters.cue_used_today - reservation.cost,
+      )
+    }
   }
 
   async query(communityId: string): Promise<CommunityBudgetSnapshot> {

@@ -3237,10 +3237,27 @@ export interface CueBoardCueItem {
   locked_fields_count: number
 }
 
+/**
+ * T-213 M4 — per-community heatmap entry. Surfaces cached load state +
+ * 30-min forward window forecast (scheduled cues vs predicted autonomous
+ * occupancy) for the admin Cue Board.
+ */
+export interface CueBoardLoadStateEntry {
+  community_id: string
+  load_state: 'green' | 'yellow' | 'red'
+  scheduled_cue_count_30m: number
+  predicted_autonomous_count_30m: number
+  computed_at: string
+}
+
 export interface CueBoardPayload {
   schedule: CueBoardSchedule | null
   cues: CueBoardCueItem[]
-  load_state_per_community: null
+  /**
+   * T-213 M4 — populated when the backend has a `LoadSignalService` wired.
+   * Pre-T-213 callers receive `null`.
+   */
+  load_state_per_community: CueBoardLoadStateEntry[] | null
   generated_at: string
 }
 

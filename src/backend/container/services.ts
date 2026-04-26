@@ -119,6 +119,12 @@ export function createCoreServices(deps: {
   roomLifecycleLeaderElector: LeaderElector
   conversationClockLeaderElector: LeaderElector
   runtimeRedis?: Redis | null
+  /**
+   * T-213 M4 — cached load signal source for the Cue Board heatmap.
+   * Optional so legacy / test callers fall back to the heatmap-disabled
+   * payload (load_state_per_community === null).
+   */
+  loadSignalService?: import('../services/load-signal-service.js').LoadSignalService | null
 }) {
   const { repos, sseHub, moderator, llmGateway } = deps
 
@@ -364,7 +370,13 @@ export function createCoreServices(deps: {
     roleAssignmentRepo: repos.roleAssignmentRepo,
     mediaObservabilityService: deps.mediaObservabilityService ?? null,
   })
-  const cueBoardReadService = new CueBoardReadService(repos.cueRepo)
+  const cueBoardReadService = new CueBoardReadService(repos.cueRepo, {
+    loadSignalService: deps.loadSignalService ?? null,
+    // T-213 M4 — `postRepo` powers the autonomous-vs-cue split for the
+    // heatmap's `predicted_autonomous_count_30m`. Without it the heatmap
+    // would degrade to zero (no double-count risk).
+    postRepo: repos.postRepo,
+  })
   const homeProgrammingService = new HomeProgrammingService({
     forumReadService,
     globalHighlightsService,

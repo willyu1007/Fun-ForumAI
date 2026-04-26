@@ -391,20 +391,36 @@ describe('CueEditorService — attachMedia / removeMedia', () => {
     expect(result.change.approval_status).toBe('auto_applied')
   })
 
-  it('rejects anchor / selected_only_pool usage_strength (D-11)', async () => {
-    await expect(
-      service.attachCueMedia(
+  // T-216 M0: validator now accepts all four `usage_strength` values.
+  // Runtime planner still treats `anchor` / `selected_only_pool` as
+  // `preferred` (no behavior change); strength-aware routing lands in
+  // T-216 M2/M3.
+  it.each([
+    ['optional'],
+    ['preferred'],
+    ['anchor'],
+    ['selected_only_pool'],
+  ] as const)(
+    'attachCueMedia accepts usage_strength=%s after T-216 M0 unlock',
+    async (strength) => {
+      const result = await service.attachCueMedia(
         cueId,
         {
-          asset_id: 'asset-1',
+          asset_id: `asset-${strength}`,
           role: 'context_anchor',
-          usage_strength: 'anchor',
+          usage_strength: strength,
           use_policy: 'runtime_only',
         },
         adminActor,
-      ),
-    ).rejects.toThrow(ValidationError)
-  })
+      )
+      expect(result.media_id).toBeTruthy()
+      expect(result.change.change_type).toBe('attach_media')
+      expect(
+        (result.change.patch_json as { media: { usage_strength: string } })
+          .media.usage_strength,
+      ).toBe(strength)
+    },
+  )
 
   it('rejects require_public_display use_policy (D-11)', async () => {
     await expect(

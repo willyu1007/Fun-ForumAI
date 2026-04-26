@@ -156,6 +156,13 @@ export interface PublicDiscussionCueWorkerDeps {
    * leave this unset to assert only the persistence side.
    */
   eventDispatcher?: CueEventDispatchHook
+  /**
+   * T-216 M1 — optional planner that records `MediaPlanResolution` audit
+   * rows after the data plane write succeeds. Audit-only in M1; M2/M3 add
+   * real strength-aware routing. Tests that don't care about media audit
+   * leave this unset to keep fixture surface area minimal.
+   */
+  cueMediaPlanner?: import('../media/cue-media-planner.js').CueMediaPlanner
   leaderElector?: LeaderElector
   /** Override the wall clock for deterministic tests. */
   now?: () => Date
@@ -663,6 +670,24 @@ export class PublicDiscussionCueWorker {
     await this.deps.cueRepo.setCueStatus(cue.id, 'consumed')
     await this.releaseReservation(reservation)
     void writeLatencyMs
+
+    // T-216 M1 — post-commit media planner audit. Best-effort: failure here
+    // MUST NOT roll back the consumed cue or block the completed event. The
+    // post is already published; the audit row gap is the worst case and is
+    // logged for ops triage.
+    if (this.deps.cueMediaPlanner) {
+      try {
+        await this.deps.cueMediaPlanner.record({
+          attemptId: attempt.id,
+          brief,
+          degradedMedia: admission.result.degraded_media === true,
+        })
+      } catch (err) {
+        console.error(
+          `[PublicDiscussionCueWorker] cueMediaPlanner.record failed for attempt ${attempt.id}: ${(err as Error).message}`,
+        )
+      }
+    }
 
     const completedEvent = buildCueExecutionCompletedEvent({
       attempt_id: attempt.id,

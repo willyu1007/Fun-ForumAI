@@ -4872,7 +4872,8 @@ model CueExecutionAttempt {
   startedAt              DateTime?                 @map("started_at")
   finishedAt             DateTime?                 @map("finished_at")
 
-  cue PublicDiscussionCue @relation(fields: [cueId], references: [id])
+  cue                  PublicDiscussionCue   @relation(fields: [cueId], references: [id])
+  mediaPlanResolutions MediaPlanResolution[]
 
   @@unique([cueId, attemptNo])
   @@index([cueId, status])
@@ -4906,4 +4907,44 @@ model CommunityRuntimeLoadSnapshot {
   @@index([communityId, computedAt])
   @@index([freshness, computedAt])
   @@map("community_runtime_load_snapshots")
+}
+
+// T-216 M1 — `MediaPlanResolution` audit log.
+// One row per `cue_execution_attempts` × `media_resource_pool` item.
+// Captures the planner's intent (`requested_strength`, `requested_role`)
+// alongside the runtime outcome (`plan_outcome`). M1 ships audit-only —
+// every brief media item produces a row marking how the asset participated
+// in the post (runtime context / public display / not used / blocked /
+// degraded). M2 adds `derivative_source` emission when the planner
+// orchestrates anchor → derivative through `imagePlannerService`.
+//
+// Cross-domain references (`asset_id`, `image_planner_decision_id`) follow
+// the T-209 cue-domain convention of plain string columns without
+// ORM-level FKs — keeps blast radius small around media schema evolution.
+enum CueMediaPlanOutcome {
+  RUNTIME_CONTEXT
+  PUBLIC_DISPLAY
+  DERIVATIVE_SOURCE
+  NOT_USED
+  BLOCKED
+  DEGRADED
+}
+
+model MediaPlanResolution {
+  id                     String                @id @default(cuid())
+  attemptId              String                @map("attempt_id")
+  assetId                String                @map("asset_id")
+  imagePlannerDecisionId String?               @map("image_planner_decision_id")
+  requestedStrength      CueMediaUsageStrength @map("requested_strength")
+  requestedRole          CueMediaRole          @map("requested_role")
+  planOutcome            CueMediaPlanOutcome   @map("plan_outcome")
+  reason                 String?
+  createdAt              DateTime              @default(now()) @map("created_at")
+
+  attempt CueExecutionAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@index([assetId, createdAt])
+  @@index([planOutcome, createdAt])
+  @@map("media_plan_resolutions")
 }
