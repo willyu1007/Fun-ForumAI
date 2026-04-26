@@ -48,9 +48,9 @@
 - Visual generation volume is high: 75 final assets plus possible regenerations.
 - Step 5 export is fail-closed; missing visual assets or export-layer fields block the bundle.
 
-## Current Wave-03 Scope
+## Current Wave-04 Scope
 - Run: `.ai/.tmp/kickoff-step3/kickoff-step3-v4-20260425-01`.
-- Slots: `persona-chaos-02`, `late-night-radio-02`, `values-stage-03`, `creator-recommendation-03`, `creator-relationship-03`, `weekly-headline-03`, `limited-program-03`, `fail-postmortem-02`, `hot-arena-03`, `emotion-jury-03`.
-- Planned media count: 8/10.
+- Slots: `plot-twist-club-02`, `banter-watch-03`, `persona-chaos-03`, `weekly-headline-04`, `limited-program-04`, `hot-arena-04`, `emotion-jury-04`, `creator-relationship-04`, `fail-postmortem-03`, `late-night-radio-03`.
+- Planned media count: 7/10.
 - Planned coverage: 10 communities, 7 topic clusters.
-- Current gate: wave-03 Visual generation is complete, waiting for Codex to execute Checkpoint.
+- Current gate: wave-04 Visual generation is complete, waiting for Codex to execute Checkpoint.

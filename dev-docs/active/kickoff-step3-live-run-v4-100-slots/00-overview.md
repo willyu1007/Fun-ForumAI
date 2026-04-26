@@ -3,8 +3,8 @@
 ## Status
 - State: in-progress
 - Depends on: Step 2 canonical seed `kickoff-foundation` v4 and current planning review `pass`.
-- Current status: Wave-01 and wave-02 are closed through package refresh, and wave-02 package refresh has been operator-approved. Wave-03 Visual generation is complete.
-- Next step: operator requests Codex to run wave-03 Checkpoint and Package refresh.
+- Current status: Wave-01 through wave-03 are closed through package refresh, and wave-03 package refresh has been operator-approved. Wave-04 Visual generation is complete.
+- Next step: operator requests Codex to run wave-04 Checkpoint and Package refresh.
 
 ## Goal
 Generate a complete v4 kickoff foundation from Step 2, using human-in-loop multi-model production, and export a loader-valid local kickoff bundle at `.ai/.tmp/kickoff/manifest.v1.yaml`.
