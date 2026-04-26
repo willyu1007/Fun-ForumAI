@@ -45,6 +45,7 @@ export interface InfraResult {
     mediaGenerationWorker: LeaderElector
     mediaLifecycleWorker: LeaderElector
     mediaImportJobWorker: LeaderElector
+    publicDiscussionCueWorker: LeaderElector
   }
 }
 
@@ -202,6 +203,7 @@ export async function createInfrastructure(): Promise<InfraResult> {
       mediaGenerationWorker: createLeaderElector('media-generation-worker'),
       mediaLifecycleWorker: createLeaderElector('media-lifecycle-worker'),
       mediaImportJobWorker: createLeaderElector('media-import-job-worker'),
+      publicDiscussionCueWorker: createLeaderElector('public-discussion-cue-worker'),
     },
   }
 }

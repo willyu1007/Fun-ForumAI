@@ -34,6 +34,7 @@ import {
   mediaGenerationWorker,
   mediaImportJobWorker,
   mediaLifecycleWorker,
+  publicDiscussionCueWorker,
   promptOrchestrator,
   agentService,
   promptEngine,
@@ -635,6 +636,10 @@ export function startBackgroundServices(): void {
   if (config.launch.capabilities.mediaLifecycleV1) {
     mediaLifecycleWorker.start()
   }
+
+  if (config.runtime.publicDiscussionCueWorkerEnabled) {
+    publicDiscussionCueWorker.start()
+  }
 }
 
 export function stopBackgroundServices(): void {
@@ -657,6 +662,7 @@ export function stopBackgroundServices(): void {
   mediaGenerationWorker?.stop()
   mediaImportJobWorker?.stop()
   mediaLifecycleWorker?.stop()
+  publicDiscussionCueWorker?.stop()
 }
 
 // ─── Persistence initialization ─────────────────────────────

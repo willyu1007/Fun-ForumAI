@@ -34,6 +34,9 @@ import {
 } from '@prisma/client'
 import type {
   AttachCueMediaInput,
+  ClaimDueCuesInput,
+  ClaimedCue,
+  CreateCueAttemptInput,
   CreateCueInput,
   CreateCueScheduleInput,
   CueChangeApprovalStatus,
@@ -55,13 +58,18 @@ import type {
   PublicDiscussionCueChangeDomain,
   PublicDiscussionCueMediaDomain,
   PublicDiscussionCueScheduleDomain,
+  ReclaimExpiredLeasesInput,
+  ReclaimedLease,
   RecordCueChangeInput,
   ScheduleScopeQuery,
+  UpdateCueAttemptPatch,
   UpdateCueInput,
 } from '../cue-repository.js'
 import {
   assertScopeConsistency,
+  attemptIdempotencyKey,
   defaultCueIdempotencyKey,
+  IN_FLIGHT_ATTEMPT_STATUSES,
 } from '../cue-repository.js'
 import {
   CueAdmissionPolicySchema,
@@ -361,6 +369,23 @@ const ATTEMPT_STATUS_FROM_DB: Record<
   DELAYED: 'delayed',
   MISFIRED: 'misfired',
   CANCELLED: 'cancelled',
+}
+const ATTEMPT_STATUS_TO_DB: Record<
+  CueExecutionAttemptStatus,
+  PrismaCueExecutionAttemptStatus
+> = {
+  pending: 'PENDING',
+  admitted: 'ADMITTED',
+  leased: 'LEASED',
+  allocating: 'ALLOCATING',
+  compiling: 'COMPILING',
+  executing: 'EXECUTING',
+  succeeded: 'SUCCEEDED',
+  failed: 'FAILED',
+  skipped: 'SKIPPED',
+  delayed: 'DELAYED',
+  misfired: 'MISFIRED',
+  cancelled: 'CANCELLED',
 }
 
 // =============================================================================
@@ -781,7 +806,7 @@ export class PgCueRepository implements CueRepository {
     return rows.map((row) => this.mediaToDomain(row))
   }
 
-  // ---- Attempt (read API) ----
+  // ---- Attempt (T-212 M2 — full write API) ----
 
   async listAttemptsForCue(
     cueId: string,
@@ -791,6 +816,318 @@ export class PgCueRepository implements CueRepository {
       orderBy: [{ attemptNo: 'asc' }],
     })
     return rows.map((row) => this.attemptToDomain(row))
+  }
+
+  async findPrewarmableCues(input: {
+    now: Date
+    batchSize: number
+  }): Promise<PublicDiscussionCueDomain[]> {
+    const rows = await this.prisma.publicDiscussionCue.findMany({
+      where: {
+        status: 'SCHEDULED',
+        prewarmAt: { lte: input.now, not: null },
+        triggerAt: { gt: input.now },
+      },
+      orderBy: [{ triggerAt: 'asc' }, { id: 'asc' }],
+      take: Math.max(0, input.batchSize),
+    })
+    return rows.map((row) => this.cueToDomain(row))
+  }
+
+  async claimDueCues(input: ClaimDueCuesInput): Promise<ClaimedCue[]> {
+    if (input.batchSize <= 0) return []
+    const horizon = new Date(input.now.getTime() + input.graceSeconds * 1000)
+    const leaseExpiresAt = new Date(input.now.getTime() + input.leaseSeconds * 1000)
+
+    return this.prisma.$transaction(async (tx) => {
+      // Atomic claim: select due/scheduled/deferred cues with row-level lock,
+      // skipping rows other workers have locked, then transition to CLAIMED
+      // and return the cue ids in a single round-trip.
+      const scheduleFilter = input.scheduleId
+        ? Prisma.sql`AND schedule_id = ${input.scheduleId}`
+        : Prisma.empty
+      const claimedRows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        WITH due AS (
+          SELECT id
+          FROM public_discussion_cues
+          WHERE trigger_at <= ${horizon}
+            AND status IN ('SCHEDULED', 'DUE', 'DEFERRED', 'PREWARMING')
+            ${scheduleFilter}
+          ORDER BY priority DESC, trigger_at ASC, id ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT ${input.batchSize}
+        )
+        UPDATE public_discussion_cues AS cue
+        SET status = 'CLAIMED', updated_at = NOW()
+        WHERE cue.id IN (SELECT id FROM due)
+        RETURNING cue.id
+      `)
+      if (claimedRows.length === 0) return []
+
+      const claimedIds = claimedRows.map((row) => row.id)
+      const cueRows = await tx.publicDiscussionCue.findMany({
+        where: { id: { in: claimedIds } },
+      })
+      const cuesById = new Map(cueRows.map((row) => [row.id, row]))
+
+      // For each claimed cue, compute next attempt_no and insert the LEASED
+      // attempt row. attempt_no = max(prior attempts.attemptNo) + 1 (>=1).
+      const attemptsByCueId = await tx.cueExecutionAttempt.groupBy({
+        by: ['cueId'],
+        where: { cueId: { in: claimedIds } },
+        _max: { attemptNo: true },
+      })
+      const maxAttemptByCueId = new Map(
+        attemptsByCueId.map((a) => [a.cueId, a._max.attemptNo ?? 0]),
+      )
+
+      const out: ClaimedCue[] = []
+      for (const cueId of claimedIds) {
+        const cueRow = cuesById.get(cueId)
+        if (!cueRow) continue
+        const nextAttemptNo = (maxAttemptByCueId.get(cueId) ?? 0) + 1
+        const idempotencyKey = attemptIdempotencyKey(
+          cueRow.scheduleId,
+          cueRow.id,
+          nextAttemptNo,
+        )
+        const attemptRow = await tx.cueExecutionAttempt.create({
+          data: {
+            cueId: cueRow.id,
+            attemptNo: nextAttemptNo,
+            scheduledTriggerAt: cueRow.triggerAt,
+            actualClaimedAt: input.now,
+            status: 'LEASED',
+            leaseOwner: input.leaseOwner,
+            leaseExpiresAt,
+            idempotencyKey,
+          },
+        })
+        out.push({
+          cue: this.cueToDomain(cueRow),
+          attempt: this.attemptToDomain(attemptRow),
+        })
+      }
+      return out
+    })
+  }
+
+  async createAttempt(
+    input: CreateCueAttemptInput,
+  ): Promise<CueExecutionAttemptDomain> {
+    if (!Number.isInteger(input.attempt_no) || input.attempt_no < 1) {
+      throw new Error('createAttempt: attempt_no must be a positive integer (>= 1)')
+    }
+    // Honor idempotency_key uniqueness — if this caller has already created
+    // an attempt with the same key (e.g. due to a transient retry), return
+    // the existing row instead of throwing.
+    const existing = await this.prisma.cueExecutionAttempt.findUnique({
+      where: { idempotencyKey: input.idempotency_key },
+    })
+    if (existing) return this.attemptToDomain(existing)
+
+    const row = await this.prisma.cueExecutionAttempt.create({
+      data: {
+        cueId: input.cue_id,
+        attemptNo: input.attempt_no,
+        scheduledTriggerAt: input.scheduled_trigger_at,
+        actualClaimedAt: input.lease_owner ? new Date() : null,
+        status: input.status ? ATTEMPT_STATUS_TO_DB[input.status] : 'LEASED',
+        leaseOwner: input.lease_owner ?? null,
+        leaseExpiresAt: input.lease_expires_at ?? null,
+        idempotencyKey: input.idempotency_key,
+        admissionResultJson:
+          input.admission_result_json === undefined
+            ? Prisma.JsonNull
+            : (input.admission_result_json as Prisma.InputJsonValue),
+        allocatorResultJson:
+          input.allocator_result_json === undefined
+            ? Prisma.JsonNull
+            : (input.allocator_result_json as Prisma.InputJsonValue),
+        directorBriefJson:
+          input.director_brief_json === undefined
+            ? Prisma.JsonNull
+            : (input.director_brief_json as Prisma.InputJsonValue),
+        selectedCastJson:
+          input.selected_cast_json === undefined
+            ? Prisma.JsonNull
+            : (input.selected_cast_json as Prisma.InputJsonValue),
+        loadSnapshotJson:
+          input.load_snapshot_json === undefined
+            ? Prisma.JsonNull
+            : (input.load_snapshot_json as Prisma.InputJsonValue),
+      },
+    })
+    return this.attemptToDomain(row)
+  }
+
+  async updateAttempt(
+    id: string,
+    patch: UpdateCueAttemptPatch,
+  ): Promise<CueExecutionAttemptDomain | null> {
+    const data: Prisma.CueExecutionAttemptUpdateInput = {}
+    if (patch.status !== undefined) data.status = ATTEMPT_STATUS_TO_DB[patch.status]
+    if (patch.lease_owner !== undefined) data.leaseOwner = patch.lease_owner
+    if (patch.lease_expires_at !== undefined) {
+      data.leaseExpiresAt = patch.lease_expires_at
+    }
+    if (patch.actual_claimed_at !== undefined) {
+      data.actualClaimedAt = patch.actual_claimed_at
+    }
+    if (patch.admission_result_json !== undefined) {
+      data.admissionResultJson =
+        patch.admission_result_json === null
+          ? Prisma.JsonNull
+          : (patch.admission_result_json as Prisma.InputJsonValue)
+    }
+    if (patch.allocator_result_json !== undefined) {
+      data.allocatorResultJson =
+        patch.allocator_result_json === null
+          ? Prisma.JsonNull
+          : (patch.allocator_result_json as Prisma.InputJsonValue)
+    }
+    if (patch.director_brief_json !== undefined) {
+      data.directorBriefJson =
+        patch.director_brief_json === null
+          ? Prisma.JsonNull
+          : (patch.director_brief_json as Prisma.InputJsonValue)
+    }
+    if (patch.selected_cast_json !== undefined) {
+      data.selectedCastJson =
+        patch.selected_cast_json === null
+          ? Prisma.JsonNull
+          : (patch.selected_cast_json as Prisma.InputJsonValue)
+    }
+    if (patch.post_id !== undefined) data.postId = patch.post_id
+    if (patch.thread_id !== undefined) data.threadId = patch.thread_id
+    if (patch.forum_scene_metadata_id !== undefined) {
+      data.forumSceneMetadataId = patch.forum_scene_metadata_id
+    }
+    if (patch.total_latency_ms !== undefined) {
+      data.totalLatencyMs = patch.total_latency_ms
+    }
+    if (patch.error_code !== undefined) data.errorCode = patch.error_code
+    if (patch.error_text !== undefined) data.errorText = patch.error_text
+    if (patch.started_at !== undefined) data.startedAt = patch.started_at
+    if (patch.finished_at !== undefined) data.finishedAt = patch.finished_at
+
+    try {
+      const row = await this.prisma.cueExecutionAttempt.update({
+        where: { id },
+        data,
+      })
+      return this.attemptToDomain(row)
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        return null
+      }
+      throw err
+    }
+  }
+
+  async releaseLease(
+    attemptId: string,
+  ): Promise<CueExecutionAttemptDomain | null> {
+    try {
+      const row = await this.prisma.cueExecutionAttempt.update({
+        where: { id: attemptId },
+        data: { leaseOwner: null, leaseExpiresAt: null },
+      })
+      return this.attemptToDomain(row)
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        return null
+      }
+      throw err
+    }
+  }
+
+  async extendLease(
+    attemptId: string,
+    leaseSeconds: number,
+    now?: Date,
+  ): Promise<CueExecutionAttemptDomain | null> {
+    const baseTime = (now ?? new Date()).getTime()
+    try {
+      const row = await this.prisma.cueExecutionAttempt.update({
+        where: { id: attemptId },
+        data: { leaseExpiresAt: new Date(baseTime + leaseSeconds * 1000) },
+      })
+      return this.attemptToDomain(row)
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        return null
+      }
+      throw err
+    }
+  }
+
+  async findInFlightAttemptForCue(
+    cueId: string,
+  ): Promise<CueExecutionAttemptDomain | null> {
+    const inFlightDb = IN_FLIGHT_ATTEMPT_STATUSES.map(
+      (s) => ATTEMPT_STATUS_TO_DB[s],
+    )
+    const row = await this.prisma.cueExecutionAttempt.findFirst({
+      where: { cueId, status: { in: inFlightDb } },
+      orderBy: [{ attemptNo: 'desc' }],
+    })
+    return row ? this.attemptToDomain(row) : null
+  }
+
+  async reclaimExpiredLeases(
+    input: ReclaimExpiredLeasesInput,
+  ): Promise<ReclaimedLease[]> {
+    const inFlightDb = IN_FLIGHT_ATTEMPT_STATUSES.map(
+      (s) => ATTEMPT_STATUS_TO_DB[s],
+    )
+    return this.prisma.$transaction(async (tx) => {
+      const expired = await tx.cueExecutionAttempt.findMany({
+        where: {
+          status: { in: inFlightDb },
+          leaseExpiresAt: { lt: input.now },
+        },
+        orderBy: [{ createdAt: 'asc' }],
+        take: input.batchSize,
+      })
+      if (expired.length === 0) return []
+      const expiredIds = expired.map((row) => row.id)
+      await tx.cueExecutionAttempt.updateMany({
+        where: {
+          id: { in: expiredIds },
+          status: { in: inFlightDb },
+        },
+        data: {
+          status: 'FAILED',
+          errorCode: 'lease_expired',
+          errorText: 'lease expired before completion',
+          leaseOwner: null,
+          leaseExpiresAt: null,
+          finishedAt: input.now,
+        },
+      })
+      const cueIds = Array.from(new Set(expired.map((row) => row.cueId)))
+      await tx.publicDiscussionCue.updateMany({
+        where: {
+          id: { in: cueIds },
+          status: { in: ['CLAIMED', 'EXECUTING'] },
+        },
+        data: { status: 'DEFERRED' },
+      })
+      return expired.map((row) => ({
+        attempt_id: row.id,
+        cue_id: row.cueId,
+      }))
+    })
   }
 
   // ---- Domain mappers ----

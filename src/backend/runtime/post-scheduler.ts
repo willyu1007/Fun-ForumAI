@@ -305,6 +305,14 @@ export class PostScheduler {
         community: targetCommunity,
         reason: scheduledFallbackReason,
       })
+    if (effectiveScenePayload) {
+      // T-212 M1 — invariant I-1 (umbrella §2.2): every root-post write
+      // produced by the autonomous tick stamps `production_path: 'autonomous'`.
+      effectiveScenePayload = {
+        ...effectiveScenePayload,
+        programming: { production_path: 'autonomous' },
+      }
+    }
     if (scheduledFallbackReason) {
       console.warn(
         `[PostScheduler] Falling back to community scheduling for agent=${selected.id}: ${scheduledFallbackReason}`,

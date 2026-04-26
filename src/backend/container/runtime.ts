@@ -192,5 +192,12 @@ export function createRuntime(deps: {
     publicStageTurnRepo: deps.publicStageTurnRepo,
   })
 
-  return { contextBuilder, agentExecutor, postScheduler, runtimeLoop, eventBridge }
+  return {
+    contextBuilder,
+    agentExecutor,
+    postScheduler,
+    runtimeLoop,
+    eventBridge,
+    dataplaneWriter,
+  }
 }

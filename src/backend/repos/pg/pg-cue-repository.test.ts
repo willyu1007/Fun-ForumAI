@@ -208,4 +208,154 @@ describe.runIf(true)('PgCueRepository — integration smoke', () => {
     const allSchedules = await repo.listSchedules()
     expect(allSchedules.length).toBe(1)
   })
+
+  // ===========================================================================
+  // T-212 M2 — attempt write API + lease semantics on real Postgres
+  // ===========================================================================
+
+  it('claimDueCues atomically transitions a cue to claimed and emits a leased attempt', async () => {
+    if (!dbAvailable || !prisma) return
+    const repo = new PgCueRepository(prisma)
+    const schedule = await repo.createSchedule(makeScheduleInput())
+    const cue = await repo.createCue(
+      makeCueInput(schedule.id, {
+        trigger_at: new Date('2026-04-26T12:00:00+08:00'),
+        status: 'scheduled',
+      }),
+    )
+
+    const now = new Date('2026-04-26T12:00:30+08:00')
+    const claimed = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 10,
+    })
+    expect(claimed).toHaveLength(1)
+    expect(claimed[0].cue.id).toBe(cue.id)
+    expect(claimed[0].cue.status).toBe('claimed')
+    expect(claimed[0].attempt.status).toBe('leased')
+    expect(claimed[0].attempt.attempt_no).toBe(1)
+    expect(claimed[0].attempt.lease_owner).toBe('worker-A')
+    expect(claimed[0].attempt.lease_expires_at?.getTime()).toBe(
+      now.getTime() + 120_000,
+    )
+    expect(claimed[0].attempt.idempotency_key).toMatch(
+      /^cue:[^:]+:[^:]+:1$/,
+    )
+  })
+
+  it('does not double-claim under concurrent claimers (FOR UPDATE SKIP LOCKED)', async () => {
+    if (!dbAvailable || !prisma) return
+    const repo = new PgCueRepository(prisma)
+    const schedule = await repo.createSchedule(makeScheduleInput())
+    // Seed 5 cues all due at the same instant.
+    const triggerAt = new Date('2026-04-26T13:00:00+08:00')
+    for (let i = 0; i < 5; i++) {
+      await repo.createCue(
+        makeCueInput(schedule.id, {
+          trigger_at: triggerAt,
+          status: 'scheduled',
+          community_id: `c${i}`,
+          scope: { mode: 'single', community_id: `c${i}` },
+        }),
+      )
+    }
+    const now = new Date(triggerAt.getTime() + 30_000)
+    // Two parallel workers, batchSize=3 each. Combined they may claim at most 5.
+    const [a, b] = await Promise.all([
+      repo.claimDueCues({
+        now,
+        graceSeconds: 60,
+        leaseOwner: 'worker-A',
+        leaseSeconds: 120,
+        batchSize: 3,
+      }),
+      repo.claimDueCues({
+        now,
+        graceSeconds: 60,
+        leaseOwner: 'worker-B',
+        leaseSeconds: 120,
+        batchSize: 3,
+      }),
+    ])
+    const claimedIds = [
+      ...a.map((r) => r.cue.id),
+      ...b.map((r) => r.cue.id),
+    ]
+    // No double-claim
+    expect(new Set(claimedIds).size).toBe(claimedIds.length)
+    // Combined cap is 5
+    expect(claimedIds.length).toBeLessThanOrEqual(5)
+  })
+
+  it('lease expiry — reclaim resets cue to deferred and marks attempt failed', async () => {
+    if (!dbAvailable || !prisma) return
+    const repo = new PgCueRepository(prisma)
+    const schedule = await repo.createSchedule(makeScheduleInput())
+    const cue = await repo.createCue(
+      makeCueInput(schedule.id, {
+        trigger_at: new Date('2026-04-26T14:00:00+08:00'),
+        status: 'scheduled',
+      }),
+    )
+    const claimAt = new Date('2026-04-26T14:00:30+08:00')
+    const claimed = await repo.claimDueCues({
+      now: claimAt,
+      graceSeconds: 60,
+      leaseOwner: 'worker-dead',
+      leaseSeconds: 30,
+      batchSize: 1,
+    })
+    expect(claimed).toHaveLength(1)
+    const attemptId = claimed[0].attempt.id
+
+    // Move past lease_expires_at
+    const future = new Date(claimAt.getTime() + 90_000)
+    const reclaimed = await repo.reclaimExpiredLeases({ now: future })
+    expect(reclaimed).toEqual([{ attempt_id: attemptId, cue_id: cue.id }])
+
+    const cueAfter = await repo.findCueById(cue.id)
+    expect(cueAfter?.status).toBe('deferred')
+
+    const attemptsAfter = await repo.listAttemptsForCue(cue.id)
+    expect(attemptsAfter[0].status).toBe('failed')
+    expect(attemptsAfter[0].error_code).toBe('lease_expired')
+    expect(attemptsAfter[0].lease_owner).toBeNull()
+  })
+
+  it('updateAttempt + releaseLease + extendLease end-to-end', async () => {
+    if (!dbAvailable || !prisma) return
+    const repo = new PgCueRepository(prisma)
+    const schedule = await repo.createSchedule(makeScheduleInput())
+    await repo.createCue(
+      makeCueInput(schedule.id, {
+        trigger_at: new Date('2026-04-26T15:00:00+08:00'),
+        status: 'scheduled',
+      }),
+    )
+    const now = new Date('2026-04-26T15:00:30+08:00')
+    const claimed = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 60,
+      batchSize: 1,
+    })
+    const attemptId = claimed[0].attempt.id
+
+    const updated = await repo.updateAttempt(attemptId, {
+      status: 'executing',
+      admission_result_json: { granted: true, decision: 'admit', reason_codes: [] },
+    })
+    expect(updated?.status).toBe('executing')
+
+    const extended = await repo.extendLease(attemptId, 120, now)
+    expect(extended?.lease_expires_at?.getTime()).toBe(now.getTime() + 120_000)
+
+    const released = await repo.releaseLease(attemptId)
+    expect(released?.lease_owner).toBeNull()
+    expect(released?.lease_expires_at).toBeNull()
+  })
 })

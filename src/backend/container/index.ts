@@ -12,6 +12,13 @@ import { HomeProgrammingSnapshotScheduler } from '../runtime/home-programming-sn
 import { MediaGenerationWorker } from '../runtime/media-generation-worker.js'
 import { MediaImportJobWorker } from '../runtime/media-import-job-worker.js'
 import { MediaLifecycleWorker } from '../runtime/media-lifecycle-worker.js'
+import { PublicDiscussionCueWorker } from '../runtime/public-discussion-cue-worker.js'
+import {
+  CueAdmissionController,
+} from '../programming/cue/cue-admission-controller.js'
+import { DirectorCueBriefServiceImpl } from '../programming/cue/director-cue-brief.js'
+import { InProcessTrivialCommunityBudgetService } from '../services/community-budget-service.js'
+import { loadSignalServiceStub } from '../services/__stubs__/load-signal-service-stub.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { AgentBioRefreshScheduler } from '../runtime/agent-bio-refresh-scheduler.js'
 import { AgentBiographyCompileScheduler } from '../runtime/agent-biography-compile-scheduler.js'
@@ -708,6 +715,92 @@ core.warmupGovernanceService.attachRuntimeDeps({
   runtimeLoop: rt.runtimeLoop,
   eventQueue: infra.eventQueue,
 })
+
+// ─── 7b. Public Discussion Cue Worker (T-212 M4) ───────────────
+// Independent lightweight loop that drives admin-authored cues from the
+// scheduled `triggerAt` window through admission → director brief → scene
+// selection → write. Runs only when explicitly enabled via
+// PUBLIC_DISCUSSION_CUE_WORKER_ENABLED=true (default off until T-213 lands
+// real load-aware admission). The worker stays out of RuntimeLoop so the
+// PostScheduler cue-isolation invariant (I-2) holds in both directions.
+const communityBudgetService = new InProcessTrivialCommunityBudgetService()
+const cueAdmissionController = new CueAdmissionController({
+  communityBudgetService,
+  publicGrowthGate: core.warmupGovernanceService,
+  loadSignalService: loadSignalServiceStub,
+})
+const directorCueBriefService = new DirectorCueBriefServiceImpl()
+const publicDiscussionCueWorker = new PublicDiscussionCueWorker(
+  {
+    cueRepo: repos.cueRepo,
+    admissionController: cueAdmissionController,
+    directorCueBrief: directorCueBriefService,
+    sceneSelector: core.publicSceneSelectorService,
+    dataPlaneWriter: rt.dataplaneWriter,
+    eventRepo: repos.eventRepo,
+    communityBudgetService,
+    leaderElector: infra.leaderElectors.publicDiscussionCueWorker,
+    // Community resolver — adapts the existing community read path so the
+    // worker can target the cue's locked community without taking on a heavy
+    // read-service dep.
+    communityResolver: {
+      resolve: async (id) => {
+        const community = repos.communityRepo.findById(id)
+        if (!community) return null
+        return {
+          id: community.id,
+          slug: community.slug,
+          name: community.name,
+          description: community.description ?? '',
+          rules:
+            typeof community.rules_json === 'object' && community.rules_json !== null
+              ? JSON.stringify(community.rules_json)
+              : '',
+        }
+      },
+    },
+    // T-212 M5 — cast resolver picks active members of the cue's community.
+    // MVP keeps it simple (community membership ranking by agent id) so the
+    // worker is end-to-end exercisable; full allocator integration with
+    // role-requirement scoring is a post-T-212 refinement.
+    castResolver: {
+      resolveCast: async (cue) => {
+        const communityId =
+          cue.community_id ??
+          (cue.scope.mode === 'single' ? cue.scope.community_id : undefined)
+        if (!communityId) return []
+        const agentIds = repos.agentCommunityMembershipRepo
+          .listActiveAgentIdsByCommunity(communityId)
+          .slice(0, 8)
+        const agents: Array<{ id: string; display_name: string }> = []
+        for (const agentId of agentIds) {
+          const agent = repos.agentRepo.findById(agentId)
+          if (agent) {
+            agents.push({ id: agent.id, display_name: agent.display_name })
+          }
+        }
+        return agents
+      },
+    },
+    // Content generator — MVP returns a brief-derived stub so the seam is
+    // exercisable end-to-end without coupling the worker to LLM internals.
+    contentGenerator: {
+      generate: async ({ cue, primaryAuthor }) => ({
+        title: cue.theme_intent.topic_seed,
+        body:
+          cue.theme_intent.discussion_question ??
+          `${cue.theme_intent.topic_seed} — by ${primaryAuthor.display_name}`,
+      }),
+    },
+  },
+  {
+    intervalMs: config.runtime.publicDiscussionCueWorkerIntervalMs,
+    startupDelayMs: config.runtime.publicDiscussionCueWorkerStartupDelayMs,
+    graceSeconds: config.runtime.publicDiscussionCueWorkerGraceSeconds,
+    leaseSeconds: config.runtime.publicDiscussionCueWorkerLeaseSeconds,
+    batchSize: config.runtime.publicDiscussionCueWorkerBatchSize,
+  },
+)
 core.warmupGovernanceService.attachProjectionDeps({
   searchProjectionService,
 })
@@ -928,6 +1021,7 @@ export {
   mediaGenerationWorker,
   mediaLifecycleWorker,
   mediaImportJobWorker,
+  publicDiscussionCueWorker,
 }
 export {
   guidanceBellService,

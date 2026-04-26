@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   InMemoryCueRepository,
+  attemptIdempotencyKey,
+  defaultCueIdempotencyKey,
   type AttachCueMediaInput,
   type CreateCueInput,
   type CreateCueScheduleInput,
   type RecordCueChangeInput,
 } from '../cue-repository.js'
+import { parseIdempotencyKey } from '../../programming/contract/index.js'
 import type {
   CueCommunityScope,
   CueRoleRequirementVector,
@@ -443,5 +446,365 @@ describe('InMemoryCueRepository — Scope consistency (HIGH-2 fix)', () => {
     await expect(
       repo.createCue(makeCueInput('schedule_missing')),
     ).rejects.toThrow(/schedule schedule_missing not found/)
+  })
+})
+
+// =============================================================================
+// T-212 M2 — attempt write API + lease primitives
+// =============================================================================
+
+describe('attemptIdempotencyKey — namespace contract (T-212 R8)', () => {
+  it('produces cue:<schedule>:<cue>:<attempt_no> for attempt_no >= 1', () => {
+    const key = attemptIdempotencyKey('sched-1', 'cue-1', 1)
+    expect(key).toBe('cue:sched-1:cue-1:1')
+    const parsed = parseIdempotencyKey(key)
+    expect(parsed?.namespace).toBe('cue')
+    expect(parsed?.segments).toEqual(['sched-1', 'cue-1', '1'])
+  })
+
+  it('rejects attempt_no=0 (reserved for cue creation sentinel)', () => {
+    expect(() => attemptIdempotencyKey('sched-1', 'cue-1', 0)).toThrow(
+      /positive integer/,
+    )
+  })
+
+  it('rejects negative or non-integer attempt_no', () => {
+    expect(() => attemptIdempotencyKey('sched-1', 'cue-1', -1)).toThrow()
+    expect(() => attemptIdempotencyKey('sched-1', 'cue-1', 1.5)).toThrow()
+  })
+
+  it('cue creation key (revision=0) and attempt key (attempt_no>=1) never collide', () => {
+    // defaultCueIdempotencyKey uses 'pending-XXXX' for the cue id segment;
+    // attemptIdempotencyKey uses the real cue id. Even if attempt_no were
+    // accidentally 0 (it cannot be — guarded above), the key would still be
+    // distinct because of the different middle segment.
+    const cueKey = defaultCueIdempotencyKey('sched-1')
+    const attemptKey = attemptIdempotencyKey('sched-1', 'cue-real-cuid', 1)
+    expect(cueKey).not.toEqual(attemptKey)
+    const cueParsed = parseIdempotencyKey(cueKey)!
+    expect(cueParsed.segments[2]).toBe('0')
+    expect(cueParsed.segments[1]).toMatch(/^pending-/)
+    const attemptParsed = parseIdempotencyKey(attemptKey)!
+    expect(attemptParsed.segments[2]).toBe('1')
+    expect(attemptParsed.segments[1]).not.toMatch(/^pending-/)
+  })
+})
+
+describe('InMemoryCueRepository — claimDueCues', () => {
+  let repo: InMemoryCueRepository
+  let scheduleId: string
+  const now = new Date('2026-04-25T20:30:00.000Z')
+
+  async function seedScheduledCue(
+    triggerAt: Date,
+    overrides: Partial<CreateCueInput> = {},
+  ): Promise<string> {
+    const cue = await repo.createCue(
+      makeCueInput(scheduleId, {
+        trigger_at: triggerAt,
+        status: 'scheduled',
+        ...overrides,
+      }),
+    )
+    return cue.id
+  }
+
+  beforeEach(async () => {
+    repo = new InMemoryCueRepository()
+    const schedule = await repo.createSchedule(makeScheduleInput())
+    scheduleId = schedule.id
+  })
+
+  it('claims a due cue and emits a leased attempt', async () => {
+    const cueId = await seedScheduledCue(now)
+    const result = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 5,
+    })
+    expect(result).toHaveLength(1)
+    const claimed = result[0]
+    expect(claimed.cue.id).toBe(cueId)
+    expect(claimed.cue.status).toBe('claimed')
+    expect(claimed.attempt.cue_id).toBe(cueId)
+    expect(claimed.attempt.status).toBe('leased')
+    expect(claimed.attempt.attempt_no).toBe(1)
+    expect(claimed.attempt.lease_owner).toBe('worker-A')
+    expect(claimed.attempt.lease_expires_at?.getTime()).toBe(
+      now.getTime() + 120_000,
+    )
+    expect(claimed.attempt.idempotency_key).toBe(
+      attemptIdempotencyKey(scheduleId, cueId, 1),
+    )
+  })
+
+  it('skips cues whose triggerAt is beyond now+grace', async () => {
+    await seedScheduledCue(new Date(now.getTime() + 5 * 60_000))
+    const result = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 5,
+    })
+    expect(result).toHaveLength(0)
+  })
+
+  it('does not double-claim a cue across two sequential workers', async () => {
+    const cueId = await seedScheduledCue(now)
+    const a = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 5,
+    })
+    const b = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-B',
+      leaseSeconds: 120,
+      batchSize: 5,
+    })
+    expect(a.map((r) => r.cue.id)).toEqual([cueId])
+    expect(b).toHaveLength(0)
+  })
+
+  it('only considers status in {scheduled, due, deferred}', async () => {
+    const scheduledId = await seedScheduledCue(now)
+    const dueId = await seedScheduledCue(now, { status: 'due' })
+    const deferredId = await seedScheduledCue(now, { status: 'deferred' })
+    await seedScheduledCue(now, { status: 'cancelled' })
+    await seedScheduledCue(now, { status: 'consumed' })
+    const result = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 10,
+    })
+    const ids = new Set(result.map((r) => r.cue.id))
+    expect(ids).toEqual(new Set([scheduledId, dueId, deferredId]))
+  })
+
+  it('orders by priority desc then triggerAt asc', async () => {
+    const earlyLowPri = await seedScheduledCue(
+      new Date(now.getTime() - 2 * 60_000),
+      { priority: 10 },
+    )
+    const laterHighPri = await seedScheduledCue(
+      new Date(now.getTime() - 1 * 60_000),
+      { priority: 90 },
+    )
+    const result = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 1,
+    })
+    expect(result).toHaveLength(1)
+    expect(result[0].cue.id).toBe(laterHighPri)
+    // sanity: low-pri cue was not claimed
+    const second = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 1,
+    })
+    expect(second[0]?.cue.id).toBe(earlyLowPri)
+  })
+
+  it('caps the result at batchSize', async () => {
+    for (let i = 0; i < 4; i++) await seedScheduledCue(now)
+    const result = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 2,
+    })
+    expect(result).toHaveLength(2)
+  })
+
+  it('respects scheduleId scope filter when provided', async () => {
+    const inScopeCueId = await seedScheduledCue(now)
+    const otherSchedule = await repo.createSchedule(makeScheduleInput())
+    await repo.createCue(
+      makeCueInput(otherSchedule.id, { trigger_at: now, status: 'scheduled' }),
+    )
+    const result = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 10,
+      scheduleId,
+    })
+    expect(result.map((r) => r.cue.id)).toEqual([inScopeCueId])
+  })
+})
+
+describe('InMemoryCueRepository — attempt update / release / extend / find', () => {
+  let repo: InMemoryCueRepository
+  let scheduleId: string
+  let cueId: string
+  const now = new Date('2026-04-25T20:30:00.000Z')
+
+  beforeEach(async () => {
+    repo = new InMemoryCueRepository()
+    const schedule = await repo.createSchedule(makeScheduleInput())
+    scheduleId = schedule.id
+    const cue = await repo.createCue(
+      makeCueInput(scheduleId, { trigger_at: now, status: 'scheduled' }),
+    )
+    cueId = cue.id
+  })
+
+  async function leaseOnce(): Promise<{ attemptId: string }> {
+    const result = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 1,
+    })
+    return { attemptId: result[0].attempt.id }
+  }
+
+  it('updateAttempt patches selected fields without touching the rest', async () => {
+    const { attemptId } = await leaseOnce()
+    const updated = await repo.updateAttempt(attemptId, {
+      status: 'executing',
+      admission_result_json: { granted: true, decision: 'admit', reason_codes: [] },
+    })
+    expect(updated?.status).toBe('executing')
+    expect((updated?.admission_result_json as { granted?: boolean })?.granted).toBe(true)
+    // unchanged
+    expect(updated?.lease_owner).toBe('worker-A')
+  })
+
+  it('updateAttempt returns null for unknown id', async () => {
+    expect(await repo.updateAttempt('does-not-exist', { status: 'failed' })).toBeNull()
+  })
+
+  it('releaseLease clears lease_owner and lease_expires_at', async () => {
+    const { attemptId } = await leaseOnce()
+    const released = await repo.releaseLease(attemptId)
+    expect(released?.lease_owner).toBeNull()
+    expect(released?.lease_expires_at).toBeNull()
+  })
+
+  it('extendLease pushes lease_expires_at by leaseSeconds from supplied now', async () => {
+    const { attemptId } = await leaseOnce()
+    const later = new Date(now.getTime() + 60_000)
+    const extended = await repo.extendLease(attemptId, 30, later)
+    expect(extended?.lease_expires_at?.getTime()).toBe(later.getTime() + 30_000)
+  })
+
+  it('findInFlightAttemptForCue returns the most recent in-flight attempt', async () => {
+    await leaseOnce()
+    const found = await repo.findInFlightAttemptForCue(cueId)
+    expect(found?.cue_id).toBe(cueId)
+    expect(found?.status).toBe('leased')
+  })
+
+  it('findInFlightAttemptForCue returns null after attempt finishes', async () => {
+    const { attemptId } = await leaseOnce()
+    await repo.updateAttempt(attemptId, { status: 'succeeded' })
+    expect(await repo.findInFlightAttemptForCue(cueId)).toBeNull()
+  })
+})
+
+describe('InMemoryCueRepository — reclaimExpiredLeases', () => {
+  let repo: InMemoryCueRepository
+  let scheduleId: string
+  let cueId: string
+  const now = new Date('2026-04-25T20:30:00.000Z')
+
+  beforeEach(async () => {
+    repo = new InMemoryCueRepository()
+    const schedule = await repo.createSchedule(makeScheduleInput())
+    scheduleId = schedule.id
+    const cue = await repo.createCue(
+      makeCueInput(scheduleId, { trigger_at: now, status: 'scheduled' }),
+    )
+    cueId = cue.id
+  })
+
+  it('marks expired in-flight attempts failed with lease_expired and resets cue to deferred', async () => {
+    const claimed = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-dead',
+      leaseSeconds: 30,
+      batchSize: 1,
+    })
+    const attemptId = claimed[0].attempt.id
+    const future = new Date(now.getTime() + 90_000) // past lease_expires_at
+    const reclaimed = await repo.reclaimExpiredLeases({ now: future })
+    expect(reclaimed).toEqual([{ attempt_id: attemptId, cue_id: cueId }])
+    const after = (await repo.listAttemptsForCue(cueId))[0]
+    expect(after.status).toBe('failed')
+    expect(after.error_code).toBe('lease_expired')
+    expect(after.lease_owner).toBeNull()
+    const cueAfter = await repo.findCueById(cueId)
+    expect(cueAfter?.status).toBe('deferred')
+  })
+
+  it('does not reclaim leases that have not yet expired', async () => {
+    await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 120,
+      batchSize: 1,
+    })
+    const justAfter = new Date(now.getTime() + 60_000)
+    const reclaimed = await repo.reclaimExpiredLeases({ now: justAfter })
+    expect(reclaimed).toEqual([])
+  })
+
+  it('does not touch attempts already in a terminal state', async () => {
+    const claimed = await repo.claimDueCues({
+      now,
+      graceSeconds: 60,
+      leaseOwner: 'worker-A',
+      leaseSeconds: 30,
+      batchSize: 1,
+    })
+    await repo.updateAttempt(claimed[0].attempt.id, { status: 'succeeded' })
+    const future = new Date(now.getTime() + 90_000)
+    const reclaimed = await repo.reclaimExpiredLeases({ now: future })
+    expect(reclaimed).toEqual([])
+  })
+
+  it('caps reclaim batch size', async () => {
+    // Seed three independent cues, all with short leases.
+    for (let i = 0; i < 3; i++) {
+      const c = await repo.createCue(
+        makeCueInput(scheduleId, {
+          trigger_at: now,
+          status: 'scheduled',
+          community_id: `c${i}`,
+          scope: { mode: 'single', community_id: `c${i}` },
+        }),
+      )
+      await repo.claimDueCues({
+        now,
+        graceSeconds: 60,
+        leaseOwner: 'w',
+        leaseSeconds: 30,
+        batchSize: 1,
+        scheduleId,
+      })
+      void c
+    }
+    const future = new Date(now.getTime() + 90_000)
+    const reclaimed = await repo.reclaimExpiredLeases({ now: future, batchSize: 2 })
+    expect(reclaimed).toHaveLength(2)
   })
 })

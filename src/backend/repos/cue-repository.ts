@@ -378,6 +378,97 @@ export interface CueExecutionAttemptDomain {
 }
 
 // =============================================================================
+// Attempt write API (T-212 M2)
+// =============================================================================
+
+/**
+ * One element in a `claimDueCues` batch — the claimed cue along with the
+ * `CueExecutionAttempt` row created for it (status='leased').
+ */
+export interface ClaimedCue {
+  cue: PublicDiscussionCueDomain
+  attempt: CueExecutionAttemptDomain
+}
+
+/**
+ * Atomic claim of due cues via DB-level lease (FOR UPDATE SKIP LOCKED in pg).
+ *
+ * Eligible cues: `status ∈ {'scheduled','due','deferred'} AND
+ * triggerAt <= now + graceSeconds`. The repository transitions matched cues
+ * to status='claimed' and creates a fresh `CueExecutionAttempt`
+ * (status='leased', `lease_owner`, `lease_expires_at = now + leaseSeconds`,
+ * `attempt_no = max(prior attempts for cue) + 1`).
+ *
+ * Multiple workers may call this concurrently — SKIP LOCKED guarantees no
+ * cue is double-claimed. Returns at most `batchSize` rows.
+ */
+export interface ClaimDueCuesInput {
+  now: Date
+  graceSeconds: number
+  leaseOwner: string
+  leaseSeconds: number
+  batchSize: number
+  /** Optional schedule scope restriction (mostly for tests / partitioned workers). */
+  scheduleId?: string
+}
+
+export interface CreateCueAttemptInput {
+  cue_id: string
+  /** Must be >= 1. Caller is responsible for computing the next attempt number. */
+  attempt_no: number
+  scheduled_trigger_at: Date
+  status?: CueExecutionAttemptStatus
+  lease_owner?: string | null
+  lease_expires_at?: Date | null
+  /**
+   * Caller provides; idempotency namespace `cue:<scheduleId>:<cueId>:<attempt_no>`.
+   * Cue creation occupies `cue:<scheduleId>:pending-XXXX:0`, so attempt keys
+   * (attempt_no >= 1) never collide with cue creation keys.
+   */
+  idempotency_key: string
+  admission_result_json?: unknown
+  allocator_result_json?: unknown
+  director_brief_json?: unknown
+  selected_cast_json?: unknown
+  load_snapshot_json?: unknown
+}
+
+export interface UpdateCueAttemptPatch {
+  status?: CueExecutionAttemptStatus
+  lease_owner?: string | null
+  lease_expires_at?: Date | null
+  actual_claimed_at?: Date | null
+  admission_result_json?: unknown
+  allocator_result_json?: unknown
+  director_brief_json?: unknown
+  selected_cast_json?: unknown
+  post_id?: string | null
+  thread_id?: string | null
+  forum_scene_metadata_id?: string | null
+  total_latency_ms?: number | null
+  error_code?: string | null
+  error_text?: string | null
+  started_at?: Date | null
+  finished_at?: Date | null
+}
+
+export interface ReclaimExpiredLeasesInput {
+  now: Date
+  /** Cap on rows reset per call. */
+  batchSize?: number
+}
+
+/**
+ * Identity of an attempt whose lease was reclaimed (marked failed with
+ * `error_code='lease_expired'`); the corresponding cue is reset to
+ * `deferred` so the next worker tick can re-claim it.
+ */
+export interface ReclaimedLease {
+  attempt_id: string
+  cue_id: string
+}
+
+// =============================================================================
 // Repository interface
 // =============================================================================
 
@@ -418,8 +509,66 @@ export interface CueRepository {
   removeMedia(id: string): Promise<boolean>
   listMediaForCue(cueId: string): Promise<PublicDiscussionCueMediaDomain[]>
 
-  // Attempt (read API; T-212 will add write API)
+  // Attempt (T-212 M2)
   listAttemptsForCue(cueId: string): Promise<CueExecutionAttemptDomain[]>
+  /**
+   * T-212 M5 — find cues whose prewarm window is open: `prewarm_at <= now AND
+   * trigger_at > now AND status='scheduled'`. Worker uses this to drive the
+   * prewarm dry-run sweep (no DB lease — prewarm is best-effort and racing
+   * workers will simply re-do the dry-runs harmlessly).
+   */
+  findPrewarmableCues(input: {
+    now: Date
+    batchSize: number
+  }): Promise<PublicDiscussionCueDomain[]>
+  claimDueCues(input: ClaimDueCuesInput): Promise<ClaimedCue[]>
+  createAttempt(input: CreateCueAttemptInput): Promise<CueExecutionAttemptDomain>
+  updateAttempt(
+    id: string,
+    patch: UpdateCueAttemptPatch,
+  ): Promise<CueExecutionAttemptDomain | null>
+  releaseLease(attemptId: string): Promise<CueExecutionAttemptDomain | null>
+  extendLease(
+    attemptId: string,
+    leaseSeconds: number,
+    now?: Date,
+  ): Promise<CueExecutionAttemptDomain | null>
+  findInFlightAttemptForCue(
+    cueId: string,
+  ): Promise<CueExecutionAttemptDomain | null>
+  reclaimExpiredLeases(input: ReclaimExpiredLeasesInput): Promise<ReclaimedLease[]>
+}
+
+/**
+ * Statuses that count an attempt as "in flight" — leased or actively running.
+ * Lease-reclaim sweeps target this set; only an in-flight attempt's lease
+ * matters for cue reclaim.
+ */
+export const IN_FLIGHT_ATTEMPT_STATUSES: ReadonlyArray<CueExecutionAttemptStatus> =
+  ['leased', 'admitted', 'allocating', 'compiling', 'executing']
+
+/**
+ * Build an idempotency key for a cue execution attempt.
+ *
+ * Namespace contract (T-212 R8):
+ *   - Cue creation occupies `cue:<scheduleId>:pending-XXXX:0` (revision=0)
+ *   - Attempts occupy `cue:<scheduleId>:<cueId>:<attempt_no>` with
+ *     `attempt_no >= 1`.
+ * The first attempt is `attempt_no=1`, never `0` — `0` is reserved for the
+ * cue-creation sentinel and overlap is forbidden.
+ */
+export function attemptIdempotencyKey(
+  scheduleId: string,
+  cueId: string,
+  attemptNo: number,
+): string {
+  if (!Number.isInteger(attemptNo) || attemptNo < 1) {
+    throw new Error(
+      `attemptIdempotencyKey: attempt_no must be a positive integer (got ${attemptNo}); ` +
+        '0 is reserved for cue creation per T-212 R8.',
+    )
+  }
+  return buildIdempotencyKey('cue', scheduleId, cueId, attemptNo)
 }
 
 // =============================================================================
@@ -854,7 +1003,7 @@ export class InMemoryCueRepository implements CueRepository {
       )
   }
 
-  // ---- Attempt (read-only here) ----
+  // ---- Attempt (T-212 M2 — full write API) ----
 
   async listAttemptsForCue(
     cueId: string,
@@ -862,5 +1011,276 @@ export class InMemoryCueRepository implements CueRepository {
     return Array.from(this.attempts.values())
       .filter((a) => a.cue_id === cueId)
       .sort((a, b) => a.attempt_no - b.attempt_no)
+      .map(cloneAttemptDomain)
+  }
+
+  async findPrewarmableCues(input: {
+    now: Date
+    batchSize: number
+  }): Promise<PublicDiscussionCueDomain[]> {
+    const nowMs = input.now.getTime()
+    return Array.from(this.cues.values())
+      .filter((cue) => {
+        if (cue.status !== 'scheduled') return false
+        if (!cue.prewarm_at) return false
+        const prewarmMs = new Date(cue.prewarm_at).getTime()
+        const triggerMs = new Date(cue.trigger_at).getTime()
+        return prewarmMs <= nowMs && triggerMs > nowMs
+      })
+      .sort((a, b) => {
+        const aMs = new Date(a.trigger_at).getTime()
+        const bMs = new Date(b.trigger_at).getTime()
+        if (aMs !== bMs) return aMs - bMs
+        return a.id.localeCompare(b.id)
+      })
+      .slice(0, Math.max(0, input.batchSize))
+      .map(cloneCueDomain)
+  }
+
+  async claimDueCues(input: ClaimDueCuesInput): Promise<ClaimedCue[]> {
+    const horizonMs = input.now.getTime() + input.graceSeconds * 1000
+    const eligible = Array.from(this.cues.values())
+      .filter((cue) => {
+        if (
+          cue.status !== 'scheduled' &&
+          cue.status !== 'due' &&
+          cue.status !== 'deferred' &&
+          cue.status !== 'prewarming'
+        ) {
+          return false
+        }
+        if (input.scheduleId != null && cue.schedule_id !== input.scheduleId) {
+          return false
+        }
+        return new Date(cue.trigger_at).getTime() <= horizonMs
+      })
+      .sort((a, b) => {
+        // Higher priority first; older trigger first within priority.
+        if (a.priority !== b.priority) return b.priority - a.priority
+        const aMs = new Date(a.trigger_at).getTime()
+        const bMs = new Date(b.trigger_at).getTime()
+        if (aMs !== bMs) return aMs - bMs
+        return a.id.localeCompare(b.id)
+      })
+      .slice(0, Math.max(0, input.batchSize))
+
+    const out: ClaimedCue[] = []
+    for (const cueRef of eligible) {
+      const cue = this.cues.get(cueRef.id)
+      if (cue == null) continue
+      cue.status = 'claimed'
+      cue.updated_at = nowDate().toISOString()
+
+      const priorAttempts = Array.from(this.attempts.values()).filter(
+        (a) => a.cue_id === cue.id,
+      )
+      const nextAttemptNo =
+        priorAttempts.reduce((max, a) => Math.max(max, a.attempt_no), 0) + 1
+      const idempotencyKey = attemptIdempotencyKey(
+        cue.schedule_id,
+        cue.id,
+        nextAttemptNo,
+      )
+      const leaseExpiresAt = new Date(
+        input.now.getTime() + input.leaseSeconds * 1000,
+      )
+      const attempt: CueExecutionAttemptDomain = {
+        id: localId('catt'),
+        cue_id: cue.id,
+        attempt_no: nextAttemptNo,
+        scheduled_trigger_at: new Date(cue.trigger_at),
+        actual_claimed_at: input.now,
+        status: 'leased',
+        lease_owner: input.leaseOwner,
+        lease_expires_at: leaseExpiresAt,
+        idempotency_key: idempotencyKey,
+        admission_result_json: null,
+        allocator_result_json: null,
+        director_brief_json: null,
+        selected_cast_json: null,
+        post_id: null,
+        thread_id: null,
+        forum_scene_metadata_id: null,
+        total_latency_ms: null,
+        error_code: null,
+        error_text: null,
+        created_at: input.now,
+        started_at: null,
+        finished_at: null,
+      }
+      this.attempts.set(attempt.id, attempt)
+      out.push({ cue: cloneCueDomain(cue), attempt: cloneAttemptDomain(attempt) })
+    }
+    return out
+  }
+
+  async createAttempt(
+    input: CreateCueAttemptInput,
+  ): Promise<CueExecutionAttemptDomain> {
+    if (!Number.isInteger(input.attempt_no) || input.attempt_no < 1) {
+      throw new Error('createAttempt: attempt_no must be a positive integer (>= 1)')
+    }
+    const collision = Array.from(this.attempts.values()).find(
+      (a) => a.idempotency_key === input.idempotency_key,
+    )
+    if (collision) return cloneAttemptDomain(collision)
+    const cueScheduledTriggerAt = input.scheduled_trigger_at
+    const attempt: CueExecutionAttemptDomain = {
+      id: localId('catt'),
+      cue_id: input.cue_id,
+      attempt_no: input.attempt_no,
+      scheduled_trigger_at: cueScheduledTriggerAt,
+      actual_claimed_at: input.lease_owner ? nowDate() : null,
+      status: input.status ?? 'leased',
+      lease_owner: input.lease_owner ?? null,
+      lease_expires_at: input.lease_expires_at ?? null,
+      idempotency_key: input.idempotency_key,
+      admission_result_json: input.admission_result_json ?? null,
+      allocator_result_json: input.allocator_result_json ?? null,
+      director_brief_json: input.director_brief_json ?? null,
+      selected_cast_json: input.selected_cast_json ?? null,
+      post_id: null,
+      thread_id: null,
+      forum_scene_metadata_id: null,
+      total_latency_ms: null,
+      error_code: null,
+      error_text: null,
+      created_at: nowDate(),
+      started_at: null,
+      finished_at: null,
+    }
+    this.attempts.set(attempt.id, attempt)
+    return cloneAttemptDomain(attempt)
+  }
+
+  async updateAttempt(
+    id: string,
+    patch: UpdateCueAttemptPatch,
+  ): Promise<CueExecutionAttemptDomain | null> {
+    const attempt = this.attempts.get(id)
+    if (!attempt) return null
+    if (patch.status !== undefined) attempt.status = patch.status
+    if (patch.lease_owner !== undefined) attempt.lease_owner = patch.lease_owner
+    if (patch.lease_expires_at !== undefined) {
+      attempt.lease_expires_at = patch.lease_expires_at
+    }
+    if (patch.actual_claimed_at !== undefined) {
+      attempt.actual_claimed_at = patch.actual_claimed_at
+    }
+    if (patch.admission_result_json !== undefined) {
+      attempt.admission_result_json = patch.admission_result_json
+    }
+    if (patch.allocator_result_json !== undefined) {
+      attempt.allocator_result_json = patch.allocator_result_json
+    }
+    if (patch.director_brief_json !== undefined) {
+      attempt.director_brief_json = patch.director_brief_json
+    }
+    if (patch.selected_cast_json !== undefined) {
+      attempt.selected_cast_json = patch.selected_cast_json
+    }
+    if (patch.post_id !== undefined) attempt.post_id = patch.post_id
+    if (patch.thread_id !== undefined) attempt.thread_id = patch.thread_id
+    if (patch.forum_scene_metadata_id !== undefined) {
+      attempt.forum_scene_metadata_id = patch.forum_scene_metadata_id
+    }
+    if (patch.total_latency_ms !== undefined) {
+      attempt.total_latency_ms = patch.total_latency_ms
+    }
+    if (patch.error_code !== undefined) attempt.error_code = patch.error_code
+    if (patch.error_text !== undefined) attempt.error_text = patch.error_text
+    if (patch.started_at !== undefined) attempt.started_at = patch.started_at
+    if (patch.finished_at !== undefined) attempt.finished_at = patch.finished_at
+    return cloneAttemptDomain(attempt)
+  }
+
+  async releaseLease(
+    attemptId: string,
+  ): Promise<CueExecutionAttemptDomain | null> {
+    const attempt = this.attempts.get(attemptId)
+    if (!attempt) return null
+    attempt.lease_owner = null
+    attempt.lease_expires_at = null
+    return cloneAttemptDomain(attempt)
+  }
+
+  async extendLease(
+    attemptId: string,
+    leaseSeconds: number,
+    now?: Date,
+  ): Promise<CueExecutionAttemptDomain | null> {
+    const attempt = this.attempts.get(attemptId)
+    if (!attempt) return null
+    const baseTime = (now ?? nowDate()).getTime()
+    attempt.lease_expires_at = new Date(baseTime + leaseSeconds * 1000)
+    return cloneAttemptDomain(attempt)
+  }
+
+  async findInFlightAttemptForCue(
+    cueId: string,
+  ): Promise<CueExecutionAttemptDomain | null> {
+    const inFlightSet: ReadonlySet<CueExecutionAttemptStatus> = new Set(
+      IN_FLIGHT_ATTEMPT_STATUSES,
+    )
+    const candidates = Array.from(this.attempts.values())
+      .filter((a) => a.cue_id === cueId && inFlightSet.has(a.status))
+      .sort((a, b) => b.attempt_no - a.attempt_no)
+    return candidates[0] ? cloneAttemptDomain(candidates[0]) : null
+  }
+
+  async reclaimExpiredLeases(
+    input: ReclaimExpiredLeasesInput,
+  ): Promise<ReclaimedLease[]> {
+    const inFlightSet: ReadonlySet<CueExecutionAttemptStatus> = new Set(
+      IN_FLIGHT_ATTEMPT_STATUSES,
+    )
+    const limit = input.batchSize ?? Number.POSITIVE_INFINITY
+    const out: ReclaimedLease[] = []
+    const expired = Array.from(this.attempts.values())
+      .filter(
+        (a) =>
+          inFlightSet.has(a.status) &&
+          a.lease_expires_at != null &&
+          a.lease_expires_at.getTime() < input.now.getTime(),
+      )
+      .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
+      .slice(0, limit)
+    for (const attempt of expired) {
+      attempt.status = 'failed'
+      attempt.error_code = attempt.error_code ?? 'lease_expired'
+      attempt.error_text = attempt.error_text ?? 'lease expired before completion'
+      attempt.finished_at = attempt.finished_at ?? input.now
+      attempt.lease_owner = null
+      attempt.lease_expires_at = null
+      const cue = this.cues.get(attempt.cue_id)
+      if (cue && (cue.status === 'claimed' || cue.status === 'executing')) {
+        cue.status = 'deferred'
+        cue.updated_at = nowDate().toISOString()
+      }
+      out.push({ attempt_id: attempt.id, cue_id: attempt.cue_id })
+    }
+    return out
+  }
+}
+
+function cloneAttemptDomain(
+  attempt: CueExecutionAttemptDomain,
+): CueExecutionAttemptDomain {
+  return {
+    ...attempt,
+    scheduled_trigger_at: new Date(attempt.scheduled_trigger_at.getTime()),
+    actual_claimed_at: attempt.actual_claimed_at
+      ? new Date(attempt.actual_claimed_at.getTime())
+      : null,
+    lease_expires_at: attempt.lease_expires_at
+      ? new Date(attempt.lease_expires_at.getTime())
+      : null,
+    created_at: new Date(attempt.created_at.getTime()),
+    started_at: attempt.started_at
+      ? new Date(attempt.started_at.getTime())
+      : null,
+    finished_at: attempt.finished_at
+      ? new Date(attempt.finished_at.getTime())
+      : null,
   }
 }

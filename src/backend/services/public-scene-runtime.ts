@@ -12,6 +12,37 @@ import type {
   SceneMetadata,
 } from '../stage/index.js'
 
+/**
+ * T-212 M1 (T-207 §4.1) — `production_path` enum frozen at the umbrella level.
+ * Every root-post write should carry one of these values; missing is a defect
+ * (invariant I-1). The field stays optional on the TS type for backward
+ * compatibility with legacy `ForumSceneMetadata.payloadJson` rows that
+ * predate the contract; parsers reject **malformed** programming blocks.
+ */
+export type ProductionPath = 'autonomous' | 'cue'
+
+export type CueSourceTypeForProgramming =
+  | 'manual'
+  | 'automated'
+  | 'baseline'
+  | 'system'
+
+/**
+ * T-212 M1 (T-207 §4.2) — programming attribution attached to every
+ * `ForumSceneMetadata.payloadJson`. Cue refs are required iff
+ * `production_path === 'cue'`.
+ */
+export interface ScenePayloadProgramming {
+  production_path: ProductionPath
+  cue?: {
+    schedule_id: string
+    cue_id: string
+    change_ids?: string[]
+    attempt_id: string
+    source_type: CueSourceTypeForProgramming
+  }
+}
+
 export interface PublicSceneWritePayload {
   scene_metadata: SceneMetadata
   episode_brief: EpisodeBrief
@@ -25,6 +56,13 @@ export interface PublicSceneWritePayload {
     creator_note?: Record<string, unknown> | null
     editorial_intent?: Record<string, unknown> | null
   } | null
+  /**
+   * Programming attribution for invariant I-1. New write sites MUST set this
+   * (PostScheduler stamps `'autonomous'`; CueWorker stamps `'cue'` + cue refs).
+   * Legacy reads tolerate missing (parser returns `programming: undefined`),
+   * but a present-but-malformed programming block is a hard parse failure.
+   */
+  programming?: ScenePayloadProgramming
 }
 
 export function generateSceneId(prefix: string): string {
@@ -69,12 +107,20 @@ export function buildPublicScenePayloadJson(payload: PublicSceneWritePayload): R
     planning_audit: payload.planning_audit ?? null,
     visual_ref: payload.visual_ref ?? null,
     launch_programming: payload.launch_programming ?? null,
+    programming: payload.programming ?? null,
   }
 }
 
 export function parsePublicScenePayload(input: unknown): PublicSceneWritePayload | null {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null
   const record = input as Record<string, unknown>
+
+  // Programming validation runs OUTSIDE the try/catch (T-212 R2): a
+  // present-but-malformed `programming` block must hard-reject, not be
+  // swallowed alongside scene-shape parse errors. Missing programming is
+  // accepted as `undefined` (back-compat with legacy rows).
+  const programmingResult = parseProgrammingForRead(record.programming)
+  if (programmingResult.kind === 'invalid') return null
 
   try {
     const sceneMetadata = sceneMetadataSchema.parse(record.scene_metadata)
@@ -93,6 +139,9 @@ export function parsePublicScenePayload(input: unknown): PublicSceneWritePayload
       planning_audit: toRecord(record.planning_audit),
       visual_ref: parseVisualRef(record.visual_ref),
       launch_programming: parseLaunchProgramming(record.launch_programming),
+      ...(programmingResult.kind === 'present'
+        ? { programming: programmingResult.value }
+        : {}),
     }
   } catch {
     return null
@@ -177,4 +226,95 @@ function parseLaunchProgramming(
     creator_note: toRecord(record.creator_note),
     editorial_intent: toRecord(record.editorial_intent),
   }
+}
+
+const PRODUCTION_PATH_VALUES: ReadonlySet<ProductionPath> = new Set([
+  'autonomous',
+  'cue',
+])
+
+const CUE_SOURCE_TYPE_VALUES: ReadonlySet<CueSourceTypeForProgramming> =
+  new Set(['manual', 'automated', 'baseline', 'system'])
+
+type ProgrammingReadResult =
+  | { kind: 'absent' }
+  | { kind: 'invalid' }
+  | { kind: 'present'; value: ScenePayloadProgramming }
+
+/**
+ * Parse the `programming` block from a stored payload_json read. Distinct
+ * outcomes:
+ *   - `absent`: field missing or `null` — legacy row, return `undefined` to
+ *     callers (back-compat).
+ *   - `invalid`: field present but malformed — caller hard-rejects the whole
+ *     payload (returns `null` from `parsePublicScenePayload`).
+ *   - `present`: field present and well-formed — return the typed value.
+ *
+ * Validation rules:
+ *   - `production_path` ∈ {'autonomous','cue'}
+ *   - When `production_path === 'cue'`: `cue.{schedule_id, cue_id, attempt_id}`
+ *     all non-empty strings; `cue.source_type` ∈ allowed values; optional
+ *     `cue.change_ids` must be an array of non-empty strings if present.
+ *   - When `production_path === 'autonomous'`: a `cue` block is **forbidden**
+ *     (to keep invariant I-1 attribution clean — autonomous rows never carry
+ *     cue refs).
+ */
+function parseProgrammingForRead(value: unknown): ProgrammingReadResult {
+  if (value === undefined || value === null) return { kind: 'absent' }
+  if (typeof value !== 'object' || Array.isArray(value)) return { kind: 'invalid' }
+  const record = value as Record<string, unknown>
+
+  const productionPath = record.production_path
+  if (typeof productionPath !== 'string') return { kind: 'invalid' }
+  if (!PRODUCTION_PATH_VALUES.has(productionPath as ProductionPath)) {
+    return { kind: 'invalid' }
+  }
+
+  if (productionPath === 'autonomous') {
+    if (record.cue !== undefined && record.cue !== null) {
+      return { kind: 'invalid' }
+    }
+    return {
+      kind: 'present',
+      value: { production_path: 'autonomous' },
+    }
+  }
+
+  // production_path === 'cue'
+  const cueRaw = record.cue
+  if (!cueRaw || typeof cueRaw !== 'object' || Array.isArray(cueRaw)) {
+    return { kind: 'invalid' }
+  }
+  const cue = cueRaw as Record<string, unknown>
+  if (!isNonEmptyString(cue.schedule_id)) return { kind: 'invalid' }
+  if (!isNonEmptyString(cue.cue_id)) return { kind: 'invalid' }
+  if (!isNonEmptyString(cue.attempt_id)) return { kind: 'invalid' }
+  if (typeof cue.source_type !== 'string') return { kind: 'invalid' }
+  if (!CUE_SOURCE_TYPE_VALUES.has(cue.source_type as CueSourceTypeForProgramming)) {
+    return { kind: 'invalid' }
+  }
+  let changeIds: string[] | undefined
+  if (cue.change_ids !== undefined && cue.change_ids !== null) {
+    if (!Array.isArray(cue.change_ids)) return { kind: 'invalid' }
+    if (!cue.change_ids.every(isNonEmptyString)) return { kind: 'invalid' }
+    changeIds = cue.change_ids as string[]
+  }
+
+  return {
+    kind: 'present',
+    value: {
+      production_path: 'cue',
+      cue: {
+        schedule_id: cue.schedule_id as string,
+        cue_id: cue.cue_id as string,
+        attempt_id: cue.attempt_id as string,
+        source_type: cue.source_type as CueSourceTypeForProgramming,
+        ...(changeIds ? { change_ids: changeIds } : {}),
+      },
+    },
+  }
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
 }

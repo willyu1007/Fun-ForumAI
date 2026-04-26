@@ -1262,4 +1262,47 @@ describe('PostScheduler', () => {
       }),
     )
   })
+
+  // T-212 M1 — invariant I-1: every PostScheduler write site stamps
+  // `production_path: 'autonomous'` on the public_scene payload. This guards
+  // against accidental regression of the umbrella attribution rule.
+  it('stamps programming.production_path="autonomous" on selector-driven writes', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-i1-1' }))
+    const deps = createDeps(write)
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    await scheduler.createPost()
+
+    expect(write).toHaveBeenCalledTimes(1)
+    const instruction = (write as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0] as
+      | { public_scene?: { programming?: { production_path?: string; cue?: unknown } } }
+      | undefined
+    expect(instruction?.public_scene?.programming).toEqual({
+      production_path: 'autonomous',
+    })
+  })
+
+  it('stamps programming.production_path="autonomous" on fallback (selector skip) writes', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-i1-2' }))
+    const deps = createDeps(write, {
+      sceneSelection: { kind: 'skip', reason: 'scene_catalog_unavailable' },
+    })
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    await scheduler.createPost()
+
+    expect(write).toHaveBeenCalledTimes(1)
+    const instruction = (write as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0] as
+      | { public_scene?: { programming?: { production_path?: string; cue?: unknown } } }
+      | undefined
+    expect(instruction?.public_scene?.programming).toEqual({
+      production_path: 'autonomous',
+    })
+  })
 })

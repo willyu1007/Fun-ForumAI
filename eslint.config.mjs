@@ -113,6 +113,36 @@ export default tseslint.config(
       }],
     },
   },
+  // T-212 invariants I-2 / I-3: PostScheduler and CueWorker stay isolated.
+  // I-2 is also enforced by the grep-based vitest at
+  //   src/backend/runtime/__tests__/post-scheduler-cue-isolation.test.ts
+  // (post-scheduler.ts must not import cue tables / domain). I-3 belongs to
+  // T-212: cue-worker* / programming/cue/* must not import the post
+  // scheduler so a future double-track regression is caught at lint time.
+  {
+    files: [
+      'src/backend/runtime/public-discussion-cue-worker*.{ts,tsx}',
+      'src/backend/programming/cue/**/*.{ts,tsx}',
+    ],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: [
+              '*post-scheduler*',
+              '../runtime/post-scheduler',
+              '../../runtime/post-scheduler',
+              '../runtime/post-scheduler.js',
+              '../../runtime/post-scheduler.js',
+            ],
+            message:
+              'T-212 invariant I-3: cue worker / programming.cue must not import PostScheduler. See dev-docs/active/post-scheduler-boundary/02-architecture.md §E.',
+          },
+        ],
+      }],
+    },
+  },
   // Mobile app should consume the generated package theme directly, not the legacy adapter.
   {
     files: ['apps/mobile/src/**/*.{ts,tsx}'],

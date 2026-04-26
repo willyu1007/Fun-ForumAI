@@ -116,6 +116,38 @@ export type ScheduledPostSceneSelection =
       reason: string
     }
 
+/**
+ * T-212 M3 — `selectFromDiscussionCue` outcome.
+ *
+ * `dry_run` is the prewarm shape (no DB writes, no enrichment); `scene` is
+ * the live selection with the cast vector preserved in `selection_audit`;
+ * `skip` mirrors the autonomous-path skip semantics. Note that
+ * `selectScheduledPost` is **not modified** — both methods produce
+ * `PublicSceneWritePayload` but never share branches inside the service.
+ */
+export type CueSceneSelection =
+  | {
+      kind: 'scene'
+      community: EligibleCommunity
+      payload: PublicSceneWritePayload
+      /**
+       * Full cast vector (1..N). The first element is the primary author
+       * passed to `forumWriteService.createPost`; the rest provide scene
+       * context (e.g. for next-turn responders). Worker (M4) MUST treat
+       * `actor_agent_id = selected_cast[0].id` (T-212 R3 / R10).
+       */
+      selected_cast: SelectedAgentLike[]
+    }
+  | { kind: 'skip'; reason: string }
+
+export type CueSceneDryRunResult = {
+  kind: 'dry_run'
+  cue_id: string
+  brief_compiled: true
+  candidate_pool_size: number
+  selected_cast_estimate: SelectedAgentLike[]
+}
+
 export class PublicSceneSelectorService {
   constructor(
     private readonly deps: {
@@ -160,6 +192,97 @@ export class PublicSceneSelectorService {
       kind: 'scene',
       community,
       payload: result.payload,
+    }
+  }
+
+  /**
+   * T-212 M3 — cue-driven scene selection.
+   *
+   * Wraps `selectNewEpisodeForumScene` with cue context: the cue's community
+   * is locked as the target, the primary author is `agents[0]`, and the full
+   * cast vector + cue audit refs land in `selection_audit.cue_*`. The cue's
+   * theme intent / scene constraints / role requirements travel via the
+   * `DirectorCueBrief` sidecar (the worker / runtime consume them outside
+   * the selector — the selector itself doesn't override template choice in
+   * MVP; that's a post-T-212 refinement).
+   *
+   * `selectScheduledPost` is **not modified** by T-212.
+   *
+   * `dryRun=true` skips persistence and the catalog ranking, returning a
+   * shape the prewarm path (M5) can use to surface candidate-pool size
+   * without committing.
+   */
+  async selectFromDiscussionCue(input: {
+    cue: { id: string; community_id: string }
+    brief: { audit_refs: { schedule_id: string; cue_id: string; attempt_id: string } }
+    agents: SelectedAgentLike[]
+    community: EligibleCommunity
+    dryRun?: boolean
+  }): Promise<CueSceneSelection | CueSceneDryRunResult> {
+    if (input.agents.length === 0) {
+      return { kind: 'skip', reason: 'cue_no_agents' }
+    }
+    if (input.cue.community_id !== input.community.id) {
+      return { kind: 'skip', reason: 'cue_community_mismatch' }
+    }
+
+    if (input.dryRun) {
+      return {
+        kind: 'dry_run',
+        cue_id: input.cue.id,
+        brief_compiled: true,
+        candidate_pool_size: input.agents.length,
+        selected_cast_estimate: input.agents.slice(0, 8),
+      }
+    }
+
+    const eligibleTarget: EligibleTarget = {
+      community_id: input.community.id,
+      community_slug: input.community.slug,
+      community_name: input.community.name,
+      community_description: input.community.description,
+      community_rules: input.community.rules,
+      writable: true,
+      membership_source: 'direct',
+    }
+
+    const result = await this.selectNewEpisodeForumScene({
+      request_id: generateSceneId('cue_scene_req'),
+      entry_kind: 'forum_post_seed',
+      selector_mode: 'pool_guided',
+      director_surface: 'forum',
+      actor_surface: 'forum_post',
+      selected_agent: input.agents[0],
+      eligible_targets: [eligibleTarget],
+      locked_target: {
+        community_id: input.community.id,
+        community_slug: input.community.slug,
+      },
+    })
+
+    if (result.kind === 'skip') {
+      return { kind: 'skip', reason: result.skip.reason }
+    }
+
+    // Decorate selection_audit with cue context (T-212 R3 / R10): preserves
+    // the full cast vector and cue audit refs so downstream consumers (M4
+    // worker writes attempt rows; T-215 surfaces audit chain) can reconstruct
+    // the cue → scene → cast linkage without re-reading the cue table.
+    const decoratedPayload: PublicSceneWritePayload = {
+      ...result.payload,
+      selection_audit: {
+        ...(result.payload.selection_audit ?? {}),
+        cue_audit_refs: input.brief.audit_refs,
+        cue_cast_pool: input.agents.map((a) => ({ id: a.id, display_name: a.display_name })),
+        cue_primary_author_id: input.agents[0].id,
+      },
+    }
+
+    return {
+      kind: 'scene',
+      community: input.community,
+      payload: decoratedPayload,
+      selected_cast: input.agents,
     }
   }
 
