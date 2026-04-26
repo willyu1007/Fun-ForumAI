@@ -119,9 +119,13 @@ This single constant is the SSOT. Validators check both the `partial` payload an
 
 All methods return domain objects (camelCase). Repositories never expose Prisma types. Domain ↔ JSON mapping happens inside repositories via Zod parse on read.
 
-## Read-only Cue Board
+## Cue Board admin surface
 
-Backend route `GET /v1/admin/programming/cue-board` accepts:
+Two endpoints, both gated by `requireHumanAuth + requireAdmin`:
+
+### `GET /v1/admin/programming/cue-board` — read-only timeline
+
+Query (Zod-validated):
 
 ```ts
 {
@@ -129,7 +133,30 @@ Backend route `GET /v1/admin/programming/cue-board` accepts:
   community_id?: string
   from?: string  // ISO datetime
   to?: string
-  limit?: number  // default 100
+  limit?: number  // 1..500, default 100
+}
+```
+
+On JSON-column drift (e.g., admin tampered with `scope_json`), the route
+catches `ZodError` and returns **422 `CUE_DATA_INTEGRITY_ERROR`** with the
+issue path, instead of letting it bubble as a 500.
+
+### `POST /v1/admin/programming/cue-board/baseline-import` — admin action
+
+Idempotent baseline-YAML → draft schedule import (closes the deferred-admin-
+action gap that previously left `BaselineCueImporter` with no entry point).
+No request body. Response:
+
+```ts
+{
+  data: {
+    schedule_id: string
+    schedule_status: 'draft'
+    schedule_source: 'baseline'
+    baseline_contract_version: string | null
+    cue_count: number
+    is_new: boolean   // false on subsequent invocations with same baseline
+  }
 }
 ```
 
@@ -196,8 +223,13 @@ src/frontend/api/hooks/
 ## Frozen fields (downstream depends on)
 
 - All 6 model column names and types
-- All 18 enum names and values
+- All 19 enum names and values (one more than initial estimate; see migration)
 - `CuePatchV1Schema` shape (`{version, partial, removed_fields?}`)
-- `FORBIDDEN_CUE_FIELDS` constant (downstream T-210 / T-214 import)
-- Cue Board API endpoint path and response envelope
-- Repository method signatures
+- `FORBIDDEN_CUE_FIELDS` constant — 21 entries (downstream T-210 / T-214 import this single SSOT; do not duplicate)
+- `CueCommunityScopeSchema` exported (used by `pg-cue-repository` to validate scope JSON on read; T-210 should reuse, not redefine)
+- `LockedFieldsSchema` exported
+- Admin route paths: `GET /v1/admin/programming/cue-board`, `POST /v1/admin/programming/cue-board/baseline-import`
+- Response envelope: `{data: CueBoardPayload}` for GET; `{data: {schedule_id, ..., is_new}}` for POST
+- Repository method signatures (17 methods on `CueRepository`)
+- `defaultCueIdempotencyKey(scheduleId)` UUID-derived helper — both impls share; downstream may rely on the `cue:<schedule>:pending-<uuid12>:0` shape
+- `assertScopeConsistency(schedule, input)` invariant — community-scoped schedule rejects cues with mismatched community

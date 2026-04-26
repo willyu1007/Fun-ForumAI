@@ -8,7 +8,7 @@
 - Estimate: 5-7 days
 - Started: 2026-04-25
 - Completed: 2026-04-26
-- Outcome: 6 cue tables migrated + 19 enums + `CuePatchV1` + `CueRepository` (InMemory + Pg) + `BaselineCueImporter` + read-only Cue Board (backend route + frontend timeline). `pnpm typecheck` clean; 166 tests pass. Drift in unrelated `media_*` columns moved into a dedicated migration. See `04-verification.md`.
+- Outcome: 6 cue tables migrated + 19 enums + `CuePatchV1` + `CueRepository` (InMemory + Pg) + `BaselineCueImporter` + Cue Board (backend GET timeline + admin-action POST baseline-import + frontend timeline UI). After a post-closure deep audit, 9 issues fixed (2 CRITICAL, 4 HIGH, 2 MEDIUM, 1 closure gap). `pnpm typecheck` clean; **180 in-process tests + 6 Pg integration tests** pass. Drift in unrelated `media_*` columns moved into a dedicated migration. See `03-implementation-notes.md` §"Post-closure deep audit + fixes" and `04-verification.md`.
 
 ## Acceptance criteria
 - [x] Prisma migration applied cleanly to a fresh dev DB and existing dev DB.
@@ -50,10 +50,12 @@ Introduce the **public discussion cue data layer** — Prisma tables, the `CuePa
   - reads `config/launch/launch_programming_schedule.v1.yaml`
   - writes a draft `PublicDiscussionCueSchedule` + draft cues
   - `LaunchProgrammingOpsService` is **not modified**
-- Admin **read-only** Cue Board route:
-  - lists cues in time order with status, lane, source_type, risk_level
-  - cue detail drawer shows theme intent / scene constraints / role requirements / media list
-  - no edit affordances
+- Admin Cue Board routes (no cue-edit affordances in this bundle):
+  - `GET /v1/admin/programming/cue-board?schedule_id=&community_id=&from=&to=&limit=`
+    — timeline payload (schedule + derived cue summaries). Auth: `requireHumanAuth + requireAdmin`. On JSON-column drift the route returns **422 `CUE_DATA_INTEGRITY_ERROR`** instead of bubbling a 500 (audit fix HIGH-3)
+  - `POST /v1/admin/programming/cue-board/baseline-import` — opt-in baseline
+    import (admin action; idempotent via `baseline_contract_version`). Closes the deferred-admin-action gap that previously left the importer with no entry point
+  - Frontend timeline view: cue cards in trigger-time order, read-only detail drawer, single import action button, retry affordance on error. Trigger times rendered in the schedule's IANA timezone via `Intl.DateTimeFormat` (audit fix HIGH-4)
 
 ### 3. Gate condition (for downstream)
 T-210 (`cue-editor-admin`) starts after:
@@ -65,19 +67,25 @@ T-210 (`cue-editor-admin`) starts after:
 ### 4. Frozen fields
 - DB column names and types for the six new tables. Future sub-bundles depend on these; column-rename requires re-opening this bundle.
 - `CuePatchV1` shape and `version: 1` semantics.
+- `FORBIDDEN_CUE_FIELDS` constant (21 entries, single SSOT mirrored from umbrella §3). Both partial-payload keys and `removed_fields[]` entries are rejected against this list.
 - `usage_strength` enum: `'optional' | 'preferred' | 'anchor' | 'selected_only_pool'` (all four values reserved, even though `anchor` and `selected_only_pool` semantics are unlocked only by T-216).
 - `PublicDiscussionCueStatus` enum (umbrella roadmap §6 from design doc): `draft | validating | validated | scheduled | prewarming | due | claimed | executing | consumed | deferred | skipped | expired | cancelled | failed`.
 - `CueScheduleStatus` enum (G12): `draft | review | published | active | archived | rolled_back`.
 - `CueScheduleSource` enum: `baseline | manual | automated | mixed`.
 - `CueChangeType` enum: `create_cue | update_cue | cancel_cue | defer_cue | merge_into_existing_cue | split_cue | attach_media | remove_media | update_dispatch_policy | update_risk_level | publish_schedule | rollback_schedule`.
 - `CueChangeApprovalStatus` enum: `pending | auto_applied | approved | rejected | rolled_back`.
+- `PROGRAMMING_PERMISSIONS` set (11 entries; T-210 enforces the auth gate).
+- `IDEMPOTENCY_KEY_NAMESPACES` registry (8 entries, including parity values for `manual-cue` / `role-expired` / `room-program-event`).
+- Admin route paths: `GET /v1/admin/programming/cue-board` and `POST /v1/admin/programming/cue-board/baseline-import` (T-210 will add edit/mutation routes alongside, not replacing).
+- `CueBoardPayload` response shape (`schedule`, `cues`, `load_state_per_community: null`, `generated_at`).
+- Repository invariants enforced at `createCue`: schedule scope vs cue community consistency; UUID-derived idempotency keys (collision-safe under concurrent creates).
 - `production_path` enum is **not** introduced here; T-212 adds it on `ForumSceneMetadata`.
 
 ### 5. Deferred questions
 - **Schedule scope partitioning**: scope is a field on the cue (`community_id` / scope kind), not a partition on the schedule (umbrella decision D-10). The schedule table allows global scope with a single active schedule per project; multi-schedule per scope deferred to a follow-on if needed.
 - **Cue history retention** — purge policy for archived schedules / consumed cues / failed attempts. Defer to T-215 (`cue-public-projection`) since projections need clear retention windows.
 - **Live load snapshot computation** — the table is created here but populated by T-213.
-- **YAML baseline re-import policy** (G10) — `BaselineCueImporter` runs once at MVP. After admin starts authoring live, YAML is no longer authoritative. Proposal: `BaselineCueImporter.run` exposed as an opt-in CLI / admin action that imports into a **new draft schedule** without touching the active one. Auto re-import is **not** added; surfacing a YAML diff against the active schedule deferred. Owner: this bundle defers; revisit if operations team reports drift pain.
+- **YAML baseline re-import policy** (G10) — `BaselineCueImporter` is reachable as an admin action via `POST /v1/admin/programming/cue-board/baseline-import`. Current behaviour: idempotent on `baseline_contract_version` — if a baseline schedule with the same version already exists, the call returns it (`is_new: false`) without creating a new schedule. Bumping the YAML's `version:` produces a new draft schedule alongside any prior version. Auto re-import is **not** added; YAML-diff-vs-active surfacing is deferred. Owner: this bundle defers further automation; revisit if operations team reports drift pain.
 
 ## Risks
 - **Migration drift with existing `prisma/schema.prisma`** — large schema file, likely merge conflicts. Mitigation: rebase before opening PR; coordinate with `T-201` if it lands first.

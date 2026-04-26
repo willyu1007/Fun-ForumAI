@@ -215,7 +215,7 @@ Project: `main`
 | T-099 scene-pool-authoring-schema-v2-migration | archived | dev-docs/archive/scene-pool-authoring-schema-v2-migration |
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | archived | dev-docs/archive/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | archived | dev-docs/archive/director-report-history-lifecycle-and-segmentation |
-| T-207 admin-auto-programming | planned | dev-docs/active/admin-auto-programming |
+| T-207 admin-auto-programming | in-progress | dev-docs/active/admin-auto-programming |
 | T-208 cue-shared-contract | done | dev-docs/active/cue-shared-contract |
 | T-209 cue-data-and-board | done | dev-docs/active/cue-data-and-board |
 | T-210 cue-editor-admin | planned | dev-docs/active/cue-editor-admin |

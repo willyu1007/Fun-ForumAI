@@ -1,9 +1,10 @@
 # 00 Overview — admin-auto-programming (T-207, umbrella)
 
 ## Status
-- State: planned
+- State: in-progress
 - Role: **Umbrella** task. Coordinates 9 sub-bundles (T-208..T-216) that deliver the public-discussion-cue programming layer.
 - Source design doc: `~/Downloads/admin-auto-programming-design.md` (v1.0, 2026-04-25, ~3500 lines).
+- Progress (2026-04-26): T-208 done, T-209 done (post-closure deep audit applied), T-210/T-211 gated open. Remaining: T-210..T-216.
 
 ## Goal
 Deliver an editable, auditable, admission-controlled **public discussion cue** programming layer that lets admins and an auto-editor shape the cadence and intent of forum public discussions, without ever authoring agent identity, post body, or output expectations. The runtime / director / allocator retain final cast selection and expression authority. All manual and auto edits flow through the same patch / validation / admission / audit chain.
@@ -26,17 +27,17 @@ This umbrella does **not** ship code. All implementation lives in T-208..T-216.
 
 ## Sub-bundle index
 
-| ID | Slug | Phase | Deliverable kind | Estimated days |
-|---|---|---|---|---|
-| T-208 | `cue-shared-contract` | Phase 0 | code (type-only) | 2-3 |
-| T-209 | `cue-data-and-board` | Phase 1 | code (DB + import + read-only UI) | 5-7 |
-| T-210 | `cue-editor-admin` | Phase 2 | code (admin UI + validation) | 7-10 |
-| T-211 | `post-scheduler-boundary` | Phase 2.5 | doc-only (boundary + budget plan) | 2 |
-| T-212 | `cue-worker-runtime` | Phase 3 | code (worker + admission + director brief) | 10-15 |
-| T-213 | `cue-load-control` | Phase 4 | code (load snapshot + freshness) | 5-7 |
-| T-214 | `cue-auto-editor` | Phase 5 | code (trigger detector + LLM patch + inbox) | 7-10 |
-| T-215 | `cue-public-projection` | Phase 6 | code (programming projection cue facet) | 3-5 |
-| T-216 | `cue-media-policy` | Sub (M0-M3) | code (usage_strength + plan resolution) | 5-7 |
+| ID | Slug | Phase | Deliverable kind | Estimated days | Status |
+|---|---|---|---|---|---|
+| T-208 | `cue-shared-contract` | Phase 0 | code (type-only) | 2-3 | **done** |
+| T-209 | `cue-data-and-board` | Phase 1 | code (DB + import + read-only UI) | 5-7 | **done** |
+| T-210 | `cue-editor-admin` | Phase 2 | code (admin UI + validation) | 7-10 | gated open |
+| T-211 | `post-scheduler-boundary` | Phase 2.5 | doc-only (boundary + budget plan) | 2 | gated open |
+| T-212 | `cue-worker-runtime` | Phase 3 | code (worker + admission + director brief) | 10-15 | planned |
+| T-213 | `cue-load-control` | Phase 4 | code (load snapshot + freshness) | 5-7 | planned |
+| T-214 | `cue-auto-editor` | Phase 5 | code (trigger detector + LLM patch + inbox) | 7-10 | planned |
+| T-215 | `cue-public-projection` | Phase 6 | code (programming projection cue facet) | 3-5 | planned |
+| T-216 | `cue-media-policy` | Sub (M0-M3) | code (usage_strength + plan resolution) | 5-7 | planned |
 
 Total ~14 weeks (single-thread estimate; parallel paths in `01-plan.md` compress this).
 

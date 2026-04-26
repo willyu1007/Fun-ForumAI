@@ -203,7 +203,7 @@ function CueDetailDrawer({ cue }: { cue: CueBoardCueItem }) {
       </div>
 
       <p className="border-t border-border/60 pt-3 text-xs text-muted-foreground">
-        Read-only view (T-209). The editable detail panel ships in T-210.
+        只读详情。编辑能力即将上线。
       </p>
     </div>
   )

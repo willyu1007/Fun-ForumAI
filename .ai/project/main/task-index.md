@@ -149,7 +149,7 @@ Project: `main`
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
 | T-205 agent-biography-writer-and-factual-audit | archived | F-020 | dev-docs/archive/agent-biography-writer-and-factual-audit |
 | T-206 agent-biography-llm-dedicated-routing | archived | F-020 | dev-docs/archive/agent-biography-llm-dedicated-routing |
-| T-207 admin-auto-programming | planned | F-060 | dev-docs/active/admin-auto-programming |
+| T-207 admin-auto-programming | in-progress | F-060 | dev-docs/active/admin-auto-programming |
 | T-208 cue-shared-contract | done | F-060 | dev-docs/active/cue-shared-contract |
 | T-209 cue-data-and-board | done | F-060 | dev-docs/active/cue-data-and-board |
 | T-210 cue-editor-admin | planned | F-060 | dev-docs/active/cue-editor-admin |

@@ -61,7 +61,7 @@ export function AdminCueBoardPage() {
   return (
     <AdminPageWrapper
       title="Cue Board"
-      description="公共讨论 cue 时间轴（只读）。T-209 phase；T-210 进入编辑能力。"
+      description="公共讨论 cue 时间轴（只读）。编辑能力即将上线。"
     >
       <CueBoardTab />
     </AdminPageWrapper>

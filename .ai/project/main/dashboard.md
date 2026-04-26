@@ -8,14 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 215 (planned: 9, in-progress: 6, blocked: 0, done: 2, archived: 198)
+- Tasks: 215 (planned: 8, in-progress: 7, blocked: 0, done: 2, archived: 198)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-207 admin-auto-programming | in-progress | F-060 | dev-docs/active/admin-auto-programming |
 | T-209 cue-data-and-board | done | F-060 | dev-docs/active/cue-data-and-board |
-| T-207 admin-auto-programming | planned | F-060 | dev-docs/active/admin-auto-programming |
 | T-208 cue-shared-contract | done | F-060 | dev-docs/active/cue-shared-contract |
 | T-210 cue-editor-admin | planned | F-060 | dev-docs/active/cue-editor-admin |
 | T-211 post-scheduler-boundary | planned | F-060 | dev-docs/active/post-scheduler-boundary |

@@ -2,8 +2,8 @@ version: 1
 task_id: T-207
 project: main
 slug: admin-auto-programming
-status: planned
-updated: "2026-04-25"
+status: in-progress
+updated: "2026-04-26"
 keywords:
   - public-discussion-cue
   - programming
