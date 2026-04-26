@@ -21,6 +21,13 @@ json_field() {
   printf '%s\n' "$line" | sed -n "s/.*\"${key}\":\"\\([^\"]*\\)\".*/\\1/p"
 }
 
+extract_env_value() {
+  local key="$1"
+  local value
+  value="$(sed -n "s/^${key}=//p" "$APP_DIR/.env" | tail -n 1)"
+  printf '%s' "$value" | tr -d '\r'
+}
+
 resolve_image_ref() {
   if [[ -n "${IMAGE_REF:-}" ]]; then
     printf '%s' "$IMAGE_REF"
@@ -37,6 +44,8 @@ resolve_image_ref() {
 }
 
 cd "$APP_DIR"
+[[ -f "$APP_DIR/.env" ]] || die "Missing $APP_DIR/.env"
+APP_ENV="$(extract_env_value APP_ENV)"
 IMAGE_REF="$(resolve_image_ref)"
 export IMAGE_REF
 export WEB_BIND_PORT
@@ -58,5 +67,18 @@ printf '%s' "$api_health_body" | grep -q '"status":"ok"' || {
 
 echo "[smoke] verify web runtime role"
 docker compose exec -T web /bin/sh -lc 'test "${RUNTIME_ENABLED:-}" = "false"'
+
+if [[ "$APP_ENV" == "staging" ]]; then
+  WORKER_BASE_URL="http://127.0.0.1:${WORKER_HOST_PORT}"
+  echo "[smoke] GET ${WORKER_BASE_URL}/health"
+  worker_health_body="$(curl -fsS "${WORKER_BASE_URL}/health")"
+  printf '%s' "$worker_health_body" | grep -q '"ok":true' || {
+    echo "[error] worker /health did not return ok=true" >&2
+    exit 1
+  }
+
+  echo "[smoke] verify worker runtime role"
+  docker compose --profile staging-same-host-worker exec -T worker /bin/sh -lc 'test "${RUNTIME_ENABLED:-}" = "true" && test "${SERVICE_ROLE:-}" = "worker"'
+fi
 
 echo "[ok] smoke checks passed"

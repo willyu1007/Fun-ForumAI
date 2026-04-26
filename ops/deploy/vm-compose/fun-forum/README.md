@@ -22,6 +22,9 @@ Temporary staging worker note:
 
 - The `worker` Compose service is gated behind the `staging-same-host-worker` profile.
 - It is a staging-only launch-closure override, not the default prod worker topology.
+- In staging, `deploy.sh`, `rollback.sh`, and `smoke.sh` activate the profile so
+  `web` runs with `RUNTIME_ENABLED=false` while `worker` runs with
+  `RUNTIME_ENABLED=true`.
 
 ## Host prerequisites
 

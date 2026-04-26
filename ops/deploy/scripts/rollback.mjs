@@ -50,6 +50,12 @@ function renderRollbackCommand(target, explicitImageRef, dbPlan, notes) {
 }
 
 function printPlan(envId, envCfg, envFile, envChecks, servicePlans, explicitImageRef, dbPlan, notes, deployConfig) {
+  const stagingWorkerProfile = envId === 'staging';
+  const composePrefix = stagingWorkerProfile
+    ? 'docker compose --profile staging-same-host-worker'
+    : 'docker compose';
+  const runtimeServices = stagingWorkerProfile ? 'web worker' : 'web';
+
   console.log('\n╔══════════════════════════════════════════╗');
   console.log('║       ECS ROLLBACK PLAN (VM)             ║');
   console.log('╚══════════════════════════════════════════╝\n');
@@ -83,8 +89,8 @@ function printPlan(envId, envCfg, envFile, envChecks, servicePlans, explicitImag
     console.log('    1. inspect releases/current.json and releases/history.jsonl');
     console.log('    2. refuse image-only rollback when current db_compat=incompatible and --db-plan is missing');
     console.log('    3. docker login with read-only ACR credentials');
-    console.log('    4. docker compose pull web');
-    console.log('    5. docker compose up -d --no-deps web');
+    console.log(`    4. ${composePrefix} pull ${runtimeServices}`);
+    console.log(`    5. ${composePrefix} up -d --no-deps ${runtimeServices}`);
     console.log(`    6. curl ${target.healthUrl ?? 'http://127.0.0.1:<loopback>/health'}`);
     console.log(`    7. ./${target.smokeScript ?? 'smoke.sh'}`);
     console.log('    8. append the rollback result to releases/history.jsonl');

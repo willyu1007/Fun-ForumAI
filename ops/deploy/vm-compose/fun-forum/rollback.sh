@@ -57,6 +57,13 @@ validate_immutable_image_ref() {
   [[ "$tag" =~ ^sha-[a-fA-F0-9]{40}$ ]] || die "image reference must use an immutable sha-<commit> tag."
 }
 
+extract_env_value() {
+  local key="$1"
+  local value
+  value="$(sed -n "s/^${key}=//p" "$APP_DIR/.env" | tail -n 1)"
+  printf '%s' "$value" | tr -d '\r'
+}
+
 docker_login_readonly() {
   local login_server
   login_server="${IMAGE_REF%%/*}"
@@ -148,8 +155,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "$APP_DIR"
+[[ -f "$APP_DIR/.env" ]] || die "Missing $APP_DIR/.env"
 [[ -f "$APP_DIR/compose.yaml" ]] || die "Missing $APP_DIR/compose.yaml"
 [[ -x "$APP_DIR/smoke.sh" ]] || die "Missing executable $APP_DIR/smoke.sh"
+APP_ENV="$(extract_env_value APP_ENV)"
+[[ "$APP_ENV" =~ ^(dev|staging|prod)$ ]] || die "APP_ENV must be set in .env (dev|staging|prod)."
 
 if [[ -n "$TARGET_IMAGE_REF" ]]; then
   IMAGE_REF="$TARGET_IMAGE_REF"
@@ -181,11 +191,21 @@ echo "[info] Rolling back to $IMAGE_REF from $APP_DIR"
 echo "[step] docker login"
 docker_login_readonly
 
-echo "[step] docker compose pull web"
-docker compose pull web
+if [[ "$APP_ENV" == "staging" ]]; then
+  echo "[step] docker compose --profile staging-same-host-worker pull web worker"
+  docker compose --profile staging-same-host-worker pull web worker
+else
+  echo "[step] docker compose pull web"
+  docker compose pull web
+fi
 
-echo "[step] docker compose up -d --no-deps web"
-docker compose up -d --no-deps web
+if [[ "$APP_ENV" == "staging" ]]; then
+  echo "[step] docker compose --profile staging-same-host-worker up -d --no-deps web worker"
+  docker compose --profile staging-same-host-worker up -d --no-deps web worker
+else
+  echo "[step] docker compose up -d --no-deps web"
+  docker compose up -d --no-deps web
+fi
 
 HEALTH_URL="http://127.0.0.1:${LOOPBACK_PORT}/health"
 echo "[step] waiting for $HEALTH_URL"
