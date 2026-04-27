@@ -3,8 +3,8 @@
 ## Status
 - State: in-progress
 - Depends on: Step 2 canonical seed `kickoff-foundation` v4 and current planning review `pass`.
-- Current status: Wave-01 through wave-04 are closed through package refresh, and wave-04 package refresh has been operator-approved. Wave-05 `00-wave-plan.yaml`, `01-director-note.md`, `02-runtime-guardrails.yaml`, `03-slot-content-units.yaml`, and `04-visual-units.yaml` with 8 final media assets are prepared.
-- Next step: Codex executes Checkpoint for wave-05.
+- Current status: Wave-01 through wave-08 are closed through package refresh. The cumulative package contains 80/100 slots and 61/75 final media assets. Wave-08 checkpoint passed with 0 hard failures and 2 non-blocking visual drift watches.
+- Next step: Operator reviews the wave-08 package refresh. If approved, activate wave-09 through the normal cadence and re-check the future-only Runtime Guard / Writer / Visual drafts before treating them as active; wave-09/wave-10 pre-generated artifacts must not bypass cadence.
 
 ## Goal
 Generate a complete v4 kickoff foundation from Step 2, using human-in-loop multi-model production, and export a loader-valid local kickoff bundle at `.ai/.tmp/kickoff/manifest.v1.yaml`.
