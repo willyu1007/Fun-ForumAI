@@ -166,9 +166,9 @@ export class RedisStreamRuntimeEventQueue implements RuntimeEventQueue {
             source: 'event_queue',
             operation: 'dead_letter',
             status: 'dead_lettered',
-            event_id: msg.event.event_id ?? null,
+            event_id: msg.event.event_id,
             agent_id: msg.event.author_agent_id ?? null,
-            community_id: msg.event.community_id ?? null,
+            community_id: msg.event.community_id,
             retry_count: nextRetry,
             error_message_redacted: compactErrorMessage(reason ?? 'retry_limit_exceeded'),
           })

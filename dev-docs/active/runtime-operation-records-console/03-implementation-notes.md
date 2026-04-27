@@ -217,7 +217,7 @@ Existing runtime test suites (276 cases across `src/backend/runtime/__tests__`) 
 3. Enable write flag in dev/staging — set `FF_RUNTIME_OPERATION_RECORDS_WRITE=true`. The instrumented runtime paths begin to record warn/error/critical operation events.
 4. Verify operation records appear for synthetic failures — exercise an event handler that throws (e.g. by tripping the existing executor failure paths in dev) and confirm rows show in `/admin/runtime-records`.
 5. Verify infra snapshot and LLM manual test from the page itself (15s polling on infra; transient on LLM test).
-6. Run cleanup dry-run / apply in staging via `pnpm runtime-records:cleanup` (default dry-run) and `node scripts/runtime-records-cleanup.mjs --apply`.
+6. Run cleanup dry-run / apply in staging via `pnpm runtime-records:cleanup` (default dry-run) and `pnpm runtime-records:cleanup:apply` (delete). The underlying CLI is `scripts/runtime-records-cleanup.mjs`; pass `--now <iso>` if you need a deterministic clock.
 
 **Rollback**
 

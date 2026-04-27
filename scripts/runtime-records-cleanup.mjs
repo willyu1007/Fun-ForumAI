@@ -13,7 +13,7 @@
 // Records linked to a `RiskEventLog` (`linked_risk_event_id IS NOT NULL`) are
 // excluded from ordinary cleanup unless explicitly approved.
 
-import { Prisma, PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 import { access, readFile } from 'node:fs/promises'
@@ -26,6 +26,10 @@ const ROOT = resolve(__dirname, '..')
 
 const DAY_MS = 86_400_000
 
+// MUST stay in sync with `RUNTIME_OPERATION_RETENTION_DAYS` in
+// `src/backend/services/runtime-operation-record-service.ts`. The cross-check
+// test in `scripts/__tests__/runtime-records-cleanup.test.ts` imports both
+// modules and asserts the cutoffs are byte-identical for the same `now`.
 const RETENTION_DAYS = {
   errorCritical: 90,
   warn: 30,
@@ -49,9 +53,11 @@ Options:
   --help               Show this message.
 
 Examples:
-  node scripts/runtime-records-cleanup.mjs
-  node scripts/runtime-records-cleanup.mjs --apply
-  node scripts/runtime-records-cleanup.mjs --apply --now 2026-04-30T00:00:00Z
+  node scripts/runtime-records-cleanup.mjs                        # dry-run
+  node scripts/runtime-records-cleanup.mjs --apply                # delete
+  node scripts/runtime-records-cleanup.mjs --apply --now <iso>    # pinned now
+  pnpm runtime-records:cleanup                                    # dry-run via pnpm
+  pnpm runtime-records:cleanup:apply                              # delete via pnpm
 `)
   process.exit(exitCode)
 }
@@ -227,6 +233,3 @@ if (isDirectRun) {
     process.exit(1)
   })
 }
-
-// Allow `import { Prisma } from ...` consumers to silence unused-var lint warnings.
-void Prisma

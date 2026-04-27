@@ -47,9 +47,10 @@ export function recordRuntimeOperation(input: CreateRuntimeOperationRecordInput)
 }
 
 /**
- * Truncate an Error → bounded `error_message_redacted` string. Mirrors the
- * limit applied by the service layer so callers do not need to think about
- * redaction at the call site.
+ * Best-effort upper bound for `error_message_redacted` at the call site. The
+ * service layer applies its own (currently 1KB) truncation+sanitization on
+ * top of this, so this helper only exists to keep call-site error strings
+ * compact for the common case.
  */
 export function compactErrorMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err)

@@ -140,9 +140,9 @@ export class RuntimeLoop {
             source: 'runtime_loop',
             operation: 'process_event',
             status: 'retried',
-            event_id: event.event_id ?? null,
+            event_id: event.event_id,
             agent_id: event.author_agent_id ?? null,
-            community_id: event.community_id ?? null,
+            community_id: event.community_id,
             post_id: event.post_id ?? null,
             error_message_redacted: compactErrorMessage(err),
           })

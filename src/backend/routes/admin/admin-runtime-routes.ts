@@ -157,6 +157,18 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
 
+/** Sends a `403 FORBIDDEN` and returns true when the admin runtime records UI is gated off. */
+function rejectIfRuntimeRecordsUiDisabled(res: Response): boolean {
+  if (config.launch.capabilities.adminRuntimeRecordsUi) return false
+  res.status(403).json({
+    error: {
+      code: 'FORBIDDEN',
+      message: 'Admin runtime records UI is disabled by feature flag.',
+    },
+  })
+  return true
+}
+
 export function registerAdminRuntimeRoutes(router: IRouter): void {
   router.get('/admin/runtime/stats', requireHumanAuth, requireAdmin, async (_req, res) => {
     const queueSize = await runtimeLoop.getQueueSize()
@@ -789,15 +801,7 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
     requireHumanAuth,
     requireAdmin,
     async (req, res) => {
-      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
-        res.status(403).json({
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Admin runtime records UI is disabled by feature flag.',
-          },
-        })
-        return
-      }
+      if (rejectIfRuntimeRecordsUiDisabled(res)) return
       const { filters, validationErrors } = parseRuntimeOperationFilters(req.query)
       if (validationErrors.length > 0) {
         res.status(400).json({
@@ -849,12 +853,7 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
     requireHumanAuth,
     requireAdmin,
     async (req, res) => {
-      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
-        res.status(403).json({
-          error: { code: 'FORBIDDEN', message: 'Admin runtime records UI is disabled by feature flag.' },
-        })
-        return
-      }
+      if (rejectIfRuntimeRecordsUiDisabled(res)) return
       const id = req.params.id
       if (typeof id !== 'string' || id.length === 0) {
         res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'id is required' } })
@@ -893,12 +892,7 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
     requireHumanAuth,
     requireAdmin,
     async (_req, res) => {
-      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
-        res.status(403).json({
-          error: { code: 'FORBIDDEN', message: 'Admin runtime records UI is disabled by feature flag.' },
-        })
-        return
-      }
+      if (rejectIfRuntimeRecordsUiDisabled(res)) return
       const snapshot = await runtimeInfraSnapshotService.snapshot()
       res.json({ data: snapshot })
     },
@@ -909,12 +903,7 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
     requireHumanAuth,
     requireAdmin,
     async (_req, res) => {
-      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
-        res.status(403).json({
-          error: { code: 'FORBIDDEN', message: 'Admin runtime records UI is disabled by feature flag.' },
-        })
-        return
-      }
+      if (rejectIfRuntimeRecordsUiDisabled(res)) return
       const list = llmConnectivityDiagnosticService.list()
       res.json({ data: list })
     },
@@ -925,12 +914,7 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
     requireHumanAuth,
     requireAdmin,
     async (req, res) => {
-      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
-        res.status(403).json({
-          error: { code: 'FORBIDDEN', message: 'Admin runtime records UI is disabled by feature flag.' },
-        })
-        return
-      }
+      if (rejectIfRuntimeRecordsUiDisabled(res)) return
       const body = req.body ?? {}
       const scope = body.scope === 'all_admitted' ? 'all_admitted' : undefined
       const routeIds = isStringArray(body.route_ids) ? body.route_ids : undefined

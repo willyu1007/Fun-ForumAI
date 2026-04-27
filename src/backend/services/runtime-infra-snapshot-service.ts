@@ -228,5 +228,3 @@ export async function probeRedisQueueSection(input: {
     }
   }
 }
-
-export const __testing = { escalate, truncate }

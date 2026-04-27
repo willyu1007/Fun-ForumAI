@@ -92,17 +92,6 @@ export class LlmConnectivityDiagnosticService {
     for (const pool of bundle.credentialPools.pools) {
       credentialPoolByEndpoint.set(`${pool.provider_id}|${pool.region}|${pool.endpoint_id}`, pool.credential_id)
     }
-    const capabilityByKey = new Map<string, { input_window_tokens: number; max_output_tokens: number }>()
-    for (const cap of bundle.modelCapabilities.capabilities) {
-      capabilityByKey.set(`${cap.provider_id}|${cap.model_id}`, {
-        input_window_tokens: cap.input_window_tokens,
-        max_output_tokens: cap.max_output_tokens,
-      })
-    }
-    const policyByProfileId = new Map<string, string>()
-    for (const policy of bundle.routingPolicies.policies) {
-      policyByProfileId.set(policy.profile_id, policy.profile_id)
-    }
     const admissionPoolByVoiceLine = new Map<string, string[]>()
     for (const pool of bundle.providerAdmission.pools) {
       admissionPoolByVoiceLine.set(
