@@ -287,4 +287,114 @@ describe('HomeProgrammingSnapshotService', () => {
     expect(eventRepo.findByPostId('post-highlight')).toHaveLength(2)
     expect(eventRepo.findByPostId('post-story')).toHaveLength(2)
   })
+
+  it('T-215 B-M3 — emits HOME_PROGRAMMING_CUE_PUBLISHED with home-cue: namespace', async () => {
+    const eventRepo = new InMemoryEventRepository()
+    const hook = vi.fn()
+    const cuePublicProjectionService = {
+      assemble: vi.fn(async () => ({
+        upcoming: [{
+          cue_id: 'cue-up',
+          schedule_id: 'sched-1',
+          community_id: 'community-1',
+          trigger_at: '2026-04-07T20:00:00.000Z',
+          lane: 'standard' as const,
+          status: 'upcoming' as const,
+        }],
+        live: [],
+        completed: [{
+          cue_id: 'cue-done',
+          schedule_id: 'sched-1',
+          community_id: 'community-1',
+          completed_at: '2026-04-07T07:30:00.000Z',
+          status: 'completed' as const,
+          result_post_id: 'post-result-1',
+          result_thread_id: null,
+          result_url: null,
+        }],
+      })),
+    }
+    const service = new HomeProgrammingSnapshotService({
+      homeProgrammingService: {
+        getHome: async () => buildHomePayload('2026-04-07T08:15:00.000Z'),
+      },
+      eventRepo,
+      onEventCreated: hook,
+      cuePublicProjectionService,
+    })
+
+    const result = await service.captureSnapshot()
+
+    // 2 home-shelf events + 2 home-cue events
+    expect(result.created_count).toBe(4)
+    const cueEvents = result.published_events.filter(
+      (e) => e.event_type === 'HOME_PROGRAMMING_CUE_PUBLISHED',
+    )
+    expect(cueEvents).toHaveLength(2)
+    expect(cueEvents.map((e) => e.idempotency_key)).toEqual([
+      'home-cue:2026-04-07:upcoming:cue-up',
+      'home-cue:2026-04-07:completed:cue-done',
+    ])
+    // Probe: home-shelf: namespace must not collide with home-cue:
+    const shelfEvents = result.published_events.filter(
+      (e) => e.event_type === 'HOME_EDITORIAL_SHELF_PUBLISHED',
+    )
+    expect(shelfEvents.every((e) => e.idempotency_key?.startsWith('home-shelf:'))).toBe(true)
+    expect(cueEvents.every((e) => e.idempotency_key?.startsWith('home-cue:'))).toBe(true)
+  })
+
+  it('T-215 B-M3 — dedupes home-cue: events on repeated same-day captures', async () => {
+    const eventRepo = new InMemoryEventRepository()
+    const cuePublicProjectionService = {
+      assemble: vi.fn(async () => ({
+        upcoming: [{
+          cue_id: 'cue-up',
+          schedule_id: 'sched-1',
+          community_id: 'community-1',
+          trigger_at: '2026-04-07T20:00:00.000Z',
+          lane: 'standard' as const,
+          status: 'upcoming' as const,
+        }],
+        live: [],
+        completed: [],
+      })),
+    }
+    const service = new HomeProgrammingSnapshotService({
+      homeProgrammingService: {
+        getHome: async () => buildHomePayload('2026-04-07T08:15:00.000Z'),
+      },
+      eventRepo,
+      cuePublicProjectionService,
+    })
+
+    const first = await service.captureSnapshot()
+    const second = await service.captureSnapshot()
+
+    expect(first.created_count).toBe(3) // 2 shelf + 1 cue
+    expect(second.created_count).toBe(0)
+    expect(second.deduped_count).toBe(3)
+  })
+
+  it('T-215 B-M3 — cue facet failure does not abort shelf snapshot', async () => {
+    const eventRepo = new InMemoryEventRepository()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const cuePublicProjectionService = {
+      assemble: vi.fn(async () => {
+        throw new Error('facet boom')
+      }),
+    }
+    const service = new HomeProgrammingSnapshotService({
+      homeProgrammingService: {
+        getHome: async () => buildHomePayload('2026-04-07T08:15:00.000Z'),
+      },
+      eventRepo,
+      cuePublicProjectionService,
+    })
+
+    const result = await service.captureSnapshot()
+    // Shelf events still landed.
+    expect(result.created_count).toBe(2)
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
 })

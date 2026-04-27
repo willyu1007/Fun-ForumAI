@@ -1,0 +1,14 @@
+version: 1
+task_id: T-208
+project: main
+slug: cue-shared-contract
+status: done
+updated: "2026-04-25"
+keywords:
+  - public-discussion-cue
+  - programming-contract
+  - dispatch-policy
+  - admission
+  - idempotency
+  - selection-ledger
+  - phase-0

@@ -2,6 +2,7 @@ import { Prisma, type ForumSceneMetadata as PrismaForumSceneMetadata, type Prism
 import type {
   CreateForumSceneMetadataInput,
   ForumSceneMetadata,
+  ForumSceneProductionPath,
 } from '../types.js'
 import type { ForumSceneMetadataRepository } from '../forum-scene-metadata-repository.js'
 
@@ -35,6 +36,11 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
         selectionMode: input.selection_mode,
         expiresAt: input.expires_at ?? null,
         payloadJson: input.payload_json as Prisma.InputJsonValue,
+        programmingProductionPath: input.programming_production_path ?? null,
+        programmingCueId: input.programming_cue_id ?? null,
+        programmingAttemptId: input.programming_attempt_id ?? null,
+        programmingScheduleId: input.programming_schedule_id ?? null,
+        programmingSourceType: input.programming_source_type ?? null,
       },
     })
     return this.toDomain(row)
@@ -139,6 +145,12 @@ export class PgForumSceneMetadataRepository implements ForumSceneMetadataReposit
       selection_mode: row.selectionMode as ForumSceneMetadata['selection_mode'],
       expires_at: row.expiresAt,
       payload_json: row.payloadJson as Record<string, unknown>,
+      programming_production_path:
+        (row.programmingProductionPath as ForumSceneProductionPath | null) ?? null,
+      programming_cue_id: row.programmingCueId,
+      programming_attempt_id: row.programmingAttemptId,
+      programming_schedule_id: row.programmingScheduleId,
+      programming_source_type: row.programmingSourceType,
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     }

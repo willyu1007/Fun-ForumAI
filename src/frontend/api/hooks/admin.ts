@@ -5,6 +5,14 @@ import type {
   ApiResponse,
   AdminMediaObservabilityData,
   AdminMediaRolloutControllerData,
+  CueBoardPayload,
+  CueChangeDomain,
+  CueDetailPayload,
+  CueMediaItem,
+  CuePatchV1,
+  CuePreviewPayload,
+  MediaPickerPayload,
+  PublicDiscussionCueDomain,
   AdminFeedbackTicketDetail,
   AdminFeedbackTicketSummary,
   AdminInviteCodeSummary,
@@ -290,6 +298,254 @@ export function useAdminLaunchProgrammingOps(enabled = true) {
   })
 }
 
+export interface UseAdminCueBoardParams {
+  schedule_id?: string
+  community_id?: string
+  from?: string
+  to?: string
+  limit?: number
+  enabled?: boolean
+}
+
+export function useAdminCueBoard(params: UseAdminCueBoardParams = {}) {
+  const { enabled = true, ...query } = params
+  return useQuery({
+    queryKey: queryKeys.adminCueBoard(query),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (query.schedule_id) search.set('schedule_id', query.schedule_id)
+      if (query.community_id) search.set('community_id', query.community_id)
+      if (query.from) search.set('from', query.from)
+      if (query.to) search.set('to', query.to)
+      if (query.limit !== undefined) search.set('limit', String(query.limit))
+      const path = `admin/programming/cue-board${
+        search.toString() ? `?${search.toString()}` : ''
+      }`
+      return api.get(path).json<ApiResponse<CueBoardPayload>>()
+    },
+    enabled,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+}
+
+export interface AdminCueBoardBaselineImportResult {
+  schedule_id: string
+  schedule_status: string
+  schedule_source: string
+  baseline_contract_version: string | null
+  cue_count: number
+  is_new: boolean
+}
+
+export function useAdminCueBoardBaselineImport() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      return api
+        .post('admin/programming/cue-board/baseline-import')
+        .json<ApiResponse<AdminCueBoardBaselineImportResult>>()
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'cue-board'] })
+    },
+  })
+}
+
+// =============================================================================
+// T-210 M2 — admin cue editor mutation hooks
+// =============================================================================
+
+function invalidateCueQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'cue-board'] })
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'cue-detail'] })
+}
+
+export function useAdminCueDetail(cueId: string | null) {
+  return useQuery({
+    queryKey: cueId ? queryKeys.adminCueDetail(cueId) : ['admin', 'cue-detail', 'idle'],
+    queryFn: () =>
+      api.get(`admin/programming/cues/${cueId}`).json<ApiResponse<CueDetailPayload>>(),
+    enabled: Boolean(cueId),
+    retry: false,
+  })
+}
+
+interface CueMutationResult {
+  cue: PublicDiscussionCueDomain
+  change: CueChangeDomain
+}
+
+export function useAdminCueCreate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { schedule_id: string; scope: PublicDiscussionCueDomain['scope']; patch: CuePatchV1 }) =>
+      api
+        .post('admin/programming/cues', { json: input })
+        .json<ApiResponse<CueMutationResult>>(),
+    onSuccess: () => invalidateCueQueries(queryClient),
+  })
+}
+
+export function useAdminCueUpdate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { cueId: string; patch: CuePatchV1 }) =>
+      api
+        .patch(`admin/programming/cues/${input.cueId}`, { json: { patch: input.patch } })
+        .json<ApiResponse<CueMutationResult>>(),
+    onSuccess: () => invalidateCueQueries(queryClient),
+  })
+}
+
+export function useAdminCueCancel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { cueId: string; reason?: string }) =>
+      api
+        .post(`admin/programming/cues/${input.cueId}/cancel`, {
+          json: input.reason ? { reason: input.reason } : {},
+        })
+        .json<ApiResponse<CueMutationResult>>(),
+    onSuccess: () => invalidateCueQueries(queryClient),
+  })
+}
+
+export function useAdminCueForceSkip() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { cueId: string; reason?: string }) =>
+      api
+        .post(`admin/programming/cues/${input.cueId}/force-skip`, {
+          json: input.reason ? { reason: input.reason } : {},
+        })
+        .json<ApiResponse<CueMutationResult>>(),
+    onSuccess: () => invalidateCueQueries(queryClient),
+  })
+}
+
+export function useAdminCuePublish() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (cueId: string) =>
+      api
+        .post(`admin/programming/cues/${cueId}/publish`, { json: {} })
+        .json<ApiResponse<CueMutationResult>>(),
+    onSuccess: () => invalidateCueQueries(queryClient),
+  })
+}
+
+export function useAdminCueAttachMedia() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      cueId: string
+      asset_id: string
+      role: CueMediaItem['role']
+      // T-216 M3 — all four strengths now exposed. Server-side
+      // `manage_programming_media` permission still gates the
+      // operation as a whole; future fine-grained permission can
+      // restrict `anchor` / `selected_only_pool` to a stricter role.
+      usage_strength?: 'optional' | 'preferred' | 'anchor' | 'selected_only_pool'
+      use_policy?:
+        | 'runtime_only'
+        | 'prefer_runtime_context'
+        | 'prefer_public_display'
+        | 'allow_generated_derivative'
+      selection_note?: string | null
+      sort_order?: number
+    }) => {
+      const { cueId, ...body } = input
+      return api
+        .post(`admin/programming/cues/${cueId}/media`, { json: body })
+        .json<ApiResponse<{ media_id: string; change: CueChangeDomain }>>()
+    },
+    onSuccess: () => invalidateCueQueries(queryClient),
+  })
+}
+
+export function useAdminCueRemoveMedia() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { cueId: string; mediaId: string }) =>
+      api
+        .delete(`admin/programming/cues/${input.cueId}/media/${input.mediaId}`)
+        .json<ApiResponse<{ removed: boolean; change: CueChangeDomain }>>(),
+    onSuccess: () => invalidateCueQueries(queryClient),
+  })
+}
+
+export function useAdminScheduleRollback() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { scheduleId: string; summary?: string }) =>
+      api
+        .post(`admin/programming/schedule/${input.scheduleId}/rollback`, {
+          json: input.summary ? { summary: input.summary } : {},
+        })
+        .json<ApiResponse<{ schedule: { id: string; version: number }; change: CueChangeDomain }>>(),
+    onSuccess: () => invalidateCueQueries(queryClient),
+  })
+}
+
+export function useAdminCueAudit(
+  params: {
+    cue_id?: string
+    schedule_id?: string
+    actor_user_id?: string
+    limit?: number
+    enabled?: boolean
+  } = {},
+) {
+  const { enabled = true, ...query } = params
+  return useQuery({
+    queryKey: queryKeys.adminCueAudit(query),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (query.cue_id) search.set('cue_id', query.cue_id)
+      if (query.schedule_id) search.set('schedule_id', query.schedule_id)
+      if (query.actor_user_id) search.set('actor_user_id', query.actor_user_id)
+      if (query.limit !== undefined) search.set('limit', String(query.limit))
+      const path = `admin/programming/audit${search.toString() ? `?${search.toString()}` : ''}`
+      return api
+        .get(path)
+        .json<ApiResponse<{ items: CueChangeDomain[]; total: number }>>()
+    },
+    enabled: enabled && Boolean(query.cue_id || query.schedule_id),
+    retry: false,
+  })
+}
+
+export function useAdminCuePreview() {
+  return useMutation({
+    mutationFn: async (input: { cueId: string; patch: CuePatchV1 }) =>
+      api
+        .post(`admin/programming/cues/${input.cueId}/preview`, { json: { patch: input.patch } })
+        .json<ApiResponse<CuePreviewPayload>>(),
+  })
+}
+
+export function useAdminMediaPicker(params: { community_id?: string; cursor?: string; limit?: number; enabled?: boolean } = {}) {
+  const { enabled = true, ...query } = params
+  return useQuery({
+    queryKey: queryKeys.adminMediaPicker(query),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (query.community_id) search.set('community_id', query.community_id)
+      if (query.cursor) search.set('cursor', query.cursor)
+      if (query.limit !== undefined) search.set('limit', String(query.limit))
+      const path = `admin/programming/media-picker${
+        search.toString() ? `?${search.toString()}` : ''
+      }`
+      return api.get(path).json<ApiResponse<MediaPickerPayload>>()
+    },
+    enabled,
+    retry: false,
+  })
+}
+
+// =============================================================================
+
 export function useAdminKickoffStatus() {
   return useQuery({
     queryKey: queryKeys.adminKickoffStatus,
@@ -467,6 +723,150 @@ export function useRunMediaLifecycle() {
       qc.invalidateQueries({ queryKey: queryKeys.adminMediaObservability })
       qc.invalidateQueries({ queryKey: queryKeys.adminMediaRolloutController })
     },
+  })
+}
+
+// =============================================================================
+// T-215 B-M3 — admin preview of public cue projection
+// =============================================================================
+
+export interface UseAdminCueProjectionParams {
+  community_id?: string
+  lookahead_minutes?: number
+  completed_window_minutes?: number
+  upcoming_limit?: number
+  completed_limit?: number
+  enabled?: boolean
+}
+
+export function useAdminCueProjection(params: UseAdminCueProjectionParams = {}) {
+  const { enabled = true, ...query } = params
+  return useQuery({
+    queryKey: queryKeys.adminCueProjection(query),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (query.community_id) search.set('community_id', query.community_id)
+      if (query.lookahead_minutes !== undefined) search.set('lookahead_minutes', String(query.lookahead_minutes))
+      if (query.completed_window_minutes !== undefined) search.set('completed_window_minutes', String(query.completed_window_minutes))
+      if (query.upcoming_limit !== undefined) search.set('upcoming_limit', String(query.upcoming_limit))
+      if (query.completed_limit !== undefined) search.set('completed_limit', String(query.completed_limit))
+      const path = `admin/programming/cue-projection${search.toString() ? `?${search.toString()}` : ''}`
+      return api.get(path).json<ApiResponse<import('../types').CueProjectionFacet>>()
+    },
+    enabled,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+}
+
+// =============================================================================
+// T-216 M3 closer — media plan resolution audit hook
+// =============================================================================
+
+export interface UseAdminMediaPlanResolutionsParams {
+  attempt_id?: string
+  cue_id?: string
+  limit?: number
+  enabled?: boolean
+}
+
+export function useAdminMediaPlanResolutions(params: UseAdminMediaPlanResolutionsParams = {}) {
+  const { enabled = true, ...query } = params
+  const ready = Boolean(query.attempt_id || query.cue_id)
+  return useQuery({
+    queryKey: queryKeys.adminMediaPlanResolutions(query),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (query.attempt_id) search.set('attempt_id', query.attempt_id)
+      if (query.cue_id) search.set('cue_id', query.cue_id)
+      if (query.limit !== undefined) search.set('limit', String(query.limit))
+      const path = `admin/programming/media-plan-resolutions?${search.toString()}`
+      return api.get(path).json<ApiResponse<{
+        items: import('../types').MediaPlanResolutionRow[]
+        total: number
+        attempt_id: string | null
+      }>>()
+    },
+    enabled: enabled && ready,
+    retry: false,
+  })
+}
+
+// =============================================================================
+// T-214 A-M3 — auto-patch inbox hooks
+// =============================================================================
+
+export type AdminAutoPatchInboxItem = CueChangeDomain
+
+export interface UseAdminAutoPatchInboxParams {
+  approval_status?: 'pending' | 'approved' | 'rejected' | 'auto_applied' | 'rolled_back'
+  limit?: number
+  enabled?: boolean
+}
+
+export function useAdminAutoPatchInbox(params: UseAdminAutoPatchInboxParams = {}) {
+  const { enabled = true, approval_status, limit } = params
+  return useQuery({
+    queryKey: queryKeys.adminAutoPatchInbox({
+      approval_status,
+      limit,
+    }),
+    queryFn: async () => {
+      const search = new URLSearchParams()
+      if (approval_status) search.set('approval_status', approval_status)
+      if (limit !== undefined) search.set('limit', String(limit))
+      const path = `admin/programming/auto-patches${search.toString() ? `?${search.toString()}` : ''}`
+      return api.get(path).json<ApiResponse<{
+        items: AdminAutoPatchInboxItem[]
+        total: number
+      }>>()
+    },
+    enabled,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+}
+
+export function useAdminAutoPatchDetail(id: string | null) {
+  return useQuery({
+    queryKey: id ? queryKeys.adminAutoPatchDetail(id) : ['admin', 'auto-patch-detail', 'idle'],
+    queryFn: () =>
+      api
+        .get(`admin/programming/auto-patches/${id}`)
+        .json<ApiResponse<{ change: AdminAutoPatchInboxItem }>>(),
+    enabled: Boolean(id),
+    retry: false,
+  })
+}
+
+function invalidateAutoPatchQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'auto-patch-inbox'] })
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'auto-patch-detail'] })
+}
+
+export function useApproveAutoPatch() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { id: string; reason?: string }) =>
+      api
+        .post(`admin/programming/auto-patches/${input.id}/approve`, {
+          json: input.reason ? { reason: input.reason } : {},
+        })
+        .json<ApiResponse<{ change: AdminAutoPatchInboxItem }>>(),
+    onSuccess: () => invalidateAutoPatchQueries(queryClient),
+  })
+}
+
+export function useRejectAutoPatch() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { id: string; reason: string }) =>
+      api
+        .post(`admin/programming/auto-patches/${input.id}/reject`, {
+          json: { reason: input.reason },
+        })
+        .json<ApiResponse<{ change: AdminAutoPatchInboxItem }>>(),
+    onSuccess: () => invalidateAutoPatchQueries(queryClient),
   })
 }
 

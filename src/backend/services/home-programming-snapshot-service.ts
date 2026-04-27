@@ -11,6 +11,7 @@ import type {
   HomeProgrammingPostItem,
   HomeProgrammingService,
 } from './home-programming-service.js'
+import type { CuePublicProjectionService } from './cue-public-projection-service.js'
 
 const TARGET_SHELF_IDS = ['must_watch_today', 'continue_storyline'] as const
 
@@ -18,6 +19,16 @@ export interface HomeProgrammingSnapshotServiceDeps {
   homeProgrammingService: Pick<HomeProgrammingService, 'getHome'>
   eventRepo: EventRepository
   onEventCreated?: (event: DomainEvent) => Promise<void> | void
+  /**
+   * T-215 B-M3 — optional cue projection service. When supplied, the
+   * snapshot service additionally walks the cue facet (upcoming +
+   * completed) and emits one `HOME_PROGRAMMING_CUE_PUBLISHED` event per
+   * item under a separate `home-cue:` idempotency namespace so the cue
+   * stream never collides with the existing `home-shelf:` keys. Tests
+   * that don't care about cues leave this unset and observe the
+   * pre-existing behavior.
+   */
+  cuePublicProjectionService?: Pick<CuePublicProjectionService, 'assemble'>
 }
 
 export interface HomeProgrammingSnapshotResult {
@@ -111,6 +122,86 @@ export class HomeProgrammingSnapshotService {
         } else {
           dedupedCount += 1
         }
+      }
+    }
+
+    // T-215 B-M3 — cue facet snapshot. Each upcoming / completed cue
+    // produces one event under a distinct `home-cue:` namespace so it
+    // never collides with the existing `home-shelf:` keys above. We
+    // ignore live cues here: the live state is volatile (≤ minutes)
+    // and replay through the snapshot store would produce stale cards.
+    if (this.deps.cuePublicProjectionService) {
+      try {
+        const facet = await this.deps.cuePublicProjectionService.assemble({
+          now: new Date(generatedAt),
+        })
+        for (const item of facet.upcoming) {
+          scannedCount += 1
+          const idempotencyKey = `home-cue:${snapshotDate}:upcoming:${item.cue_id}`
+          const created = await this.createSnapshotEvent({
+            idempotency_key: idempotencyKey,
+            event_type: 'HOME_PROGRAMMING_CUE_PUBLISHED',
+            plane: 'RUNTIME',
+            schema_version: 'v1',
+            community_id: item.community_id ?? null,
+            actor_type: 'system',
+            actor_id: 'home-programming-snapshot',
+            correlation_id: `home-snapshot:${snapshotDate}`,
+            payload_json: {
+              snapshot_date: snapshotDate,
+              generated_at: generatedAt,
+              cue_facet: 'upcoming',
+              cue_id: item.cue_id,
+              schedule_id: item.schedule_id,
+              community_id: item.community_id,
+              trigger_at: item.trigger_at,
+              lane: item.lane,
+            },
+          })
+          if (created.created) {
+            createdCount += 1
+            publishedEvents.push(created.event)
+          } else {
+            dedupedCount += 1
+          }
+        }
+        for (const item of facet.completed) {
+          scannedCount += 1
+          const idempotencyKey = `home-cue:${snapshotDate}:completed:${item.cue_id}`
+          const created = await this.createSnapshotEvent({
+            idempotency_key: idempotencyKey,
+            event_type: 'HOME_PROGRAMMING_CUE_PUBLISHED',
+            plane: 'RUNTIME',
+            schema_version: 'v1',
+            community_id: item.community_id ?? null,
+            ...(item.result_post_id ? { post_id: item.result_post_id } : {}),
+            actor_type: 'system',
+            actor_id: 'home-programming-snapshot',
+            correlation_id: `home-snapshot:${snapshotDate}`,
+            payload_json: {
+              snapshot_date: snapshotDate,
+              generated_at: generatedAt,
+              cue_facet: 'completed',
+              cue_id: item.cue_id,
+              schedule_id: item.schedule_id,
+              community_id: item.community_id,
+              completed_at: item.completed_at,
+              result_post_id: item.result_post_id,
+              result_thread_id: item.result_thread_id,
+              result_url: item.result_url,
+            },
+          })
+          if (created.created) {
+            createdCount += 1
+            publishedEvents.push(created.event)
+          } else {
+            dedupedCount += 1
+          }
+        }
+      } catch (err) {
+        console.error(
+          `[HomeProgrammingSnapshotService] cue facet snapshot failed: ${(err as Error).message}`,
+        )
       }
     }
 

@@ -55,6 +55,11 @@ export class InMemoryForumSceneMetadataRepository implements ForumSceneMetadataR
       selection_mode: input.selection_mode,
       expires_at: input.expires_at ?? null,
       payload_json: input.payload_json,
+      programming_production_path: input.programming_production_path ?? null,
+      programming_cue_id: input.programming_cue_id ?? null,
+      programming_attempt_id: input.programming_attempt_id ?? null,
+      programming_schedule_id: input.programming_schedule_id ?? null,
+      programming_source_type: input.programming_source_type ?? null,
       created_at: now,
       updated_at: now,
     }

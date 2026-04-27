@@ -151,6 +151,38 @@ export const queryKeys = {
   adminFeedbackDetail: (feedbackId: string) => ['admin', 'feedback-detail', feedbackId] as const,
   adminLaunchProgrammingOps: (enabled?: boolean) =>
     ['admin', 'launch-programming-ops', enabled ?? true] as const,
+  adminCueBoard: (params?: {
+    schedule_id?: string
+    community_id?: string
+    from?: string
+    to?: string
+    limit?: number
+  }) => ['admin', 'cue-board', params ?? null] as const,
+  adminCueDetail: (cueId: string) => ['admin', 'cue-detail', cueId] as const,
+  adminAutoPatchInbox: (params?: { approval_status?: string; limit?: number }) =>
+    ['admin', 'auto-patch-inbox', params ?? null] as const,
+  adminAutoPatchDetail: (id: string) =>
+    ['admin', 'auto-patch-detail', id] as const,
+  adminCueProjection: (params?: {
+    community_id?: string
+    lookahead_minutes?: number
+    completed_window_minutes?: number
+    upcoming_limit?: number
+    completed_limit?: number
+  }) => ['admin', 'cue-projection', params ?? null] as const,
+  adminMediaPlanResolutions: (params?: {
+    attempt_id?: string
+    cue_id?: string
+    limit?: number
+  }) => ['admin', 'media-plan-resolutions', params ?? null] as const,
+  adminMediaPicker: (params?: { community_id?: string; cursor?: string; limit?: number }) =>
+    ['admin', 'media-picker', params ?? null] as const,
+  adminCueAudit: (params?: {
+    cue_id?: string
+    schedule_id?: string
+    actor_user_id?: string
+    limit?: number
+  }) => ['admin', 'cue-audit', params ?? null] as const,
   adminKickoffStatus: ['admin', 'kickoff-status'] as const,
   adminWarmupRuns: ['admin', 'warmup-runs'] as const,
   adminWarmupRunDetail: (runId: string) => ['admin', 'warmup-run-detail', runId] as const,

@@ -72,7 +72,9 @@ import { HotTopicOpsService } from '../services/hot-topic-ops-service.js'
 import { ForumSceneContinuityService } from '../services/forum-scene-continuity-service.js'
 import { HomeProgrammingService } from '../services/home-programming-service.js'
 import { HomeProgrammingSnapshotService } from '../services/home-programming-snapshot-service.js'
+import { CuePublicProjectionService } from '../services/cue-public-projection-service.js'
 import { LaunchProgrammingOpsService } from '../services/launch-programming-ops-service.js'
+import { CueBoardReadService } from '../services/cue-board-read-service.js'
 import { ViewerPublicViewService } from '../services/viewer-public-view-service.js'
 import { PublicAgentRelationSummaryService } from '../services/public-agent-relation-summary-service.js'
 import { ThreadLifecycleService } from '../services/thread-lifecycle-service.js'
@@ -118,6 +120,12 @@ export function createCoreServices(deps: {
   roomLifecycleLeaderElector: LeaderElector
   conversationClockLeaderElector: LeaderElector
   runtimeRedis?: Redis | null
+  /**
+   * T-213 M4 — cached load signal source for the Cue Board heatmap.
+   * Optional so legacy / test callers fall back to the heatmap-disabled
+   * payload (load_state_per_community === null).
+   */
+  loadSignalService?: import('../services/load-signal-service.js').LoadSignalService | null
 }) {
   const { repos, sseHub, moderator, llmGateway } = deps
 
@@ -363,6 +371,13 @@ export function createCoreServices(deps: {
     roleAssignmentRepo: repos.roleAssignmentRepo,
     mediaObservabilityService: deps.mediaObservabilityService ?? null,
   })
+  const cueBoardReadService = new CueBoardReadService(repos.cueRepo, {
+    loadSignalService: deps.loadSignalService ?? null,
+    // T-213 M4 — `postRepo` powers the autonomous-vs-cue split for the
+    // heatmap's `predicted_autonomous_count_30m`. Without it the heatmap
+    // would degrade to zero (no double-count risk).
+    postRepo: repos.postRepo,
+  })
   const homeProgrammingService = new HomeProgrammingService({
     forumReadService,
     globalHighlightsService,
@@ -375,9 +390,18 @@ export function createCoreServices(deps: {
     humanFollowRepo: repos.humanFollowRepo,
     pprSnapshotRepo: repos.pprSnapshotRepo,
   })
+  // T-215 B-M2 — public-facing cue facet assembled from cue repo state.
+  // Threaded into the snapshot service so the home shelf events fan
+  // cue cards through the same idempotency-keyed event stream that
+  // already powers must-watch / continue-storyline.
+  const cuePublicProjectionService = new CuePublicProjectionService({
+    cueRepo: repos.cueRepo,
+    forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
+  })
   const homeProgrammingSnapshotService = new HomeProgrammingSnapshotService({
     homeProgrammingService,
     eventRepo: repos.eventRepo,
+    cuePublicProjectionService,
   })
 
   const agentService = new AgentService({
@@ -784,8 +808,10 @@ export function createCoreServices(deps: {
     globalHighlightsService,
     publicAgentRelationSummaryService,
     launchProgrammingOpsService,
+    cueBoardReadService,
     homeProgrammingService,
     homeProgrammingSnapshotService,
+    cuePublicProjectionService,
     warmupGovernanceService,
     agentService,
     agentCommunityMembershipService,

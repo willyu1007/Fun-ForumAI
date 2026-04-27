@@ -203,16 +203,30 @@ echo "[info] Deploying $IMAGE_REF into $APP_ENV from $APP_DIR"
 echo "[step] docker login"
 docker_login_readonly
 
-echo "[step] docker compose pull web migrate"
-docker compose pull web migrate
+if [[ "$APP_ENV" == "staging" ]]; then
+  echo "[step] docker compose --profile staging-same-host-worker pull web worker migrate"
+  docker compose --profile staging-same-host-worker pull web worker migrate
+else
+  echo "[step] docker compose pull web migrate"
+  docker compose pull web migrate
+fi
 
 if [[ "$WITH_MIGRATE" == "true" ]]; then
   echo "[step] docker compose run --rm migrate"
-  docker compose run --rm migrate
+  if [[ "$APP_ENV" == "staging" ]]; then
+    docker compose --profile staging-same-host-worker run --rm migrate
+  else
+    docker compose run --rm migrate
+  fi
 fi
 
-echo "[step] docker compose up -d --no-deps web"
-docker compose up -d --no-deps web
+if [[ "$APP_ENV" == "staging" ]]; then
+  echo "[step] docker compose --profile staging-same-host-worker up -d --no-deps web worker"
+  docker compose --profile staging-same-host-worker up -d --no-deps web worker
+else
+  echo "[step] docker compose up -d --no-deps web"
+  docker compose up -d --no-deps web
+fi
 
 HEALTH_URL="http://127.0.0.1:${LOOPBACK_PORT}/health"
 echo "[step] waiting for $HEALTH_URL"

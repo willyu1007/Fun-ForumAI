@@ -76,7 +76,7 @@
     "voice-line:canonicalize-doubao": "tsx src/backend/dev/canonicalize-doubao-voice-line.ts",
     "package:dry-run": "node ops/packaging/scripts/build.mjs --dry-run",
     "package:build": "node ops/packaging/scripts/build.mjs",
-    "deploy:dry-run": "node ops/deploy/scripts/deploy.mjs --dry-run --env staging",
+    "deploy:dry-run": "node ops/deploy/scripts/deploy.mjs --dry-run --env staging --with-migrate",
     "deploy:plan": "node ops/deploy/scripts/deploy.mjs --dry-run --env",
     "rollback:dry-run": "node ops/deploy/scripts/rollback.mjs --dry-run --env staging",
     "release:status": "node .ai/skills/features/release/scripts/ctl-release.mjs status",

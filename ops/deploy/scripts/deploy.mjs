@@ -63,6 +63,13 @@ function renderDeployCommand(target) {
 }
 
 function printPlan(envId, envCfg, envFile, envChecks, servicePlans, deployConfig, releaseIntent) {
+  const stagingWorkerProfile = envId === 'staging';
+  const composePrefix = stagingWorkerProfile
+    ? 'docker compose --profile staging-same-host-worker'
+    : 'docker compose';
+  const runtimeServices = stagingWorkerProfile ? 'web worker' : 'web';
+  const pullServices = stagingWorkerProfile ? 'web worker migrate' : 'web migrate';
+
   console.log('\n╔══════════════════════════════════════════╗');
   console.log('║       ECS DEPLOYMENT PLAN (VM)           ║');
   console.log('╚══════════════════════════════════════════╝\n');
@@ -122,9 +129,9 @@ function printPlan(envId, envCfg, envFile, envChecks, servicePlans, deployConfig
     console.log('  fixed sequence:');
     console.log('    1. validate files/env');
     console.log('    2. docker login with read-only ACR credentials');
-    console.log('    3. docker compose pull web migrate');
-    console.log(`    4. ${target.withMigrate ? 'docker compose run --rm migrate' : 'skip migrate step'}`);
-    console.log('    5. docker compose up -d --no-deps web');
+    console.log(`    3. ${composePrefix} pull ${pullServices}`);
+    console.log(`    4. ${target.withMigrate ? `${composePrefix} run --rm migrate` : 'skip migrate step'}`);
+    console.log(`    5. ${composePrefix} up -d --no-deps ${runtimeServices}`);
     console.log(`    6. curl ${target.healthUrl ?? 'http://127.0.0.1:<loopback>/health'}`);
     console.log(`    7. ./${target.smokeScript ?? 'smoke.sh'}`);
     console.log('    8. write releases/current.json and releases/history.jsonl');

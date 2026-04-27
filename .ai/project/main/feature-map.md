@@ -135,6 +135,7 @@ Project: `main`
 | T-992 runtime-autonomous-vote-pipeline | archived | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | archived | dev-docs/archive/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
+| T-995 kickoff-step3-live-run-v4-100-slots | in-progress | dev-docs/active/kickoff-step3-live-run-v4-100-slots |
 
 ### F-010 Agent Stats System
 
@@ -216,6 +217,16 @@ Project: `main`
 | T-099 scene-pool-authoring-schema-v2-migration | archived | dev-docs/archive/scene-pool-authoring-schema-v2-migration |
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | archived | dev-docs/archive/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | archived | dev-docs/archive/director-report-history-lifecycle-and-segmentation |
+| T-207 admin-auto-programming | in-progress | dev-docs/active/admin-auto-programming |
+| T-208 cue-shared-contract | done | dev-docs/active/cue-shared-contract |
+| T-209 cue-data-and-board | done | dev-docs/active/cue-data-and-board |
+| T-210 cue-editor-admin | done | dev-docs/active/cue-editor-admin |
+| T-211 post-scheduler-boundary | done | dev-docs/active/post-scheduler-boundary |
+| T-212 cue-worker-runtime | done | dev-docs/active/cue-worker-runtime |
+| T-213 cue-load-control | done | dev-docs/active/cue-load-control |
+| T-214 cue-auto-editor | done | dev-docs/active/cue-auto-editor |
+| T-215 cue-public-projection | done | dev-docs/active/cue-public-projection |
+| T-216 cue-media-policy | done | dev-docs/active/cue-media-policy |
 
 ### F-070 Owner Nurture & Life Overview
 

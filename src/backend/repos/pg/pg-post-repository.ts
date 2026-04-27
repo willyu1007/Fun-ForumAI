@@ -209,6 +209,18 @@ export class PgPostRepository implements PostRepository {
     }
   }
 
+  async countRecentRootPostsForCommunity(input: {
+    communityId: string
+    since: Date
+  }): Promise<number> {
+    return this.prisma.post.count({
+      where: {
+        communityId: input.communityId,
+        createdAt: { gte: input.since },
+      },
+    })
+  }
+
   private toDomain(row: PrismaPost): Post {
     return {
       id: row.id,

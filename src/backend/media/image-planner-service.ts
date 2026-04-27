@@ -112,6 +112,23 @@ export class ImagePlannerService {
   planWithDirective(input: {
     agent_id: string
     directive: PersistedVisualDirective
+    /**
+     * T-216 M2 — when supplied, the planner forces the candidate whose
+     * `asset.id` matches this id as the chosen `deriveCandidate` (or, if
+     * generation is not allowed, the chosen `referenceCandidate`). The
+     * candidate must have been collected from the agent's reachable pool;
+     * a missing match falls back to the default ranking-based selection.
+     * Additive: omitting this preserves prior behavior exactly.
+     */
+    anchor_asset_id?: string | null
+    /**
+     * T-216 M3 — optional hard allow-list for cue selected-only pools.
+     * When supplied, only collected candidates whose asset id is present in
+     * this set may be ranked. An empty/missing match intentionally falls
+     * through to the normal no-candidate fallback; callers that require a
+     * display asset must enforce that at their policy boundary.
+     */
+    candidate_asset_ids?: ReadonlyArray<string>
   }): Promise<PersistedImagePlan> {
     return this.planScheduledPost(input)
   }
@@ -145,6 +162,17 @@ export class ImagePlannerService {
   async planScheduledPost(input: {
     agent_id: string
     directive: PersistedVisualDirective
+    /**
+     * T-216 M2 — see `planWithDirective`. When set, the matching evaluated
+     * candidate is forced as the chosen `deriveCandidate` (skips ranking)
+     * provided generation is allowed; otherwise it is forced as the
+     * `referenceCandidate` so the runtime card / lineage carry the anchor.
+     */
+    anchor_asset_id?: string | null
+    /**
+     * T-216 M3 — optional hard allow-list for selected-only cue pools.
+     */
+    candidate_asset_ids?: ReadonlyArray<string>
   }): Promise<PersistedImagePlan> {
     const recentCommunityCount = input.directive.scene_ref.community_id
       ? (await this.deps.forumSceneMetadataRepo.listByCommunityIdSince(
@@ -156,7 +184,13 @@ export class ImagePlannerService {
       ? (await this.deps.forumSceneMetadataRepo.listByEpisodeId(input.directive.scene_ref.episode_id)).length
       : 0
 
-    const candidates = await this.collectCandidates(input.agent_id, input.directive)
+    const collectedCandidates = await this.collectCandidates(input.agent_id, input.directive)
+    const candidateAssetIds = normalizeCandidateAssetIds(input.candidate_asset_ids)
+    const candidates = candidateAssetIds
+      ? collectedCandidates.filter((candidate) =>
+          candidate.asset ? candidateAssetIds.has(candidate.asset.id) : false,
+        )
+      : collectedCandidates
     const evaluated = await Promise.all(
       candidates.map(async (candidate) => {
         const governance = await this.deps.mediaReuseGovernanceService.evaluateCandidate({
@@ -197,22 +231,47 @@ export class ImagePlannerService {
     const thresholds = resolveSelectionThresholds(input.directive)
 
     const readableStorageCache = new Map<string, boolean>()
+    const recentGenerationReuseCache = new Map<string, boolean>()
+
+    // T-216 M2 — when an anchor asset id is supplied, locate the matching
+    // evaluated candidate. If found and not rejected by governance, it
+    // overrides the ranking-derived derive / reference choices so the
+    // generated post (or runtime context) is grounded in the admin-selected
+    // asset rather than the highest-scoring competitor. Quote (display
+    // original) selection remains ranking-driven; an anchor that survives
+    // governance and beats the quote threshold will already win there via
+    // `findFirstRankedCandidate`. Missing match → silent fallback to the
+    // default flow (the omitted-arg behavior).
+    const anchorEvaluated = input.anchor_asset_id
+      ? ranked.find((item) =>
+        !item.rejection_reason
+        && item.candidate.asset?.id === input.anchor_asset_id) ?? null
+      : null
+
     const quoteCandidate = await this.findFirstRankedCandidate(ranked, {
       reuseMode: 'quote_original',
       minimumScore: thresholds.quote_original,
       requireDisplayable: true,
       readableStorageCache,
     })
-    const recentGenerationReuseCache = new Map<string, boolean>()
-    const deriveCandidate = await this.findFirstRankedDeriveCandidate(ranked, {
+    const rankedDeriveCandidate = await this.findFirstRankedDeriveCandidate(ranked, {
       directive: input.directive,
       minimumScore: thresholds.derive_new,
       recentGenerationReuseCache,
     })
-    const referenceCandidate = ranked.find((item) =>
+    const rankedReferenceCandidate = ranked.find((item) =>
       !item.rejection_reason
       && item.allowed_reuse_modes.includes('reference_only')
       && item.score.total >= thresholds.reference_only) ?? null
+
+    const deriveCandidate = anchorEvaluated
+      && anchorEvaluated.allowed_reuse_modes.includes('derive_new')
+      ? anchorEvaluated
+      : rankedDeriveCandidate
+    const referenceCandidate = anchorEvaluated
+      && anchorEvaluated.allowed_reuse_modes.includes('reference_only')
+      ? anchorEvaluated
+      : rankedReferenceCandidate
 
     if (quoteCandidate) {
       const cardResult = await this.buildRuntimeCard({
@@ -1211,6 +1270,18 @@ function dedupeCandidates(candidates: PlannerCandidate[]): PlannerCandidate[] {
     deduped.set(key, mergePlannerCandidate(existing, candidate))
   }
   return Array.from(deduped.values())
+}
+
+function normalizeCandidateAssetIds(
+  assetIds: ReadonlyArray<string> | undefined,
+): ReadonlySet<string> | null {
+  if (!assetIds || assetIds.length === 0) return null
+  const normalized = new Set(
+    assetIds
+      .map((assetId) => assetId.trim())
+      .filter((assetId) => assetId.length > 0),
+  )
+  return normalized.size > 0 ? normalized : null
 }
 
 function mergePlannerCandidate(

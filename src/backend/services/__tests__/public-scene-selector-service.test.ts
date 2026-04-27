@@ -675,3 +675,133 @@ describe('PublicSceneSelectorService', () => {
     })
   })
 })
+
+// ===========================================================================
+// T-212 M3 — selectFromDiscussionCue
+// ===========================================================================
+
+describe('PublicSceneSelectorService.selectFromDiscussionCue', () => {
+  function makeAgent(id: string, name: string = id) {
+    return { id, display_name: name }
+  }
+
+  const community = {
+    id: 'community-general',
+    slug: 'general',
+    name: 'General',
+    description: '',
+    rules: '',
+  }
+
+  const cueRef = { id: 'cue_a', community_id: 'community-general' }
+  const briefRef = {
+    audit_refs: { schedule_id: 'sched_1', cue_id: 'cue_a', attempt_id: 'att_1' },
+  }
+
+  it('returns dry_run with candidate_pool_size when dryRun=true (no scene built)', async () => {
+    const repo = new InMemoryForumSceneMetadataRepository()
+    const service = new PublicSceneSelectorService({
+      catalogService: { getLaunchCatalog: () => makeCatalog() } as never,
+      sceneMetadataRepo: repo,
+    })
+    const result = await service.selectFromDiscussionCue({
+      cue: cueRef,
+      brief: briefRef,
+      community,
+      agents: [makeAgent('a1'), makeAgent('a2'), makeAgent('a3')],
+      dryRun: true,
+    })
+    expect(result.kind).toBe('dry_run')
+    if (result.kind !== 'dry_run') return
+    expect(result.cue_id).toBe('cue_a')
+    expect(result.brief_compiled).toBe(true)
+    expect(result.candidate_pool_size).toBe(3)
+    expect(result.selected_cast_estimate.map((a) => a.id)).toEqual(['a1', 'a2', 'a3'])
+  })
+
+  it('skips when no agents are provided', async () => {
+    const repo = new InMemoryForumSceneMetadataRepository()
+    const service = new PublicSceneSelectorService({
+      catalogService: { getLaunchCatalog: () => makeCatalog() } as never,
+      sceneMetadataRepo: repo,
+    })
+    const result = await service.selectFromDiscussionCue({
+      cue: cueRef,
+      brief: briefRef,
+      community,
+      agents: [],
+    })
+    expect(result.kind).toBe('skip')
+    if (result.kind !== 'skip') return
+    expect(result.reason).toBe('cue_no_agents')
+  })
+
+  it('skips when cue.community_id does not match the supplied community', async () => {
+    const repo = new InMemoryForumSceneMetadataRepository()
+    const service = new PublicSceneSelectorService({
+      catalogService: { getLaunchCatalog: () => makeCatalog() } as never,
+      sceneMetadataRepo: repo,
+    })
+    const result = await service.selectFromDiscussionCue({
+      cue: { id: 'cue_a', community_id: 'community-other' },
+      brief: briefRef,
+      community,
+      agents: [makeAgent('a1')],
+    })
+    expect(result.kind).toBe('skip')
+    if (result.kind !== 'skip') return
+    expect(result.reason).toBe('cue_community_mismatch')
+  })
+
+  it('selects a scene with cast vector audit and primary author = cast[0] (R3 / R10)', async () => {
+    const repo = new InMemoryForumSceneMetadataRepository()
+    const service = new PublicSceneSelectorService({
+      catalogService: { getLaunchCatalog: () => makeCatalog() } as never,
+      sceneMetadataRepo: repo,
+    })
+    const result = await service.selectFromDiscussionCue({
+      cue: cueRef,
+      brief: briefRef,
+      community,
+      agents: [makeAgent('a1', 'Alice'), makeAgent('a2', 'Bob'), makeAgent('a3', 'Carol')],
+    })
+    expect(result.kind).toBe('scene')
+    if (result.kind !== 'scene') return
+    expect(result.selected_cast.map((a) => a.id)).toEqual(['a1', 'a2', 'a3'])
+    const audit = result.payload.selection_audit as Record<string, unknown>
+    expect(audit.cue_audit_refs).toEqual(briefRef.audit_refs)
+    expect(audit.cue_primary_author_id).toBe('a1')
+    expect((audit.cue_cast_pool as Array<{ id: string }>).map((a) => a.id)).toEqual([
+      'a1',
+      'a2',
+      'a3',
+    ])
+  })
+
+  it('does NOT modify selectScheduledPost behavior when consuming the same selector', async () => {
+    // Sanity: calling selectFromDiscussionCue then selectScheduledPost must
+    // produce a clean scheduled-post result (no cue audit leak into the
+    // autonomous path).
+    const repo = new InMemoryForumSceneMetadataRepository()
+    const service = new PublicSceneSelectorService({
+      catalogService: { getLaunchCatalog: () => makeCatalog() } as never,
+      sceneMetadataRepo: repo,
+    })
+    await service.selectFromDiscussionCue({
+      cue: cueRef,
+      brief: briefRef,
+      community,
+      agents: [makeAgent('a1')],
+    })
+    const scheduled = await service.selectScheduledPost({
+      agent: makeAgent('agent-x', 'X'),
+      eligible_communities: [community],
+    })
+    expect(scheduled.kind).toBe('scene')
+    if (scheduled.kind !== 'scene') return
+    const audit = scheduled.payload.selection_audit as Record<string, unknown>
+    expect(audit.cue_audit_refs).toBeUndefined()
+    expect(audit.cue_cast_pool).toBeUndefined()
+    expect(audit.cue_primary_author_id).toBeUndefined()
+  })
+})

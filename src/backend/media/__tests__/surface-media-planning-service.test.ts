@@ -142,4 +142,102 @@ describe('SurfaceMediaPlanningService', () => {
       },
     ])
   })
+
+  it('prepares cue forum post plans with anchor and selected-only constraints', async () => {
+    const directive = buildDirective()
+    const imagePlannerService = {
+      planWithDirective: vi.fn(async (input: { directive: PersistedVisualDirective }) => ({
+        id: 'image-plan-cue-1',
+        scene_ref: input.directive.scene_ref,
+        status: 'ready',
+        decision: 'reuse_public_original',
+        reason: 'selected_pool_asset',
+        runtime: {
+          enabled: false,
+          influence_level: 'medium',
+          cards: [],
+        },
+        display: {
+          enabled: true,
+          attachments: [
+            {
+              asset_id: 'asset-anchor',
+              slot: 0,
+              display_variant: 'original',
+            },
+          ],
+        },
+        generation: {
+          mode: 'none',
+          status: 'not_requested',
+        },
+        selected_sources: [
+          {
+            asset_id: 'asset-anchor',
+            reuse_mode: 'quote_original',
+            rejection_reason: null,
+          },
+        ],
+        planner_audit: {
+          evaluated_candidates: 1,
+          score_breakdown: { total: 1 },
+          fallback_action: null,
+        },
+      })),
+    }
+    const service = new SurfaceMediaPlanningService({
+      visualDirectiveService: {
+        createScheduledPostDirective: vi.fn(async () => directive),
+        createForumThreadDirective: vi.fn(),
+        createChatRoomMessageDirective: vi.fn(),
+      } as never,
+      imagePlannerService: imagePlannerService as never,
+      mediaProjectionService: {
+        serializePublicCardForPrompt: vi.fn(),
+      } as never,
+    })
+
+    const plan = await service.prepareCueForumPostPlan({
+      agent_id: 'agent-1',
+      community_id: 'community-1',
+      payload: {} as never,
+      anchor_asset_id: 'asset-anchor',
+      candidate_asset_ids: ['asset-anchor'],
+      forbid_generation: true,
+    })
+
+    expect(imagePlannerService.planWithDirective).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anchor_asset_id: 'asset-anchor',
+        candidate_asset_ids: ['asset-anchor'],
+        directive: expect.objectContaining({
+          sourcing_policy: expect.objectContaining({
+            allow_generation: false,
+            allow_private_inspired_generation: false,
+          }),
+          budget: expect.objectContaining({
+            generation_tier: 'none',
+            sync_generation_ms_budget: 0,
+            async_generation_allowed: false,
+            max_generation_attempts: 0,
+          }),
+        }),
+      }),
+    )
+    expect(plan?.image_plan_id).toBe('image-plan-cue-1')
+    expect(plan?.display_attachment_refs).toEqual([
+      {
+        asset_id: 'asset-anchor',
+        slot: 0,
+        display_variant: 'original',
+      },
+    ])
+    expect(plan?.selected_sources).toEqual([
+      {
+        asset_id: 'asset-anchor',
+        reuse_mode: 'quote_original',
+        rejection_reason: null,
+      },
+    ])
+  })
 })

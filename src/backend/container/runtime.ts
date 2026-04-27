@@ -90,6 +90,12 @@ export function createRuntime(deps: {
   publicGrowthGate?: {
     getRuntimeBaselineAdmission(): Promise<RuntimeBaselineAdmission>
   } | null
+  /**
+   * T-213 M3 — shared budget service. Optional (legacy callers / tests can
+   * omit). Container production wiring always provides it; when present the
+   * autonomous path consumes from the shared per-community quota.
+   */
+  communityBudgetService?: import('../services/community-budget-service.js').CommunityBudgetService | null
   eventQueue: RuntimeEventQueue
   allocator: EventAllocator
   degradationMonitor: DefaultDegradationMonitor
@@ -162,6 +168,9 @@ export function createRuntime(deps: {
       personaStateService: deps.personaStateService,
       inferenceProfileService: deps.inferenceProfileService,
       publicSceneSelectorService: deps.publicSceneSelectorService,
+      // T-213 M3 — autonomous-path acquire wired here. The service itself
+      // honors `enforced=false` as a no-op; default deploy is OFF.
+      communityBudgetService: deps.communityBudgetService ?? null,
     },
     {
       postIntervalMs: config.runtime.postIntervalMs,
@@ -192,5 +201,12 @@ export function createRuntime(deps: {
     publicStageTurnRepo: deps.publicStageTurnRepo,
   })
 
-  return { contextBuilder, agentExecutor, postScheduler, runtimeLoop, eventBridge }
+  return {
+    contextBuilder,
+    agentExecutor,
+    postScheduler,
+    runtimeLoop,
+    eventBridge,
+    dataplaneWriter,
+  }
 }

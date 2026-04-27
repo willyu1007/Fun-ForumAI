@@ -12,6 +12,22 @@ import { HomeProgrammingSnapshotScheduler } from '../runtime/home-programming-sn
 import { MediaGenerationWorker } from '../runtime/media-generation-worker.js'
 import { MediaImportJobWorker } from '../runtime/media-import-job-worker.js'
 import { MediaLifecycleWorker } from '../runtime/media-lifecycle-worker.js'
+import { PublicDiscussionCueWorker } from '../runtime/public-discussion-cue-worker.js'
+import {
+  CueAdmissionController,
+} from '../programming/cue/cue-admission-controller.js'
+import { DirectorCueBriefServiceImpl } from '../programming/cue/director-cue-brief.js'
+import { InProcessTrivialCommunityBudgetService } from '../services/community-budget-service.js'
+import { RealInProcessCommunityBudgetService } from '../services/community-budget-service-real.js'
+import { AdmissionLoadService } from '../programming/load/admission-load-service.js'
+import { adaptAdmissionLoadAsLoadSignal } from '../programming/load/admission-load-signal-adapter.js'
+import { CachedLoadSignalService } from '../services/load-signal-service.js'
+import { CueMediaPlanner } from '../media/cue-media-planner.js'
+import { TriggerDetector as AutoEditorTriggerDetector } from '../programming/auto-editor/trigger-detector.js'
+import { LoadGate as AutoEditorLoadGate } from '../programming/auto-editor/load-gate.js'
+import { AutoCueEditor } from '../programming/auto-editor/auto-cue-editor.js'
+import { AutoCueEditorScheduler } from '../programming/auto-editor/auto-cue-editor-scheduler.js'
+import { LLMGatewayAutoCueEditorAdapter } from '../programming/auto-editor/llm-gateway-auto-cue-editor-adapter.js'
 import { RoleAssignmentExpiryScheduler } from '../runtime/role-assignment-expiry-scheduler.js'
 import { AgentBioRefreshScheduler } from '../runtime/agent-bio-refresh-scheduler.js'
 import { AgentBiographyCompileScheduler } from '../runtime/agent-biography-compile-scheduler.js'
@@ -240,6 +256,19 @@ const llm = createLlmServices({
   usageLedgerRepo: pgUsageLedgerRepo,
 })
 
+// T-213 M1/M2 — load services are constructed up here so `createCoreServices`
+// can hand the cached `LoadSignalService` to `CueBoardReadService` (M4
+// heatmap). The admission seam still wires the live `AdmissionLoadService`
+// down at the worker construction site.
+const admissionLoadService = new AdmissionLoadService({
+  cueRepo: repos.cueRepo,
+  postRepo: repos.postRepo,
+})
+const loadSignalService = new CachedLoadSignalService({
+  admissionLoadService,
+  loadSnapshotRepo: repos.loadSnapshotRepo,
+})
+
 // ─── 4. Core Services ───────────────────────────────────────
 const core = createCoreServices({
   repos,
@@ -251,6 +280,7 @@ const core = createCoreServices({
   surfaceMediaPlanningService: llm.surfaceMediaPlanningService,
   mediaObservabilityService: llm.mediaObservabilityService,
   mediaRolloutControllerService: llm.mediaRolloutControllerService,
+  loadSignalService,
   usageLedgerRepo: llm.usageLedgerRepo,
   roomLifecycleLeaderElector: infra.leaderElectors.roomLifecycle,
   conversationClockLeaderElector: infra.leaderElectors.conversationClock,
@@ -656,6 +686,16 @@ const alloc = createAllocator({
   recallPolicyService: core.recallPolicyService,
 })
 
+// T-213 M3 — real per-community cap enforcement. Default `enforced=false`
+// so every deploy is no-op until ops flips `COMMUNITY_BUDGET_ENFORCED=true`.
+// The trivial in-process stub remains available when the flag is off.
+// Hoisted above `createRuntime` so PostScheduler picks it up via runtime deps.
+const communityBudgetEnforced =
+  process.env.COMMUNITY_BUDGET_ENFORCED === 'true'
+const communityBudgetService = communityBudgetEnforced
+  ? new RealInProcessCommunityBudgetService({ enforced: true })
+  : new InProcessTrivialCommunityBudgetService()
+
 // ─── 7. Agent Runtime ───────────────────────────────────────
 const rt = createRuntime({
   llmGateway: llm.llmGateway,
@@ -696,6 +736,10 @@ const rt = createRuntime({
   publicStageTurnRepo: repos.publicStageTurnRepo,
   statsService: core.statsService,
   publicGrowthGate: core.warmupGovernanceService,
+  // T-213 M3 — autonomous-path acquire wiring. Service honors `enforced`
+  // flag internally, so this can ship with the default-off flag and flip
+  // on at the deploy stage without code changes.
+  communityBudgetService,
   eventQueue: infra.eventQueue,
   allocator: alloc.allocator,
   degradationMonitor: alloc.degradationMonitor,
@@ -708,6 +752,167 @@ core.warmupGovernanceService.attachRuntimeDeps({
   runtimeLoop: rt.runtimeLoop,
   eventQueue: infra.eventQueue,
 })
+
+// ─── 7b. Public Discussion Cue Worker (T-212 M4 / M5) ───────────
+// Independent lightweight loop that drives admin-authored cues from the
+// scheduled `triggerAt` window through admission → director brief → scene
+// selection → write. Runs only when explicitly enabled via
+// PUBLIC_DISCUSSION_CUE_WORKER_ENABLED=true (default off; flip on once
+// T-213 admission + budget caps are observed healthy in staging). The
+// worker stays out of RuntimeLoop so the PostScheduler cue-isolation
+// invariant (I-2) holds in both directions.
+// T-213 M1/M2 — admission consumes the live `AdmissionLoadService` (declared
+// near `createCoreServices` so the M4 heatmap can share the cached
+// `LoadSignalService`). Strict separation: admission MUST NOT read cached
+// snapshots; preview / Cue Board / TriggerDetector consume the cached
+// service only.
+const cueAdmissionController = new CueAdmissionController({
+  communityBudgetService,
+  publicGrowthGate: core.warmupGovernanceService,
+  loadSignalService: adaptAdmissionLoadAsLoadSignal(admissionLoadService),
+})
+const directorCueBriefService = new DirectorCueBriefServiceImpl()
+
+// T-216 — cue media planner. Records `MediaPlanResolution` rows after
+// successful cue execution; when anchor mode is on it also resolves media
+// through SurfaceMediaPlanningService -> imagePlannerService before the
+// data-plane write so selected media policy can block or attach the post.
+const cueMediaPlanner = new CueMediaPlanner({
+  mediaPlanResolutionRepo: repos.mediaPlanResolutionRepo,
+  anchorModeEnabled: config.runtime.cueMediaPolicyAnchorMode,
+  surfaceMediaPlanningService: llm.surfaceMediaPlanningService,
+})
+
+// `forumEventDispatcher` is declared further below (depends on services
+// that aren't yet built); the worker / rollback handler need to fan their
+// cue events through it. We capture the reference via a mutable holder so
+// the late-binding doesn't trip TDZ on the `const` dispatcher.
+const cueEventDispatcherRef: {
+  fn: ((event: import('./../repos/types.js').DomainEvent) => Promise<void> | void) | null
+} = { fn: null }
+const cueEventDispatcherProxy = (
+  event: import('./../repos/types.js').DomainEvent,
+): Promise<void> | void => cueEventDispatcherRef.fn?.(event)
+
+const publicDiscussionCueWorker = new PublicDiscussionCueWorker(
+  {
+    cueRepo: repos.cueRepo,
+    admissionController: cueAdmissionController,
+    directorCueBrief: directorCueBriefService,
+    sceneSelector: core.publicSceneSelectorService,
+    dataPlaneWriter: rt.dataplaneWriter,
+    eventRepo: repos.eventRepo,
+    communityBudgetService,
+    eventDispatcher: cueEventDispatcherProxy,
+    cueMediaPlanner,
+    leaderElector: infra.leaderElectors.publicDiscussionCueWorker,
+    // Community resolver — adapts the existing community read path so the
+    // worker can target the cue's locked community without taking on a heavy
+    // read-service dep.
+    communityResolver: {
+      resolve: async (id) => {
+        const community = repos.communityRepo.findById(id)
+        if (!community) return null
+        return {
+          id: community.id,
+          slug: community.slug,
+          name: community.name,
+          description: community.description ?? '',
+          rules:
+            typeof community.rules_json === 'object' && community.rules_json !== null
+              ? JSON.stringify(community.rules_json)
+              : '',
+        }
+      },
+    },
+    // T-212 M5 — cast resolver picks active members of the cue's community.
+    // MVP keeps it simple (community membership ranking by agent id) so the
+    // worker is end-to-end exercisable; full allocator integration with
+    // role-requirement scoring is a post-T-212 refinement.
+    castResolver: {
+      resolveCast: async (cue) => {
+        const communityId =
+          cue.community_id ??
+          (cue.scope.mode === 'single' ? cue.scope.community_id : undefined)
+        if (!communityId) return []
+        const agentIds = repos.agentCommunityMembershipRepo
+          .listActiveAgentIdsByCommunity(communityId)
+          .slice(0, 8)
+        const agents: Array<{ id: string; display_name: string }> = []
+        for (const agentId of agentIds) {
+          const agent = repos.agentRepo.findById(agentId)
+          if (agent) {
+            agents.push({ id: agent.id, display_name: agent.display_name })
+          }
+        }
+        return agents
+      },
+    },
+    // Content generator — MVP returns a brief-derived stub so the seam is
+    // exercisable end-to-end without coupling the worker to LLM internals.
+    contentGenerator: {
+      generate: async ({ cue, primaryAuthor }) => ({
+        title: cue.theme_intent.topic_seed,
+        body:
+          cue.theme_intent.discussion_question ??
+          `${cue.theme_intent.topic_seed} — by ${primaryAuthor.display_name}`,
+      }),
+    },
+  },
+  {
+    intervalMs: config.runtime.publicDiscussionCueWorkerIntervalMs,
+    startupDelayMs: config.runtime.publicDiscussionCueWorkerStartupDelayMs,
+    graceSeconds: config.runtime.publicDiscussionCueWorkerGraceSeconds,
+    leaseSeconds: config.runtime.publicDiscussionCueWorkerLeaseSeconds,
+    batchSize: config.runtime.publicDiscussionCueWorkerBatchSize,
+  },
+)
+
+// ─── T-214 A-M3 — auto-editor scheduler (deterministic detector + LLM editor + inbox writer) ───
+// Pg trigger event repo lives in container/repos.ts; container exports it for
+// tests + observability. The scheduler is OFF by default
+// (`autoCueEditorSchedulerEnabled` flag) so each environment can opt in
+// explicitly after validating the hidden director lane.
+const autoEditorTriggerDetector = new AutoEditorTriggerDetector({
+  postRepo: repos.postRepo,
+  loadSignalService,
+  triggerRepo: repos.autoEditorTriggerEventRepo,
+})
+const autoEditorLoadGate = new AutoEditorLoadGate({
+  loadSignalService,
+})
+const autoCueEditorLlmClient = new LLMGatewayAutoCueEditorAdapter({
+  llmGateway: llm.llmGateway,
+})
+const autoCueEditor = new AutoCueEditor({
+  llmClient: autoCueEditorLlmClient,
+})
+export const autoCueEditorScheduler = new AutoCueEditorScheduler(
+  {
+    triggerDetector: autoEditorTriggerDetector,
+    loadGate: autoEditorLoadGate,
+    autoCueEditor,
+    cueRepo: repos.cueRepo,
+    leaderElector: infra.leaderElectors.autoCueEditorScheduler,
+    // MVP enumerates communities through the cue schedule list. A
+    // dedicated community-active-list provider is a follow-on so the
+    // scheduler can ride community lifecycle events instead of
+    // schedule presence.
+    communityProvider: async () => {
+      const schedules = await repos.cueRepo.listSchedules({ limit: 200 })
+      const ids = new Set<string>()
+      for (const sched of schedules) {
+        if (sched.community_id) ids.add(sched.community_id)
+      }
+      return [...ids]
+    },
+  },
+  {
+    intervalMs: config.runtime.autoCueEditorSchedulerIntervalMs,
+    startupDelayMs: config.runtime.autoCueEditorSchedulerStartupDelayMs,
+  },
+)
+
 core.warmupGovernanceService.attachProjectionDeps({
   searchProjectionService,
 })
@@ -774,6 +979,10 @@ const forumEventDispatcher = createForumEventDispatcher({
 
 core.forumWriteService.setEventHook(forumEventDispatcher)
 core.viewerPublicWriteService.setAcceptedForumEventHook(forumEventDispatcher)
+// T-212 fix: bind the cue worker / rollback handler dispatcher proxy so cue
+// domain events fan out through the existing forum-event-dispatcher (I-9 /
+// T-211 §F.4 — additive event types on the existing dispatcher).
+cueEventDispatcherRef.fn = forumEventDispatcher
 core.viewerPublicWriteService.setAcceptedAudienceWriteHook(
   createAudienceWriteDispatcher({
     searchProjectionService,
@@ -802,6 +1011,7 @@ export const communityProposalRepo = repos.communityProposalRepo
 export const roomRepo = repos.roomRepo
 export const userRepo = repos.userRepo
 export const eventRepo = repos.eventRepo
+export { forumEventDispatcher }
 export const agentRunRepo = repos.agentRunRepo
 export const riskGovernanceRepo = repos.riskGovernanceRepo
 export const searchDocRepo = repos.searchDocRepo
@@ -831,6 +1041,15 @@ export const mediaScenePackService = llm.mediaScenePackService
 export const mediaLifecycleService = llm.mediaLifecycleService
 export const mediaLineageService = llm.mediaLineageService
 export const forumSceneMetadataRepo = repos.forumSceneMetadataRepo
+export const cueRepo = repos.cueRepo
+// T-213 M1/M2 — load layer singletons.
+// Admission path consumes `admissionLoadService` (live); preview / Cue
+// Board / TriggerDetector consume `loadSignalService` (cached, ~30s TTL).
+export { admissionLoadService, loadSignalService }
+export const loadSnapshotRepo = repos.loadSnapshotRepo
+// T-216 M1 — media planner audit log + orchestrator.
+export const mediaPlanResolutionRepo = repos.mediaPlanResolutionRepo
+export { cueMediaPlanner }
 
 export const achievementChronicleService = core.achievementChronicleService
 export const forumReadService = core.forumReadService
@@ -857,8 +1076,10 @@ export const forumWriteService = core.forumWriteService
 export const globalHighlightsService = core.globalHighlightsService
 export const publicAgentRelationSummaryService = core.publicAgentRelationSummaryService
 export const launchProgrammingOpsService = core.launchProgrammingOpsService
+export const cueBoardReadService = core.cueBoardReadService
 export const homeProgrammingService = core.homeProgrammingService
 export const homeProgrammingSnapshotService = core.homeProgrammingSnapshotService
+export const cuePublicProjectionService = core.cuePublicProjectionService
 export const warmupGovernanceService = core.warmupGovernanceService
 export const agentService = core.agentService
 export const agentCommunityMembershipService = core.agentCommunityMembershipService
@@ -926,6 +1147,7 @@ export {
   mediaGenerationWorker,
   mediaLifecycleWorker,
   mediaImportJobWorker,
+  publicDiscussionCueWorker,
 }
 export {
   guidanceBellService,

@@ -35,6 +35,23 @@ function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as unknown as Prisma.InputJsonValue
 }
 
+/**
+ * T-215 B-M1 — copy promoted programming columns onto the prisma `data`
+ * payload alongside the existing `payload_json.programming.*` write. Cue
+ * worker and post-scheduler set these explicitly; legacy callers that
+ * leave them undefined fall through to NULL until the backfill script
+ * runs.
+ */
+function pickProgrammingColumns(scene: CreateForumSceneMetadataInput) {
+  return {
+    programmingProductionPath: scene.programming_production_path ?? null,
+    programmingCueId: scene.programming_cue_id ?? null,
+    programmingAttemptId: scene.programming_attempt_id ?? null,
+    programmingScheduleId: scene.programming_schedule_id ?? null,
+    programmingSourceType: scene.programming_source_type ?? null,
+  }
+}
+
 function toPrismaPublicActorType(
   actorType:
     | CreatePublicStageThreadInput['author_actor_type']
@@ -97,6 +114,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           selectionMode: input.scene_metadata.selection_mode,
           expiresAt: input.scene_metadata.expires_at ?? null,
           payloadJson: toPrismaJsonValue(input.scene_metadata.payload_json),
+          ...pickProgrammingColumns(input.scene_metadata),
         },
       })
 
@@ -201,6 +219,7 @@ export class PgPublicSceneWriteRepository implements PublicSceneWriteRepository 
           selectionMode: input.scene_metadata.selection_mode,
           expiresAt: input.scene_metadata.expires_at ?? null,
           payloadJson: toPrismaJsonValue(input.scene_metadata.payload_json),
+          ...pickProgrammingColumns(input.scene_metadata),
         },
       })
 

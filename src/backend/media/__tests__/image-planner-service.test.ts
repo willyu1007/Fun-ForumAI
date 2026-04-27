@@ -838,6 +838,103 @@ describe('ImagePlannerService', () => {
     expect(plan.display.attachments).toHaveLength(0)
   })
 
+  it('restricts planning to candidate_asset_ids when supplied', async () => {
+    const imagePlanRepo = new InMemoryImagePlanRepository()
+    const mediaAssetRepo = new InMemoryMediaAssetRepository()
+    const mediaSemanticSnapshotRepo = new InMemoryMediaSemanticSnapshotRepository()
+    const sceneMediaBindingRepo = new InMemorySceneMediaBindingRepository()
+    const forumSceneMetadataRepo = new InMemoryForumSceneMetadataRepository()
+    const mediaContextProjectionRepo = new InMemoryMediaContextProjectionRepository()
+    const mediaProjectionService = new MediaProjectionService({
+      mediaContextProjectionRepo,
+    })
+    const mediaReuseGovernanceService = new MediaReuseGovernanceService({
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      mediaReusePolicyRepo: new InMemoryMediaReusePolicyRepository(),
+      mediaGenerationJobRepo: new InMemoryMediaGenerationJobRepository(),
+      imagePlanRepo,
+      mediaBindingService: new MediaBindingService({
+        sceneMediaBindingRepo,
+      }),
+    })
+    const service = new ImagePlannerService({
+      imagePlanRepo,
+      mediaAssetRepo,
+      mediaSemanticSnapshotRepo,
+      sceneMediaBindingRepo,
+      mediaContextProjectionRepo,
+      forumSceneMetadataRepo,
+      mediaProjectionService,
+      mediaReuseGovernanceService,
+      storage: createStorageStub(['archive/a.png', 'archive/b.png']),
+    })
+
+    for (const id of ['asset-a', 'asset-b']) {
+      const asset = await mediaAssetRepo.create({
+        id,
+        steward_agent_id: 'agent-1',
+        owner_user_id: 'owner-1',
+        source_kind: 'owner_console_upload',
+        visibility_policy: 'public_original_allowed',
+        lifecycle_status: 'active',
+        storage_key: id === 'asset-a' ? 'archive/a.png' : 'archive/b.png',
+        mime_type: 'image/png',
+        file_size_bytes: 1024,
+        sha256: `sha-${id}`,
+      })
+      const snapshot = await mediaSemanticSnapshotRepo.create({
+        asset_id: asset.id,
+        snapshot_kind: 'visual_core',
+        schema_version: 'visual_core.v1',
+        model_provider: 'test',
+        model_name: 'test',
+        model_version: '1',
+        summary: buildMediaSemanticSummary({
+          theme: id,
+          scene: id,
+          mood: 'neutral',
+          discussion_points: [id],
+          salient_entities: [id],
+          public_safe_summary: `Public summary for ${id}.`,
+          internal_full_summary: `Internal summary for ${id}.`,
+        }),
+        extraction_status: 'completed',
+        quality_grade: 'rich',
+        is_current: true,
+      })
+      await sceneMediaBindingRepo.create({
+        scene_type: 'media_pool',
+        scene_id: 'self_public_archive:agent-1',
+        asset_id: asset.id,
+        semantic_snapshot_id: snapshot.id,
+        binding_role: 'reference',
+        relation_to_scene: 'quoted_public',
+        display_policy: 'original_allowed',
+        created_by_type: 'system',
+        created_by_id: 'agent-1',
+      })
+    }
+
+    const directive = buildDirective()
+    directive.sourcing_policy.allow_sources = ['self_public_archive']
+    directive.sourcing_policy.prefer_order = ['self_public_archive']
+
+    const plan = await service.planScheduledPost({
+      agent_id: 'agent-1',
+      directive,
+      candidate_asset_ids: ['asset-b'],
+    })
+
+    expect(plan.decision).toBe('reuse_public_original')
+    expect(plan.display.attachments[0]?.asset_id).toBe('asset-b')
+    expect(plan.selected_sources.some((source) =>
+      source.asset_id === 'asset-a' && !source.rejection_reason,
+    )).toBe(false)
+  })
+
   it('falls back to runtime-only when async generation is disabled and no sync budget is available', async () => {
     const imagePlanRepo = new InMemoryImagePlanRepository()
     const mediaAssetRepo = new InMemoryMediaAssetRepository()

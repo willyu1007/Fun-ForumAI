@@ -1262,4 +1262,137 @@ describe('PostScheduler', () => {
       }),
     )
   })
+
+  // T-212 M1 — invariant I-1: every PostScheduler write site stamps
+  // `production_path: 'autonomous'` on the public_scene payload. This guards
+  // against accidental regression of the umbrella attribution rule.
+  it('stamps programming.production_path="autonomous" on selector-driven writes', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-i1-1' }))
+    const deps = createDeps(write)
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    await scheduler.createPost()
+
+    expect(write).toHaveBeenCalledTimes(1)
+    const instruction = (write as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0] as
+      | { public_scene?: { programming?: { production_path?: string; cue?: unknown } } }
+      | undefined
+    expect(instruction?.public_scene?.programming).toEqual({
+      production_path: 'autonomous',
+    })
+  })
+
+  it('stamps programming.production_path="autonomous" on fallback (selector skip) writes', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-i1-2' }))
+    const deps = createDeps(write, {
+      sceneSelection: { kind: 'skip', reason: 'scene_catalog_unavailable' },
+    })
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    await scheduler.createPost()
+
+    expect(write).toHaveBeenCalledTimes(1)
+    const instruction = (write as ReturnType<typeof vi.fn>).mock.calls.at(0)?.[0] as
+      | { public_scene?: { programming?: { production_path?: string; cue?: unknown } } }
+      | undefined
+    expect(instruction?.public_scene?.programming).toEqual({
+      production_path: 'autonomous',
+    })
+  })
+
+  // T-213 M3 — autonomous-side `community-budget-service.acquire` wiring.
+  it('T-213 M3 — calls communityBudgetService.acquire before write when service is injected', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-budget-1' }))
+    const acquire = vi.fn(async () => ({
+      granted: true as const,
+      reservation: {
+        reservationId: 'res-budget-1',
+        communityId: 'community-1',
+        path: 'autonomous' as const,
+        cost: 1,
+        acquiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    }))
+    const release = vi.fn(async () => {})
+    const deps: PostSchedulerDeps = {
+      ...createDeps(write),
+      communityBudgetService: { acquire, release },
+    }
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    await scheduler.createPost()
+
+    expect(acquire).toHaveBeenCalledTimes(1)
+    expect(acquire).toHaveBeenCalledWith('community-1', 'autonomous', 1)
+    // Success path commits the reservation; release MUST NOT fire.
+    expect(release).not.toHaveBeenCalled()
+    expect(write).toHaveBeenCalledTimes(1)
+  })
+
+  it('T-213 M3 — skips the write and returns triggered=false when budget acquire denies', async () => {
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-budget-2' }))
+    const acquire = vi.fn(async () => ({
+      granted: false as const,
+      reason: 'budget_exhausted' as const,
+      retry_after_ms: 60_000,
+    }))
+    const release = vi.fn(async () => {})
+    const deps: PostSchedulerDeps = {
+      ...createDeps(write),
+      communityBudgetService: { acquire, release },
+    }
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    const result = await scheduler.createPost()
+
+    expect(acquire).toHaveBeenCalledTimes(1)
+    expect(write).not.toHaveBeenCalled()
+    expect(release).not.toHaveBeenCalled() // never granted, nothing to release
+    expect(result.triggered).toBe(false)
+    expect(result.error).toBe('budget_budget_exhausted')
+  })
+
+  it('T-213 M3 — releases the reservation when the post-write fails', async () => {
+    const write = vi.fn(async () => ({ success: false, error: 'write_failed' }))
+    const acquire = vi.fn(async () => ({
+      granted: true as const,
+      reservation: {
+        reservationId: 'res-budget-3',
+        communityId: 'community-1',
+        path: 'autonomous' as const,
+        cost: 1,
+        acquiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    }))
+    const release = vi.fn(async () => {})
+    const deps: PostSchedulerDeps = {
+      ...createDeps(write),
+      communityBudgetService: { acquire, release },
+    }
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    await scheduler.createPost()
+
+    expect(acquire).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledTimes(1)
+    // Failed write means the budget unit is rolled back via finally → release.
+    expect(release).toHaveBeenCalledWith('res-budget-3')
+  })
 })

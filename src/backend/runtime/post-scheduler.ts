@@ -24,6 +24,7 @@ import type { MediaGenerationService } from '../media/media-generation-service.j
 import type { MediaRolloutControllerService } from '../media/media-rollout-controller-service.js'
 import type { MediaObservabilityService } from '../media/media-observability-service.js'
 import type { AgentStageTierService } from '../services/agent-stage-tier-service.js'
+import type { CommunityBudgetService } from '../services/community-budget-service.js'
 import { config } from '../lib/config.js'
 import { resolveAgentIdentity } from '../identity/agent-identity.js'
 import { buildPromptBudgetSummary } from './prompt-budget-summary.js'
@@ -66,6 +67,19 @@ export interface PostSchedulerDeps {
   personaStateService?: PersonaStateService | null
   inferenceProfileService?: InferenceProfileService | null
   publicSceneSelectorService?: PublicSceneSelectorService | null
+  /**
+   * T-213 M3 — shared `community-budget-service`. Optional dep so existing
+   * tests that construct `PostScheduler` without it keep working; container
+   * production wiring always provides it. When absent, the autonomous path
+   * never calls `acquire` (back-compat with pre-T-213 behavior). When
+   * provided AND the service is in `enforced=true` mode, the autonomous
+   * path consumes from the same per-community quota the cue path drains
+   * (invariant I-4).
+   */
+  communityBudgetService?: Pick<
+    CommunityBudgetService,
+    'acquire' | 'release'
+  > | null
 }
 
 export interface PostSchedulerResult {
@@ -305,6 +319,47 @@ export class PostScheduler {
         community: targetCommunity,
         reason: scheduledFallbackReason,
       })
+
+    // T-213 M3 — invariant I-4 budget acquire (only PostScheduler edit in
+    // T-207). Both autonomous (this) and cue paths consume from the same
+    // shared per-community quota; the snapshot keeps per-path counts
+    // separate so I-8 metric tracks stay distinct.
+    //
+    // Feature-flag default is OFF (`enforced=false`) so this code is a
+    // semantic no-op until ops flips `COMMUNITY_BUDGET_ENFORCED=true`.
+    // When the service is absent (legacy tests), the acquire is skipped
+    // entirely.
+    let _autonomousReservationId: string | null = null
+    if (this.deps.communityBudgetService) {
+      const budget = await this.deps.communityBudgetService.acquire(
+        targetCommunity.id,
+        'autonomous',
+        1,
+      )
+      if (!budget.granted) {
+        this.recordSkip()
+        return {
+          kind: 'completed',
+          result: {
+            triggered: false,
+            agent_id: selected.id,
+            community_id: targetCommunity.id,
+            error: `budget_${budget.reason}`,
+          },
+        }
+      }
+      _autonomousReservationId = budget.reservation.reservationId
+    }
+    let _autonomousCommitted = false
+    try {
+    if (effectiveScenePayload) {
+      // T-212 M1 — invariant I-1 (umbrella §2.2): every root-post write
+      // produced by the autonomous tick stamps `production_path: 'autonomous'`.
+      effectiveScenePayload = {
+        ...effectiveScenePayload,
+        programming: { production_path: 'autonomous' },
+      }
+    }
     if (scheduledFallbackReason) {
       console.warn(
         `[PostScheduler] Falling back to community scheduling for agent=${selected.id}: ${scheduledFallbackReason}`,
@@ -652,6 +707,10 @@ export class PostScheduler {
       `[PostScheduler] Agent "${persona.name}" posted in "${actualCommunity?.name ?? instruction.community_id}" (${latencyMs}ms, ${llmResponse.usage.total_tokens} tokens)`,
     )
 
+    // T-213 M3 — only the success terminal commits the reservation. Every
+    // other return + thrown exception falls through to the finally block,
+    // which releases the budget so abort paths don't burn quota.
+    _autonomousCommitted = true
     return {
       kind: 'completed',
       result: {
@@ -662,6 +721,32 @@ export class PostScheduler {
         usage: llmResponse.usage,
         latency_ms: latencyMs,
       },
+    }
+    } finally {
+      if (!_autonomousCommitted && _autonomousReservationId) {
+        await this.safeReleaseAutonomousReservation(_autonomousReservationId)
+      }
+    }
+  }
+
+  /**
+   * T-213 M3 — best-effort release of an autonomous-path budget reservation.
+   * Mirrors the cue-side worker's `releaseReservation` shape: a release
+   * failure must not mask the primary outcome. The shared
+   * `community-budget-service` is in-process so the call is effectively
+   * synchronous; the try/catch is defensive against future swap-in of an
+   * RPC-backed implementation.
+   */
+  private async safeReleaseAutonomousReservation(
+    reservationId: string,
+  ): Promise<void> {
+    if (!this.deps.communityBudgetService) return
+    try {
+      await this.deps.communityBudgetService.release(reservationId)
+    } catch (err) {
+      console.error(
+        `[PostScheduler] safeReleaseAutonomousReservation(${reservationId}) failed: ${(err as Error).message}`,
+      )
     }
   }
 

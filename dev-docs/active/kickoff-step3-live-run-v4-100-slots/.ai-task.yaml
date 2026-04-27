@@ -1,0 +1,14 @@
+version: 1
+task_id: T-995
+project: main
+slug: kickoff-step3-live-run-v4-100-slots
+status: in-progress
+updated: "2026-04-25"
+keywords:
+  - kickoff
+  - step3
+  - step4
+  - step5
+  - seed-v4
+  - human-in-loop
+  - exported-bundle
