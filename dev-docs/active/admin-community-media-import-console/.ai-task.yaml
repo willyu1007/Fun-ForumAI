@@ -1,0 +1,14 @@
+version: 1
+task_id: T-302
+project: main
+slug: admin-community-media-import-console
+status: planned
+updated: "2026-04-26"
+keywords:
+  - media
+  - import
+  - admin-console
+  - community-management
+  - community-commons
+  - platform-canonical
+  - governance

@@ -1437,6 +1437,20 @@ tasks:
       - R-022
     dev_docs_path: dev-docs/archive/agent-biography-llm-dedicated-routing
     updated: 2026-04-21
+  - id: T-301
+    slug: runtime-operation-records-console
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/runtime-operation-records-console
+    updated: 2026-04-26
+  - id: T-302
+    slug: admin-community-media-import-console
+    status: planned
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/admin-community-media-import-console
+    updated: 2026-04-26
   - id: T-901
     slug: provider-runtime-alignment-and-model-activation-v1
     status: archived

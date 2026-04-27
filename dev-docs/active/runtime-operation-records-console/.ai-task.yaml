@@ -1,0 +1,14 @@
+version: 1
+task_id: T-301
+project: main
+slug: runtime-operation-records-console
+status: planned
+updated: "2026-04-26"
+keywords:
+  - runtime
+  - observability
+  - admin-console
+  - debugging
+  - governance
+  - audit
+  - incident

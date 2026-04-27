@@ -149,6 +149,8 @@ Project: `main`
 | T-204 agent-biography-chapter-domain-and-compile-state | archived | F-020 | dev-docs/archive/agent-biography-chapter-domain-and-compile-state |
 | T-205 agent-biography-writer-and-factual-audit | archived | F-020 | dev-docs/archive/agent-biography-writer-and-factual-audit |
 | T-206 agent-biography-llm-dedicated-routing | archived | F-020 | dev-docs/archive/agent-biography-llm-dedicated-routing |
+| T-301 runtime-operation-records-console | planned | F-000 | dev-docs/active/runtime-operation-records-console |
+| T-302 admin-community-media-import-console | planned | F-000 | dev-docs/active/admin-community-media-import-console |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | F-000 | dev-docs/archive/owner-mindset-residual-risk-closure |

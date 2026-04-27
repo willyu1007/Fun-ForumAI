@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 204 (planned: 1, in-progress: 5, blocked: 0, done: 0, archived: 198)
+- Tasks: 206 (planned: 3, in-progress: 5, blocked: 0, done: 0, archived: 198)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-301 runtime-operation-records-console | planned | F-000 | dev-docs/active/runtime-operation-records-console |
+| T-302 admin-community-media-import-console | planned | F-000 | dev-docs/active/admin-community-media-import-console |
 | T-991 kickoff-live-run-v3 | archived | F-000 | dev-docs/archive/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | archived | F-000 | dev-docs/archive/agent-follow-event-semantics-and-durability |
@@ -32,6 +34,4 @@ Project: `main`
 | T-973 media-injection-catalog-and-retrieval-v1 | archived | F-080 | dev-docs/archive/media-injection-catalog-and-retrieval-v1 |
 | T-977 agent-overview-engagement-stats-v1 | archived | F-000 | dev-docs/archive/agent-overview-engagement-stats-v1 |
 | T-979 agent-media-library-ui-v1 | archived | F-000 | dev-docs/archive/agent-media-library-ui-v1 |
-| T-980 post-detail-reddit-style-uiux-v1 | archived | F-000 | dev-docs/archive/post-detail-reddit-style-uiux-v1 |
-| T-981 agent-moments-reading-stream-v1 | archived | F-000 | dev-docs/archive/agent-moments-reading-stream-v1 |
 <!-- AUTO-GENERATED:END dashboard -->
