@@ -1,15 +1,16 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-22T05:36:12.012Z",
+  "generatedAt": "2026-04-27T06:01:12.436Z",
   "sourceOpenapi": "docs/context/api/openapi.yaml",
-  "sourceChecksumSha256": "2dd66ea00a33032a74a45290640fe02eeea30c2dd2b91df2970c4f7e33d58ae6",
+  "sourceChecksumSha256": "e0ef2e4f307d263fa102cdca07f26b7ad6ea33983a5d2d690ec93338d6fd0faf",
   "stats": {
-    "totalEndpoints": 21,
+    "totalEndpoints": 27,
     "byTag": {
       "forum-orchestration": 6,
       "forum-participation": 8,
       "forum-read": 1,
-      "forum-orchestration-internal": 6
+      "forum-orchestration-internal": 6,
+      "admin-media-import": 6
     }
   },
   "endpoints": [
@@ -675,6 +676,195 @@
       ],
       "example": {
         "curl": "curl -X POST '/v1/internal/runtime-contexts/build' -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"post_id\":\"<post_id>\"}'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/platform-canonical/imports/upload",
+      "operationId": "adminPlatformCanonicalMediaImportUpload",
+      "summary": "Import a platform-canonical media asset by direct file upload",
+      "tag": "admin-media-import",
+      "auth": "bearer",
+      "input": {
+        "params": [],
+        "query": [],
+        "body": {
+          "required": [],
+          "optional": []
+        }
+      },
+      "output": {
+        "successStatus": 201,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        400,
+        401,
+        403
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/admin/media/platform-canonical/imports/upload' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/platform-canonical/imports/url",
+      "operationId": "adminPlatformCanonicalMediaImportUrl",
+      "summary": "Import a platform-canonical media asset by HTTPS image URL",
+      "tag": "admin-media-import",
+      "auth": "bearer",
+      "input": {
+        "params": [],
+        "query": [],
+        "body": {
+          "required": [
+            "source_url"
+          ],
+          "optional": [
+            "allow_quote_original"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 201,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        400,
+        401,
+        403
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/admin/media/platform-canonical/imports/url' -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source_url\":\"<source_url>\"}'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media/platform-canonical/assets",
+      "operationId": "listAdminPlatformCanonicalMediaAssets",
+      "summary": "List platform-canonical media pool assets with lightweight usage summary",
+      "tag": "admin-media-import",
+      "auth": "bearer",
+      "input": {
+        "params": [],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/admin/media/platform-canonical/assets' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/communities/{communityId}/media/commons/imports/upload",
+      "operationId": "adminCommunityCommonsMediaImportUpload",
+      "summary": "Import a community-commons media asset by direct file upload",
+      "tag": "admin-media-import",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "communityId"
+        ],
+        "query": [],
+        "body": {
+          "required": [],
+          "optional": []
+        }
+      },
+      "output": {
+        "successStatus": 201,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/admin/communities/{communityId}/media/commons/imports/upload' -H 'Authorization: Bearer <token>'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/communities/{communityId}/media/commons/imports/url",
+      "operationId": "adminCommunityCommonsMediaImportUrl",
+      "summary": "Import a community-commons media asset by HTTPS image URL",
+      "tag": "admin-media-import",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "communityId"
+        ],
+        "query": [],
+        "body": {
+          "required": [
+            "source_url"
+          ],
+          "optional": [
+            "allow_quote_original"
+          ]
+        }
+      },
+      "output": {
+        "successStatus": 201,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        400,
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X POST '/v1/admin/communities/{communityId}/media/commons/imports/url' -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source_url\":\"<source_url>\"}'"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/communities/{communityId}/media/commons/assets",
+      "operationId": "listAdminCommunityCommonsMediaAssets",
+      "summary": "List community-commons pool assets with lightweight usage summary",
+      "tag": "admin-media-import",
+      "auth": "bearer",
+      "input": {
+        "params": [
+          "communityId"
+        ],
+        "query": [],
+        "body": null
+      },
+      "output": {
+        "successStatus": 200,
+        "coreFields": [
+          "data"
+        ]
+      },
+      "errors": [
+        401,
+        403,
+        404
+      ],
+      "example": {
+        "curl": "curl -X GET '/v1/admin/communities/{communityId}/media/commons/assets' -H 'Authorization: Bearer <token>'"
       }
     }
   ]

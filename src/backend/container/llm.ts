@@ -11,6 +11,7 @@ import { createDefaultBudgetChecker } from '../llm/default-budget-checker.js'
 import { BudgetGuard } from '../llm/budget-guard.js'
 import { MediaAssetControlService } from '../services/media-asset-control-service.js'
 import {
+  AdminMediaImportService,
   ArkSeedreamGateway,
   DashScopeTextEmbeddingGateway,
   DashScopeQwenImageGateway,
@@ -299,6 +300,19 @@ export function createLlmServices(deps: {
     mediaAssetService,
     mediaReuseGovernanceService,
   })
+  const adminMediaImportService = new AdminMediaImportService({
+    mediaAssetService,
+    mediaReuseGovernanceService,
+    mediaRetrievalService,
+    mediaAssetRepo: deps.mediaAssetRepo,
+    mediaSemanticSnapshotRepo: deps.mediaSemanticSnapshotRepo,
+    sceneMediaBindingRepo: deps.sceneMediaBindingRepo,
+    mediaReusePolicyRepo: deps.mediaReusePolicyRepo,
+    mediaRetrievalDocumentRepo: deps.mediaRetrievalDocumentRepo,
+    mediaEmbeddingSnapshotRepo: deps.mediaEmbeddingSnapshotRepo,
+    postMediaRepo: deps.postMediaRepo,
+    storage: mediaAssetStorage,
+  })
 
   return {
     registryBundle,
@@ -334,6 +348,7 @@ export function createLlmServices(deps: {
     mediaLifecycleService,
     mediaAssetService,
     mediaAssetControlService,
+    adminMediaImportService,
   }
 }
 

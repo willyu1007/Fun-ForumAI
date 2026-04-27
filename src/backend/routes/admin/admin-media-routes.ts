@@ -1,5 +1,7 @@
-import type { IRouter, Response } from 'express'
+import type { IRouter, Request, Response } from 'express'
+import multer from 'multer'
 import {
+  adminMediaImportService,
   mediaLifecycleService,
   mediaLineageService,
   mediaObservabilityService,
@@ -8,10 +10,13 @@ import {
   mediaScenePackService,
 } from '../../container.js'
 import { config } from '../../lib/config.js'
-import { AppError } from '../../lib/errors.js'
+import { AppError, ValidationError } from '../../lib/errors.js'
 import { requireAdmin, requireHumanAuth } from '../../middleware/human-auth.js'
 import type { MediaLineageNodeType, MediaRolloutControllerOverride } from '../../repos/types.js'
 import {
+  adminMediaImportListQuerySchema,
+  adminMediaImportUploadFormSchema,
+  adminMediaImportUrlBodySchema,
   createCommunityCommonsAssetSchema,
   createPlatformCanonicalAssetSchema,
   createMediaScenePackDraftSchema,
@@ -26,6 +31,45 @@ import {
   revokeMediaReusePolicySchema,
 } from '../../validation/schemas.js'
 import { validate } from '../../validation/validate.js'
+
+const adminMediaImportUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+})
+
+function handleAdminMediaUploadParse(
+  req: Request,
+  res: Response,
+  next: (err?: unknown) => void,
+  run: () => Promise<void>,
+): void {
+  adminMediaImportUpload.single('file')(req, res, async (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        next(new ValidationError('media exceeds 10MB limit'))
+        return
+      }
+      next(new ValidationError('invalid upload payload'))
+      return
+    }
+    try {
+      await run()
+    } catch (uploadErr) {
+      if (tryHandleAppError(res, uploadErr)) return
+      next(uploadErr)
+    }
+  })
+}
+
+function parseAdminMediaImportFormFields(body: unknown): { allow_quote_original?: boolean } {
+  const parsed = adminMediaImportUploadFormSchema.parse(body ?? {})
+  return { allow_quote_original: parsed.allow_quote_original }
+}
+
+function parseAdminMediaImportListLimit(query: unknown): number {
+  const parsed = adminMediaImportListQuerySchema.parse(query ?? {})
+  return parsed.limit ?? 50
+}
 
 const MEDIA_LINEAGE_NODE_TYPES: MediaLineageNodeType[] = [
   'asset',
@@ -241,6 +285,7 @@ export function registerAdminMediaRoutes(router: IRouter): void {
         const data = await mediaReuseGovernanceService.registerPlatformCanonicalAsset({
           asset_id: req.body.asset_id,
           actor_user_id: req.user!.userId,
+          allow_quote_original: req.body.allow_quote_original,
         })
         res.status(201).json({ data })
       } catch (err) {
@@ -464,4 +509,123 @@ export function registerAdminMediaRoutes(router: IRouter): void {
     const result = await mediaLifecycleService.runSweep()
     res.json({ data: result })
   })
+
+  router.post(
+    '/admin/media/platform-canonical/imports/upload',
+    requireHumanAuth,
+    requireAdmin,
+    (req, res, next) => {
+      handleAdminMediaUploadParse(req, res, next, async () => {
+        const file = req.file
+        if (!file || file.size <= 0) {
+          throw new ValidationError('file is required')
+        }
+        const fields = parseAdminMediaImportFormFields(req.body)
+        const data = await adminMediaImportService.importPlatformUpload({
+          actor_user_id: req.user!.userId,
+          file: { mime_type: file.mimetype, bytes: file.buffer },
+          allow_quote_original: fields.allow_quote_original,
+        })
+        res.status(201).json({ data })
+      })
+    },
+  )
+
+  router.post(
+    '/admin/media/platform-canonical/imports/url',
+    requireHumanAuth,
+    requireAdmin,
+    validate(adminMediaImportUrlBodySchema),
+    async (req, res, next) => {
+      try {
+        const data = await adminMediaImportService.importPlatformUrl({
+          actor_user_id: req.user!.userId,
+          source_url: req.body.source_url,
+          allow_quote_original: req.body.allow_quote_original,
+        })
+        res.status(201).json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.get(
+    '/admin/media/platform-canonical/assets',
+    requireHumanAuth,
+    requireAdmin,
+    async (req, res, next) => {
+      try {
+        const limit = parseAdminMediaImportListLimit(req.query)
+        const data = await adminMediaImportService.listPlatformAssets({ limit })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.post(
+    '/admin/communities/:communityId/media/commons/imports/upload',
+    requireHumanAuth,
+    requireAdmin,
+    (req, res, next) => {
+      handleAdminMediaUploadParse(req, res, next, async () => {
+        const file = req.file
+        if (!file || file.size <= 0) {
+          throw new ValidationError('file is required')
+        }
+        const fields = parseAdminMediaImportFormFields(req.body)
+        const data = await adminMediaImportService.importCommunityUpload({
+          community_id: String(req.params.communityId),
+          actor_user_id: req.user!.userId,
+          file: { mime_type: file.mimetype, bytes: file.buffer },
+          allow_quote_original: fields.allow_quote_original,
+        })
+        res.status(201).json({ data })
+      })
+    },
+  )
+
+  router.post(
+    '/admin/communities/:communityId/media/commons/imports/url',
+    requireHumanAuth,
+    requireAdmin,
+    validate(adminMediaImportUrlBodySchema),
+    async (req, res, next) => {
+      try {
+        const data = await adminMediaImportService.importCommunityUrl({
+          community_id: String(req.params.communityId),
+          actor_user_id: req.user!.userId,
+          source_url: req.body.source_url,
+          allow_quote_original: req.body.allow_quote_original,
+        })
+        res.status(201).json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
+
+  router.get(
+    '/admin/communities/:communityId/media/commons/assets',
+    requireHumanAuth,
+    requireAdmin,
+    async (req, res, next) => {
+      try {
+        const limit = parseAdminMediaImportListLimit(req.query)
+        const data = await adminMediaImportService.listCommunityAssets({
+          community_id: String(req.params.communityId),
+          limit,
+        })
+        res.json({ data })
+      } catch (err) {
+        if (tryHandleAppError(res, err)) return
+        next(err)
+      }
+    },
+  )
 }

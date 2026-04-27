@@ -717,6 +717,7 @@ export const updateRoleAssignmentSchema = z
 export const createPlatformCanonicalAssetSchema = z
   .object({
     asset_id: z.string().min(1),
+    allow_quote_original: z.boolean().optional(),
   })
   .strict()
 
@@ -726,6 +727,44 @@ export const createCommunityCommonsAssetSchema = z
     allow_quote_original: z.boolean().optional(),
   })
   .strict()
+
+const adminMediaImportFlagFromForm = z
+  .union([z.boolean(), z.string()])
+  .optional()
+  .transform((value) => {
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase()
+      if (normalized === 'true' || normalized === '1' || normalized === 'on') return true
+      if (normalized === 'false' || normalized === '0' || normalized === 'off' || normalized === '') return false
+    }
+    return undefined
+  })
+
+export const adminMediaImportUrlBodySchema = z
+  .object({
+    source_url: z
+      .string()
+      .min(1)
+      .url()
+      .refine((value) => value.toLowerCase().startsWith('https://'), {
+        message: 'source_url must use https',
+      }),
+    allow_quote_original: z.boolean().optional(),
+  })
+  .strict()
+
+export const adminMediaImportUploadFormSchema = z
+  .object({
+    allow_quote_original: adminMediaImportFlagFromForm,
+  })
+  .passthrough()
+
+export const adminMediaImportListQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+  })
+  .passthrough()
 
 export const patchMediaReusePolicySchema = z
   .object({
