@@ -1318,10 +1318,11 @@ templates:
       response is discarded after success classification.
     variables_schema:
       type: object
-      properties: {}
+      properties:
+        probe_label:
+          type: string
       required: []
     system_prompt: |
       You are a connectivity probe. Reply with the exact two characters: OK
     user_prompt: |
       ping
-

@@ -93,10 +93,14 @@ pools:
       - watchability
       - callback_fidelity
     candidates:
+      - provider_id: ark-coding-openai
+        model_id: ark-code-latest
+        admission: admitted
+        note: primary Ark Coding Plan slot; must use /api/coding/v3 and ARK_API_KEY
       - provider_id: ark-openai
         model_id: doubao-seed-2-0-lite-260215
         admission: admitted
-        note: canonical active Doubao visible slot
+        note: ordinary Ark fallback slot; must use /api/v3 and ARK_API_KEY_SECONDARY
       - provider_id: moonshot-openai
         model_id: kimi-k2.5
         admission: admitted
@@ -109,7 +113,12 @@ pools:
       - watchability
       - callback_fidelity
     candidates:
+      - provider_id: kimi-coding-openai
+        model_id: kimi-for-coding
+        admission: shadow
+        compare_baseline_model_id: kimi-k2.5
+        note: retained inventory only; Kimi Code rejects non-Coding-Agent backend clients with access_terminated_error
       - provider_id: moonshot-openai
         model_id: kimi-k2.5
         admission: admitted
-        note: consolidated active Moonshot slot for the retained kimi-deep runtime line
+        note: active ordinary Moonshot .cn runtime slot; must use MOONSHOT_API_KEY

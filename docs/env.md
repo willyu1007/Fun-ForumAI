@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-21T03:13:17Z`
+Generated at (UTC): `2026-04-27T08:15:40Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -100,6 +100,7 @@ Generated at (UTC): `2026-04-21T03:13:17Z`
 | `IDENTITY_GATE_STAGING_MODE` | `active` | `enum` | no | no | `enforced` | `` | `staging` | `` | `` | `` | Deprecated. Non-prod no longer enforces private/proactive identity checks; prod always enforces them. |
 | `JWT_EXPIRES_IN` | `active` | `string` | no | no | `7d` | `` | `*` | `` | `` | `` | JWT token expiration duration. |
 | `JWT_SECRET` | `active` | `string` | yes | yes | `` | `jwt_secret` | `*` | `` | `` | `` | Secret key for signing human auth JWT tokens. |
+| `KIMI_CODING_API_KEY` | `active` | `string` | yes | yes | `` | `kimi_coding_api_key` | `staging,prod` | `` | `` | `` | Kimi Coding Plan API key for the Coding Plan endpoint. Required in staging/prod as the primary Kimi runtime credential. |
 | `LLM_VISION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_vision` | `staging` | `` | `` | `` | Dedicated staging API key for multimodal image understanding and semantic extraction. LLM routing falls back to the primary DashScope credential when unavailable. |
 | `MEDIA_GENERATION_API_KEY` | `active` | `string` | no | yes | `` | `llm_api_pics` | `dev,dev.local,staging,prod` | `` | `` | `` | API key for the dedicated image generation gateway. |
 | `MEDIA_GENERATION_BASE_URL` | `active` | `string` | no | no | `https://ark.cn-beijing.volces.com` | `` | `*` | `` | `` | `` | Base URL for the dedicated image generation API. |
@@ -138,7 +139,7 @@ Generated at (UTC): `2026-04-21T03:13:17Z`
 | `MEDIA_STORAGE_BACKEND` | `active` | `enum` | no | no | `local` | `` | `*` | `` | `` | `` | Storage backend for persisted media assets. |
 | `MINIMAX_API_KEY` | `active` | `string` | yes | yes | `` | `minimax_api_key` | `staging,prod` | `` | `` | `` | Primary MiniMax provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
 | `MINIMAX_API_KEY_SECONDARY` | `active` | `string` | yes | yes | `` | `minimax_api_key_secondary` | `staging,prod` | `` | `` | `` | Secondary MiniMax provider API key for ordered failover. Required in staging/prod to keep ordered credential fallback intact. |
-| `MOONSHOT_API_KEY` | `active` | `string` | yes | yes | `` | `moonshot_api_key` | `staging,prod` | `` | `` | `` | Primary Moonshot / Kimi provider API key. Required in staging/prod to keep the admitted provider credential surface complete. |
+| `MOONSHOT_API_KEY` | `active` | `string` | yes | yes | `` | `moonshot_api_key` | `staging,prod` | `` | `` | `` | Ordinary Moonshot / Kimi provider API key for pay-as-you-go .cn endpoint fallback. Required in staging/prod to keep Kimi fallback routing available. |
 | `NODE_ENV` | `active` | `enum` | yes | no | `development` | `` | `*` | `` | `` | `` | Node.js runtime environment. |
 | `PORT` | `active` | `int` | yes | no | `4000` | `` | `*` | `` | `` | `` | Backend HTTP server listen port. |
 | `RUNTIME_BATCH_SIZE` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Max events processed per RuntimeLoop tick. |

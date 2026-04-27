@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-21T03:13:17Z",
+  "generated_at_utc": "2026-04-27T08:15:40Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -1561,6 +1561,26 @@
       "state": "active",
       "type": "string"
     },
+    "KIMI_CODING_API_KEY": {
+      "default": null,
+      "deprecate_after": null,
+      "description": "Kimi Coding Plan API key for the Coding Plan endpoint. Required in staging/prod as the primary Kimi runtime credential.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": true,
+      "scopes": [
+        "staging",
+        "prod"
+      ],
+      "secret": true,
+      "secret_ref": "kimi_coding_api_key",
+      "state": "active",
+      "type": "string"
+    },
     "LLM_VISION_API_KEY": {
       "default": null,
       "deprecate_after": null,
@@ -2241,7 +2261,7 @@
     "MOONSHOT_API_KEY": {
       "default": null,
       "deprecate_after": null,
-      "description": "Primary Moonshot / Kimi provider API key. Required in staging/prod to keep the admitted provider credential surface complete.",
+      "description": "Ordinary Moonshot / Kimi provider API key for pay-as-you-go .cn endpoint fallback. Required in staging/prod to keep Kimi fallback routing available.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null

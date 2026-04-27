@@ -235,6 +235,32 @@ describe('LLM registry contract', () => {
     )
   })
 
+  it('keeps DeepSeek V4 Pro as the third qwen director-plan candidate', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+
+    for (const profileId of [
+      'qwen-director-director-plan-base',
+      'qwen-director-director-plan-premium',
+    ]) {
+      expect(profilesById.get(profileId)?.candidates[0]).toMatchObject({
+        provider_id: 'token-plan-openai',
+        model_id: 'qwen3.6-plus',
+      })
+      expect(profilesById.get(profileId)?.candidates[1]).toMatchObject({
+        provider_id: 'dashscope-openai',
+        model_id: 'qwen3.5-plus',
+      })
+      expect(profilesById.get(profileId)?.candidates[2]).toMatchObject({
+        provider_id: 'deepseek-openai',
+        model_id: 'deepseek-v4-pro',
+        weight: 95,
+      })
+    }
+  })
+
   it('keeps qwen identity-write tiers split between public and private adaptation lanes', () => {
     const bundle = loadLlmRegistryBundle()
     const profilesById = new Map(
@@ -433,6 +459,8 @@ describe('LLM registry contract', () => {
       bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
     )
     const doubaoAdmission = bundle.providerAdmission.pools.find((entry) => entry.voice_line_id === 'doubao-deep-v1')
+    const arkPrimary = bundle.credentialPools.pools.find((entry) => entry.credential_id === 'ark-primary')
+    const arkSecondary = bundle.credentialPools.pools.find((entry) => entry.credential_id === 'ark-secondary')
     const visibleProfileIds = [
       'doubao-deep-chat-reply-lite',
       'doubao-deep-forum-reply-base',
@@ -451,22 +479,99 @@ describe('LLM registry contract', () => {
       doubaoAdmission?.candidates.map((candidate) => `${candidate.provider_id}/${candidate.model_id}`),
     ).toEqual(
       expect.arrayContaining([
+        'ark-coding-openai/ark-code-latest',
         'ark-openai/doubao-seed-2-0-lite-260215',
         'moonshot-openai/kimi-k2.5',
       ]),
     )
+    expect(arkPrimary).toMatchObject({
+      provider_id: 'ark-coding-openai',
+      endpoint_id: 'ark-coding-cn-beijing',
+      endpoint: 'https://ark.cn-beijing.volces.com/api/coding/v3',
+      credential_ref: 'secret-ref:ark_api_key',
+    })
+    expect(arkPrimary?.allowed_model_ids).toEqual(['ark-code-latest'])
+    expect(arkSecondary).toMatchObject({
+      provider_id: 'ark-openai',
+      endpoint_id: 'ark-cn-beijing',
+      endpoint: 'https://ark.cn-beijing.volces.com/api/v3',
+      credential_ref: 'secret-ref:ark_api_key_secondary',
+    })
+    expect(arkSecondary?.allowed_model_ids).toEqual(['doubao-seed-2-0-lite-260215'])
 
     for (const profileId of [...visibleProfileIds, ...hiddenProfileIds]) {
       const candidateKeys =
         profilesById.get(profileId)?.candidates.map(
           (candidate) => `${candidate.provider_id}/${candidate.model_id}`,
         ) ?? []
-      expect(candidateKeys).toEqual(
-        expect.arrayContaining([
-          'ark-openai/doubao-seed-2-0-lite-260215',
-          'moonshot-openai/kimi-k2.5',
-        ]),
-      )
+      expect(candidateKeys.slice(0, 3)).toEqual([
+        'ark-coding-openai/ark-code-latest',
+        'ark-openai/doubao-seed-2-0-lite-260215',
+        'moonshot-openai/kimi-k2.5',
+      ])
+    }
+  })
+
+  it('keeps Kimi Code inventory blocked while routing kimi line through ordinary Moonshot', () => {
+    const bundle = loadLlmRegistryBundle()
+    const profilesById = new Map(
+      bundle.modelProfiles.profiles.map((entry) => [entry.profile_id, entry] as const),
+    )
+    const kimiAdmission = bundle.providerAdmission.pools.find((entry) => entry.voice_line_id === 'kimi-deep-v1')
+    const kimiCodingPrimary = bundle.credentialPools.pools.find(
+      (entry) => entry.credential_id === 'kimi-coding-primary',
+    )
+    const moonshotPrimary = bundle.credentialPools.pools.find((entry) => entry.credential_id === 'moonshot-primary')
+    const kimiProfileIds = [
+      'kimi-deep-chat-reply-lite',
+      'kimi-deep-forum-reply-base',
+      'kimi-deep-scheduled-post-lite',
+      'kimi-deep-scheduled-post-base',
+      'kimi-deep-private-reply-base',
+      'kimi-deep-proactive-opening-base',
+      'kimi-deep-identity-write-premium',
+      'kimi-deep-public-observation-base',
+      'kimi-deep-private-digest-base',
+    ] as const
+
+    expect(
+      kimiAdmission?.candidates.map((candidate) => ({
+        key: `${candidate.provider_id}/${candidate.model_id}`,
+        admission: candidate.admission,
+      })),
+    ).toEqual([
+      {
+        key: 'kimi-coding-openai/kimi-for-coding',
+        admission: 'shadow',
+      },
+      {
+        key: 'moonshot-openai/kimi-k2.5',
+        admission: 'admitted',
+      },
+    ])
+    expect(kimiCodingPrimary).toMatchObject({
+      provider_id: 'kimi-coding-openai',
+      endpoint_id: 'kimi-coding-cn',
+      endpoint: 'https://api.kimi.com/coding/v1',
+      credential_ref: 'secret-ref:kimi_coding_api_key',
+      health: 'blocked',
+      enabled: false,
+    })
+    expect(kimiCodingPrimary?.allowed_model_ids).toEqual(['kimi-for-coding'])
+    expect(moonshotPrimary).toMatchObject({
+      provider_id: 'moonshot-openai',
+      endpoint_id: 'moonshot-cn',
+      endpoint: 'https://api.moonshot.cn/v1',
+      credential_ref: 'secret-ref:moonshot_api_key',
+    })
+
+    for (const profileId of kimiProfileIds) {
+      const candidateKeys =
+        profilesById.get(profileId)?.candidates.map(
+          (candidate) => `${candidate.provider_id}/${candidate.model_id}`,
+        ) ?? []
+      expect(candidateKeys).not.toContain('kimi-coding-openai/kimi-for-coding')
+      expect(candidateKeys[0]).toBe('moonshot-openai/kimi-k2.5')
     }
   })
 
@@ -661,10 +766,10 @@ describe('LLM registry contract', () => {
 
     expect(
       glmIdentityPremium?.candidates.some((candidate) =>
-        candidate.provider_id === 'deepseek-openai' && candidate.model_id === 'deepseek-reasoner'),
+        candidate.provider_id === 'deepseek-openai' && candidate.model_id === 'deepseek-v4-pro'),
     ).toBe(true)
     expect(deepseekPrimary?.scope_tags).toContain('identity_write')
-    expect(deepseekPrimary?.allowed_model_ids).toContain('deepseek-reasoner')
+    expect(deepseekPrimary?.allowed_model_ids).toContain('deepseek-v4-pro')
   })
 
   it('keeps minimax hidden profiles backed by hidden credential scopes', () => {

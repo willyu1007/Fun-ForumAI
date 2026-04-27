@@ -117,10 +117,22 @@ function normalizeOpenAICompatibleBody(input: {
         : {}),
     }
 
-  // Moonshot K2-family models reject caller-specified temperatures other than
-  // their fixed server-side values. We run them in the default thinking mode,
-  // so normalize to the accepted 1.0 instead of leaking policy temperatures.
-  if (providerId === 'moonshot-openai' && isMoonshotFixedTemperatureModel(request.model)) {
+  if (providerId === 'deepseek-openai' && isDeepSeekV4FlashModel(request.model)) {
+    body.thinking = { type: 'disabled' }
+    body.temperature = request.temperature
+    return body
+  }
+
+  if (providerId === 'deepseek-openai' && isDeepSeekV4ProModel(request.model)) {
+    body.thinking = { type: 'enabled' }
+    body.reasoning_effort = 'max'
+    return body
+  }
+
+  // Kimi K2-family models reject caller-specified temperatures other than their
+  // fixed server-side values. We run them in the default thinking mode, so
+  // normalize to the accepted 1.0 instead of leaking policy temperatures.
+  if (isKimiFixedTemperatureProvider(providerId) && isMoonshotFixedTemperatureModel(request.model)) {
     body.temperature = 1
     return body
   }
@@ -131,6 +143,18 @@ function normalizeOpenAICompatibleBody(input: {
 
 function isMoonshotFixedTemperatureModel(modelId: string): boolean {
   return /^kimi-k2([.-]|$)/.test(modelId)
+}
+
+function isKimiFixedTemperatureProvider(providerId: string): boolean {
+  return providerId === 'moonshot-openai' || providerId === 'kimi-coding-openai'
+}
+
+function isDeepSeekV4FlashModel(modelId: string): boolean {
+  return modelId === 'deepseek-v4-flash'
+}
+
+function isDeepSeekV4ProModel(modelId: string): boolean {
+  return modelId === 'deepseek-v4-pro'
 }
 
 function buildHeaders(config: LlmProviderConfig): Record<string, string> {

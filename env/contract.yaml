@@ -369,9 +369,17 @@ variables:
     type: string
     required: true
     scopes: [staging, prod]
-    description: Primary Moonshot / Kimi provider API key. Required in staging/prod to keep the admitted provider credential surface complete.
+    description: Ordinary Moonshot / Kimi provider API key for pay-as-you-go .cn endpoint fallback. Required in staging/prod to keep Kimi fallback routing available.
     secret: true
     secret_ref: moonshot_api_key
+
+  KIMI_CODING_API_KEY:
+    type: string
+    required: true
+    scopes: [staging, prod]
+    description: Kimi Coding Plan API key for the Coding Plan endpoint. Required in staging/prod as the primary Kimi runtime credential.
+    secret: true
+    secret_ref: kimi_coding_api_key
 
   MINIMAX_API_KEY:
     type: string

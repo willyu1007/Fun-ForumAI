@@ -26,17 +26,21 @@ pricing:
     prompt_per_1k_cny: 0.05
     completion_per_1k_cny: 0.12
   - provider_id: deepseek-openai
-    model_id: deepseek-chat
-    prompt_per_1k_cny: 0.006
-    completion_per_1k_cny: 0.016
+    model_id: deepseek-v4-flash
+    prompt_per_1k_cny: 0.001
+    completion_per_1k_cny: 0.002
   - provider_id: deepseek-openai
-    model_id: deepseek-reasoner
-    prompt_per_1k_cny: 0.03
-    completion_per_1k_cny: 0.07
+    model_id: deepseek-v4-pro
+    prompt_per_1k_cny: 0.003
+    completion_per_1k_cny: 0.006
   - provider_id: moonshot-openai
     model_id: kimi-k2.5
     prompt_per_1k_cny: 0.02
     completion_per_1k_cny: 0.072
+  - provider_id: kimi-coding-openai
+    model_id: kimi-for-coding
+    prompt_per_1k_cny: 0
+    completion_per_1k_cny: 0
   - provider_id: moonshot-openai
     model_id: moonshot-v1-128k
     prompt_per_1k_cny: 0.067
@@ -57,3 +61,7 @@ pricing:
     model_id: doubao-seed-2-0-lite-260215
     prompt_per_1k_cny: 0.0006
     completion_per_1k_cny: 0.0024
+  - provider_id: ark-coding-openai
+    model_id: ark-code-latest
+    prompt_per_1k_cny: 0
+    completion_per_1k_cny: 0

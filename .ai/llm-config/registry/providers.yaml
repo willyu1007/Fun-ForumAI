@@ -96,6 +96,24 @@ providers:
       timeout_ms: 60000
       max_retries: 2
 
+  - provider_id: kimi-coding-openai
+    display_name: Kimi Coding Plan OpenAI-Compatible
+    gateway_kind: openai_compatible
+    auth:
+      type: api_key
+      source: credential_pool
+      auth_strategy: bearer_api_key
+    routing:
+      regions:
+        - cn
+      default_region: cn
+    capabilities:
+      chat: true
+      json_mode: true
+    defaults:
+      timeout_ms: 60000
+      max_retries: 2
+
   - provider_id: minimax-openai
     display_name: MiniMax OpenAI-Compatible
     gateway_kind: openai_compatible
@@ -134,6 +152,24 @@ providers:
 
   - provider_id: ark-openai
     display_name: ByteDance Ark OpenAI-Compatible
+    gateway_kind: openai_compatible
+    auth:
+      type: api_key
+      source: credential_pool
+      auth_strategy: bearer_api_key
+    routing:
+      regions:
+        - cn
+      default_region: cn
+    capabilities:
+      chat: true
+      json_mode: true
+    defaults:
+      timeout_ms: 30000
+      max_retries: 2
+
+  - provider_id: ark-coding-openai
+    display_name: ByteDance Ark Coding Plan OpenAI-Compatible
     gateway_kind: openai_compatible
     auth:
       type: api_key

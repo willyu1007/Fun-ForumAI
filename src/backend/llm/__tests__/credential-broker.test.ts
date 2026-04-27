@@ -411,7 +411,7 @@ describe('CredentialBroker', () => {
   it('matches deepseek identity-write pools only when they declare identity_write scope', () => {
     const candidate = {
       provider_id: 'deepseek-openai',
-      model_id: 'deepseek-reasoner',
+      model_id: 'deepseek-v4-pro',
       region: 'cn',
       endpoint_id: 'deepseek-cn',
       adapter_id: 'openai-chat-completions-v1',
@@ -433,7 +433,7 @@ describe('CredentialBroker', () => {
           health: 'healthy',
           enabled: true,
           scope_tags: ['hidden'],
-          allowed_model_ids: ['deepseek-chat', 'deepseek-reasoner'],
+          allowed_model_ids: ['deepseek-v4-flash', 'deepseek-v4-pro'],
         },
       ],
       visibility: 'identity_write',
@@ -454,7 +454,7 @@ describe('CredentialBroker', () => {
           health: 'healthy',
           enabled: true,
           scope_tags: ['hidden', 'identity_write'],
-          allowed_model_ids: ['deepseek-chat', 'deepseek-reasoner'],
+          allowed_model_ids: ['deepseek-v4-flash', 'deepseek-v4-pro'],
         },
       ],
       visibility: 'identity_write',
