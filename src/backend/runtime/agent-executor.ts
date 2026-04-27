@@ -203,6 +203,8 @@ export class AgentExecutor {
         event_id: event.event_id,
         community_id: event.community_id,
         post_id: event.post_id ?? null,
+        trace_id: `runtime:${event.event_id}:${agent.agent_id}`,
+        linked_llm_trace_id: `runtime:${event.event_id}:${agent.agent_id}`,
         duration_ms: Date.now() - start,
         error_message_redacted: compactErrorMessage(err),
       })
@@ -601,6 +603,7 @@ export class AgentExecutor {
       promptIntent === 'chat_reply' ? 'lite' : undefined,
     )
     const identity = this.resolveObservationIdentity(input.agent.agent_id)
+    const llmTraceId = `runtime:${input.event.event_id}:${input.agent.agent_id}`
     const llmResponse = await this.deps.llmGateway.generateVisibleText({
       intent: promptIntent,
       scene: promptScene,
@@ -611,7 +614,7 @@ export class AgentExecutor {
       promptRef: templateId,
       variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
       budgetClass: 'visible_standard',
-      traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}`,
+      traceId: llmTraceId,
       promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
       requestedTier: routing.requestedTier,
       allowFallbackWithinLine: false,
@@ -651,7 +654,7 @@ export class AgentExecutor {
         parse_success: false,
         error: 'LLM output could not be parsed into a valid action',
       }
-      this.deps.agentRunRepo.create({
+      const failedAgentRun = this.deps.agentRunRepo.create({
         agent_id: input.agent.agent_id,
         trigger_event_id: input.event.event_id,
         input_digest: `parse_failed|template:${templateId.id}@${templateId.version}|len:${llmResponse.content.length}`,
@@ -679,6 +682,9 @@ export class AgentExecutor {
         agent_id: input.agent.agent_id,
         event_id: input.event.event_id,
         community_id: input.event.community_id,
+        trace_id: llmTraceId,
+        linked_agent_run_id: failedAgentRun.id,
+        linked_llm_trace_id: llmTraceId,
         duration_ms: latencyMs,
         error_code: 'parse_failed',
         error_message_redacted: 'LLM output could not be parsed into a valid action',

@@ -582,6 +582,21 @@ export class ProactiveInteractionService {
           trigger_type: input.triggerType,
         },
       })
+      recordRuntimeOperation({
+        severity: 'warn',
+        source: 'db_diagnostic',
+        operation: 'agent_run_create',
+        status: 'failed',
+        agent_id: input.agentId,
+        session_id: input.sessionId,
+        error_code: 'agent_run_persist_failed',
+        error_message_redacted: compactErrorMessage(err),
+        payload_json: {
+          repository: 'AgentRunRepository',
+          operation: 'create',
+          caller: 'ProactiveInteractionService.recordAgentRun',
+        },
+      })
     }
   }
 

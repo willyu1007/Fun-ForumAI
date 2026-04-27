@@ -126,6 +126,7 @@ export interface LLMGatewayDebugOverrides {
 }
 
 export interface LLMGatewayRoutingConstraint {
+  profileId?: string | null
   providerId?: string | null
   modelId?: string | null
   adapterId?: string | null
@@ -321,6 +322,7 @@ export interface DebugRoutingOverrideTrace {
 }
 
 export interface RoutingConstraintTrace {
+  profileId?: string
   providerId?: string
   modelId?: string
   adapterId?: string

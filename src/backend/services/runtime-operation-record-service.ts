@@ -8,6 +8,12 @@ import type {
   RuntimeOperationRetentionCutoffs,
   RuntimeOperationSeverity,
 } from '../repos/types.js'
+import {
+  isSensitiveKey,
+  redactSensitiveText,
+} from '../lib/sensitive-redaction.js'
+
+export { isSensitiveKey } from '../lib/sensitive-redaction.js'
 
 /**
  * Retention windows aligned with task package T-301 (locked in 07-contract-review.md):
@@ -35,26 +41,6 @@ export interface RuntimeOperationRecordServiceDeps {
 
 const STRING_TRUNCATE_LIMIT = 1024
 const PAYLOAD_TARGET_BYTES = 16 * 1024
-
-const DEFAULT_REDACTION_KEY_PATTERNS: ReadonlyArray<RegExp> = [
-  /token/i,
-  /secret/i,
-  /password/i,
-  /credential/i,
-  /authorization/i,
-  /api[_-]?key/i,
-  /access[_-]?key/i,
-  /private[_-]?key/i,
-  /cookie/i,
-  /session[_-]?id/i,
-  /raw[_-]?prompt/i,
-  /raw[_-]?completion/i,
-  /raw[_-]?content/i,
-  /prompt[_-]?text/i,
-  /completion[_-]?text/i,
-  /message[_-]?text/i,
-  /private[_-]?message/i,
-]
 
 /** Stable shape returned alongside a redacted payload for debugging. */
 export interface RedactionMeta {
@@ -91,7 +77,7 @@ export class RuntimeOperationRecordService {
     } catch (err) {
       console.warn(
         `[RuntimeOperationRecordService] failed to persist record (${input.source}/${input.operation}): ${
-          err instanceof Error ? err.message : String(err)
+          sanitizeErrorMessage(err instanceof Error ? err.message : String(err), 256) ?? '[redacted]'
         }`,
       )
       return null
@@ -125,7 +111,7 @@ export class RuntimeOperationRecordService {
 
   private sanitize(input: CreateRuntimeOperationRecordInput): CreateRuntimeOperationRecordInput {
     const errorMessageRedacted = input.error_message_redacted
-      ? truncateString(input.error_message_redacted)
+      ? sanitizeErrorMessage(input.error_message_redacted)
       : input.error_message_redacted ?? null
     const errorCode = input.error_code ? truncateString(input.error_code, 256) : input.error_code ?? null
     const operation = truncateString(input.operation, 256)
@@ -164,8 +150,12 @@ export function truncateString(value: string, limit: number = STRING_TRUNCATE_LI
   return `${value.slice(0, Math.max(0, limit - 1))}…`
 }
 
-export function isSensitiveKey(key: string): boolean {
-  return DEFAULT_REDACTION_KEY_PATTERNS.some((pattern) => pattern.test(key))
+export function sanitizeErrorMessage(
+  value: string | null | undefined,
+  limit: number = STRING_TRUNCATE_LIMIT,
+): string | null {
+  if (value === null || value === undefined) return null
+  return truncateString(redactSensitiveText(value), limit)
 }
 
 /**

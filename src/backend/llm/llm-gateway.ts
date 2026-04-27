@@ -710,6 +710,22 @@ export class LLMGateway {
   }
 
   private resolveInitialProfileId(request: LLMGatewayRequest): string {
+    if (
+      request.visibility === 'dev_only' &&
+      request.intent === 'dev_prompt_render' &&
+      request.routingConstraint?.profileId
+    ) {
+      const profileId = request.routingConstraint.profileId
+      if (!this.profilesById.has(profileId)) {
+        throw new LLMGatewayContractError(
+          'RegistryResolutionError',
+          `Diagnostic profile ${profileId} not found in registry bundle`,
+          { ...requestDetails(request), profile_id: profileId },
+        )
+      }
+      return profileId
+    }
+
     if (request.visibility === 'identity_write' || request.intent === 'identity_write') {
       const profileId = resolveIdentityWriteProfileRef(
         request.homeVoiceLineId,
@@ -1627,10 +1643,14 @@ function sanitizeRoutingConstraint(
   constraint: LLMGatewayRequest['routingConstraint'] | undefined,
 ) {
   const output: {
+    profileId?: string
     providerId?: string
     modelId?: string
     adapterId?: string
   } = {}
+  if (typeof constraint?.profileId === 'string' && constraint.profileId.trim()) {
+    output.profileId = constraint.profileId.trim()
+  }
   if (typeof constraint?.providerId === 'string' && constraint.providerId.trim()) {
     output.providerId = constraint.providerId.trim()
   }

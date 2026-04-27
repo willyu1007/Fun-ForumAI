@@ -125,6 +125,25 @@ describe('RuntimeOperationRecordService.record', () => {
     const fetched = await repo.findById(record!.id)
     expect(fetched!.operation.length).toBeLessThanOrEqual(256)
   })
+
+  it('redacts secret-like values from freeform error messages before persistence', async () => {
+    const { service, repo } = makeService()
+    const record = await service.record({
+      severity: 'error',
+      source: 'llm_gateway',
+      operation: 'invoke',
+      status: 'failed',
+      error_message_redacted:
+        'provider failed Authorization: Bearer abc.def.ghi api_key=sk-secret-token postgres://user:pass@localhost/db raw_prompt: hello',
+    })
+
+    const fetched = await repo.findById(record!.id)
+    expect(fetched!.error_message_redacted).not.toContain('abc.def.ghi')
+    expect(fetched!.error_message_redacted).not.toContain('sk-secret-token')
+    expect(fetched!.error_message_redacted).not.toContain('user:pass')
+    expect(fetched!.error_message_redacted).not.toContain('hello')
+    expect(fetched!.error_message_redacted).toContain('[redacted]')
+  })
 })
 
 describe('RuntimeOperationRecordService.cleanupExpired', () => {

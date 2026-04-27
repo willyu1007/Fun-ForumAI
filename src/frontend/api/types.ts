@@ -3653,7 +3653,7 @@ export interface RuntimeOperationRecordsListData {
 
 export interface RuntimeOperationRecordDetailData {
   record: RuntimeOperationRecord
-  references: Record<string, string>
+  references: Record<string, unknown>
   payload_summary: {
     payload: Record<string, unknown>
     redaction_meta: Record<string, unknown> | null
@@ -3694,6 +3694,7 @@ export interface LlmConnectivityRow {
   visibility: string
   tier: string
   credential_pool_id: string | null
+  adapter_id: string
   endpoint_id: string
   region: string
   admission: 'admitted'

@@ -42,6 +42,7 @@ export interface LlmConnectivityRow {
   visibility: string
   tier: string
   credential_pool_id: string | null
+  adapter_id: string
   endpoint_id: string
   region: string
   admission: 'admitted'
@@ -118,6 +119,7 @@ export class LlmConnectivityDiagnosticService {
           visibility: profile.visibility,
           tier: profile.tier,
           credential_pool_id: credentialPoolByEndpoint.get(credentialKey) ?? null,
+          adapter_id: candidate.adapter_id,
           endpoint_id: candidate.endpoint_id,
           region: candidate.region,
           admission: 'admitted',
@@ -172,11 +174,15 @@ export class LlmConnectivityDiagnosticService {
       variables: {},
       budgetClass: 'dev_only',
       traceId,
+      requestedTier: row.tier as LLMGatewayRequest['requestedTier'],
+      providerTags: [row.visibility],
       allowFallbackWithinLine: false,
       allowCrossFamily: false,
       routingConstraint: {
+        profileId: row.profile_id,
         providerId: row.provider_id,
         modelId: row.model_id,
+        adapterId: row.adapter_id,
       },
     }
 

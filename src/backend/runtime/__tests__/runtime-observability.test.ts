@@ -70,4 +70,14 @@ describe('runtime-observability', () => {
     expect(compactErrorMessage('plain string')).toBe('plain string')
     expect(compactErrorMessage({ code: 42 })).toBe('[object Object]')
   })
+
+  it('compactErrorMessage redacts common secret-bearing substrings', () => {
+    const compacted = compactErrorMessage(
+      new Error('failed with Authorization: Bearer abc.def.ghi api_key=sk-secret-token'),
+    )
+
+    expect(compacted).not.toContain('abc.def.ghi')
+    expect(compacted).not.toContain('sk-secret-token')
+    expect(compacted).toContain('[redacted]')
+  })
 })

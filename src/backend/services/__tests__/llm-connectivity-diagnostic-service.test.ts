@@ -138,6 +138,7 @@ describe('LlmConnectivityDiagnosticService.list', () => {
     expect(row.profile_id).toBe('profile-anchor-base')
     expect(row.voice_line_id).toBe('anchor_steady_v1')
     expect(row.credential_pool_id).toBe('pool-prod-east')
+    expect(row.adapter_id).toBe('adapter-openai')
     expect(row.shadow_dimensions).toEqual(['persona_lock', 'watchability'])
     expect(row.admission).toBe('admitted')
     expect(row.route_id).toContain('profile-anchor-base|provider-a|gpt-4o-2024-08-06')
@@ -194,6 +195,8 @@ describe('LlmConnectivityDiagnosticService.test', () => {
     expect(captured!.budgetClass).toBe('dev_only')
     expect(captured!.modality).toBe('text')
     expect(captured!.responseMode).toBe('text')
+    expect(captured!.requestedTier).toBe('base')
+    expect(captured!.providerTags).toEqual(['visible'])
     expect(captured!.allowFallbackWithinLine).toBe(false)
     expect(captured!.allowCrossFamily).toBe(false)
     expect(captured!.traceId.startsWith('admin-llm-connectivity:run-1:')).toBe(true)
@@ -202,8 +205,10 @@ describe('LlmConnectivityDiagnosticService.test', () => {
       version: ADMIN_LLM_CONNECTIVITY_PROMPT_VERSION,
     })
     expect(captured!.routingConstraint).toEqual({
+      profileId: 'profile-anchor-base',
       providerId: 'provider-a',
       modelId: 'gpt-4o-2024-08-06',
+      adapterId: 'adapter-openai',
     })
   })
 

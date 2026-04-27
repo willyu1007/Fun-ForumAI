@@ -642,6 +642,35 @@ describe('LLMGateway', () => {
     }))).toBe(false)
   })
 
+  it('can serve a dev-only diagnostic request pinned to a concrete profile and candidate', () => {
+    const { gateway } = buildGatewayHarness()
+
+    const canServe = gateway.canServeRoute({
+      intent: 'dev_prompt_render',
+      visibility: 'dev_only',
+      scene: 'dev_prompt_render',
+      modality: 'text',
+      responseMode: 'text',
+      agentId: 'admin-llm-connectivity-diagnostic',
+      homeVoiceLineId: 'qwen-social-v1',
+      requestedTier: 'premium',
+      promptRef: { id: 'admin-llm-connectivity-diagnostic', version: 1 },
+      budgetClass: 'dev_only',
+      traceId: 'admin-llm-connectivity:test',
+      allowFallbackWithinLine: false,
+      allowCrossFamily: false,
+      providerTags: ['visible'],
+      routingConstraint: {
+        profileId: 'qwen-social-proactive-opening-premium',
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-max',
+        adapterId: 'openai-chat-completions-v1',
+      },
+    })
+
+    expect(canServe).toBe(true)
+  })
+
   it('falls back to a same-line profile when the initial candidate has no matching credential pool', async () => {
     const bundle = buildBundle()
     const usageLedger = new UsageLedgerWriter()
@@ -2425,7 +2454,7 @@ describe('LLMGateway', () => {
       candidates: [
         {
           provider_id: 'deepseek-openai',
-          model_id: 'deepseek-reasoner',
+          model_id: 'deepseek-v4-pro',
           region: 'cn',
           endpoint_id: 'deepseek-cn',
           adapter_id: 'openai-chat-completions-v1',
@@ -2446,7 +2475,7 @@ describe('LLMGateway', () => {
     })
     bundle.modelCapabilities.capabilities.push({
       provider_id: 'deepseek-openai',
-      model_id: 'deepseek-reasoner',
+      model_id: 'deepseek-v4-pro',
       input_window_tokens: 64_000,
       max_output_tokens: 8_192,
       recommended_operating_input_tokens: 32_000,

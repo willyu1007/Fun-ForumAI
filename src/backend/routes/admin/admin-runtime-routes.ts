@@ -1,7 +1,9 @@
 import type { IRouter, Response } from 'express'
 import {
+  agentRunRepo,
   agentBioRefreshService,
   agentService,
+  eventRepo,
   eventQueue,
   governanceAdapter,
   guidanceObservabilityService,
@@ -59,6 +61,7 @@ import {
   parseRuntimeCloseoutFanoutOptions,
   resolveRuntimeCloseoutCandidateIds,
 } from './runtime-closeout-fanout.js'
+import type { RuntimeOperationRecord } from '../../repos/types.js'
 
 function tryHandleAppError(res: Response, err: unknown): boolean {
   if (!(err instanceof AppError)) return false
@@ -93,6 +96,71 @@ function buildExecutionPlanPreview(entries: Awaited<ReturnType<typeof usageLedge
     error_code: entry.error_code ?? null,
     created_at: entry.created_at,
   }))
+}
+
+async function buildRuntimeOperationRecordReferences(record: RuntimeOperationRecord): Promise<Record<string, unknown>> {
+  const references: Record<string, unknown> = {}
+
+  if (record.linked_agent_run_id) {
+    const run = agentRunRepo.findById(record.linked_agent_run_id)
+    references.agent_run = run
+      ? {
+          id: run.id,
+          agent_id: run.agent_id,
+          trigger_event_id: run.trigger_event_id,
+          token_cost: run.token_cost,
+          latency_ms: run.latency_ms,
+          created_at: run.created_at,
+        }
+      : { id: record.linked_agent_run_id, missing: true }
+  }
+
+  if (record.event_id) {
+    const event = eventRepo.findById(record.event_id)
+    references.event = event
+      ? {
+          id: event.id,
+          event_type: event.event_type,
+          community_id: event.community_id,
+          post_id: event.post_id,
+          actor_type: event.actor_type,
+          actor_id: event.actor_id,
+          created_at: event.created_at,
+        }
+      : { id: record.event_id, missing: true }
+  }
+
+  const ledgerTraceIds = Array.from(
+    new Set([record.linked_llm_trace_id, record.trace_id].filter((value): value is string => Boolean(value))),
+  )
+  if (ledgerTraceIds.length > 0) {
+    const entries = (await Promise.all(
+      ledgerTraceIds.map((traceId) => usageLedgerRepo.listByTracePrefix(traceId, 10)),
+    )).flat()
+    references.llm_ledger = entries.slice(0, 10).map((entry) => ({
+      trace_id: entry.trace_id,
+      agent_id: entry.agent_id,
+      intent: entry.intent,
+      visibility: entry.visibility,
+      scene: entry.scene,
+      success: entry.success,
+      provider_id: entry.provider_id ?? null,
+      model_id: entry.model_id ?? null,
+      profile_id: entry.profile_id ?? null,
+      policy_id: entry.policy_id ?? null,
+      error_code: entry.error_code ?? null,
+      latency_ms: entry.latency_ms,
+      created_at: entry.created_at,
+    }))
+  }
+
+  if (record.linked_risk_event_id) {
+    references.risk_event = { id: record.linked_risk_event_id }
+  }
+  if (record.trace_id) references.trace = { id: record.trace_id }
+  if (record.correlation_id) references.correlation = { id: record.correlation_id }
+
+  return references
 }
 
 function buildPrivateSessionCloseoutTraceIds(sessionId: string, agentId: string) {
@@ -813,9 +881,10 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
         })
         return
       }
-      const records = await runtimeOperationRecordService.list(filters)
       const limit = filters.limit ?? RUNTIME_OPERATION_RECORDS_DEFAULT_LIMIT
-      const hasMore = records.length === limit
+      const recordsPlusOne = await runtimeOperationRecordService.list({ ...filters, limit: limit + 1 })
+      const records = recordsPlusOne.slice(0, limit)
+      const hasMore = recordsPlusOne.length > limit
       const last = hasMore ? records[records.length - 1] : null
       res.json({
         data: {
@@ -864,13 +933,7 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
         res.status(404).json({ error: { code: 'NOT_FOUND', message: 'record not found' } })
         return
       }
-      const references: Record<string, string> = {}
-      if (record.linked_agent_run_id) references.agent_run_id = record.linked_agent_run_id
-      if (record.linked_llm_trace_id) references.llm_trace_id = record.linked_llm_trace_id
-      if (record.linked_risk_event_id) references.risk_event_id = record.linked_risk_event_id
-      if (record.event_id) references.event_id = record.event_id
-      if (record.trace_id) references.trace_id = record.trace_id
-      if (record.correlation_id) references.correlation_id = record.correlation_id
+      const references = await buildRuntimeOperationRecordReferences(record)
       const payloadSummary = record.payload_json
         ? {
             payload: record.payload_json,

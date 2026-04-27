@@ -1,4 +1,5 @@
 import type { CreateRuntimeOperationRecordInput } from '../repos/types.js'
+import { redactSensitiveText } from '../lib/sensitive-redaction.js'
 
 /**
  * Lightweight indirection layer between runtime/business code and the
@@ -53,6 +54,6 @@ export function recordRuntimeOperation(input: CreateRuntimeOperationRecordInput)
  * compact for the common case.
  */
 export function compactErrorMessage(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err)
+  const raw = redactSensitiveText(err instanceof Error ? err.message : String(err))
   return raw.length > 512 ? `${raw.slice(0, 511)}…` : raw
 }
