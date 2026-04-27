@@ -26,9 +26,13 @@ import type {
   LaunchCreatorNoteTemplateId,
 } from './creator-note-templates.js'
 
-const REPO_ROOT = resolve(process.cwd())
-const DEFAULT_KICKOFF_MANIFEST_PATH = resolve(REPO_ROOT, '.ai/.tmp/kickoff/manifest.v1.yaml')
-const KICKOFF_TMP_ROOT = resolve(REPO_ROOT, '.ai/.tmp')
+function kickoffTmpRoot(): string {
+  return resolve(process.cwd(), '.ai/.tmp')
+}
+
+function defaultKickoffManifestPath(): string {
+  return resolve(kickoffTmpRoot(), 'kickoff/manifest.v1.yaml')
+}
 
 type KickoffShelfId =
   | 'must_watch_today'
@@ -149,10 +153,11 @@ function ensureKickoffPathExists(path: string, label: string): void {
 
 function ensurePathInsideKickoffTmp(path: string): void {
   const normalized = resolve(path)
-  const rootWithSep = `${KICKOFF_TMP_ROOT}${sep}`
-  if (normalized !== KICKOFF_TMP_ROOT && !normalized.startsWith(rootWithSep)) {
+  const root = kickoffTmpRoot()
+  const rootWithSep = `${root}${sep}`
+  if (normalized !== root && !normalized.startsWith(rootWithSep)) {
     throw new ValidationError(
-      `kickoff bundle paths must stay under ${KICKOFF_TMP_ROOT}: ${normalized}`,
+      `kickoff bundle paths must stay under ${root}: ${normalized}`,
     )
   }
 }
@@ -166,7 +171,7 @@ function resolveKickoffAssetPath(manifestPath: string, assetPath: string): strin
   return resolved
 }
 
-export function loadKickoffBundle(manifestPath = DEFAULT_KICKOFF_MANIFEST_PATH): KickoffBundle {
+export function loadKickoffBundle(manifestPath = defaultKickoffManifestPath()): KickoffBundle {
   ensureKickoffPathExists(manifestPath, 'manifest')
   ensurePathInsideKickoffTmp(manifestPath)
 
