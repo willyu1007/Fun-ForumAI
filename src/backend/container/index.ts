@@ -1163,6 +1163,91 @@ export const postScheduler = rt.postScheduler
 export const runtimeLoop = rt.runtimeLoop
 export const eventBridge = rt.eventBridge
 
+// ─── T-301 runtime operation records / infra snapshot / LLM connectivity ─────
+const { RuntimeOperationRecordService } = await import(
+  '../services/runtime-operation-record-service.js'
+)
+const {
+  RuntimeInfraSnapshotService,
+  buildProcessSection,
+  probePostgresSection,
+  probeRedisQueueSection,
+} = await import('../services/runtime-infra-snapshot-service.js')
+const { LlmConnectivityDiagnosticService } = await import(
+  '../services/llm-connectivity-diagnostic-service.js'
+)
+const { getRuntimeBuildInfo: getBuildInfoForSnapshot } = await import('../lib/runtime-build-info.js')
+
+export const runtimeOperationRecordService = new RuntimeOperationRecordService({
+  repo: repos.runtimeOperationRecordRepo,
+  isWriteEnabled: () => config.launch.capabilities.runtimeOperationRecordsWrite,
+})
+
+export const runtimeInfraSnapshotService = new RuntimeInfraSnapshotService({
+  pollIntervalMs: 15_000,
+  process: () => {
+    const memory = process.memoryUsage()
+    return buildProcessSection({
+      uptimeSeconds: process.uptime(),
+      rssBytes: memory.rss,
+      heapUsedBytes: memory.heapUsed,
+      buildFingerprint: getBuildInfoForSnapshot().code_fingerprint,
+      nodeEnv: config.nodeEnv,
+    })
+  },
+  http: () => ({
+    status: 'unknown',
+    summary: 'http telemetry collector not wired in this pass',
+  }),
+  postgres: () =>
+    probePostgresSection({
+      enabled: config.db.usePrisma,
+      ping: async () => {
+        const { getPrismaClient } = await import('../persistence/prisma-client.js')
+        await getPrismaClient().$queryRaw`SELECT 1`
+      },
+    }),
+  redisQueue: () =>
+    probeRedisQueueSection({
+      enabled: config.runtime.queueBackend === 'redis' && infra.runtimeRedis !== null,
+      ping: async () => {
+        if (!infra.runtimeRedis) throw new Error('runtime redis not configured')
+        await infra.runtimeRedis.ping()
+      },
+      queueSize: () => infra.eventQueue.size(),
+      oldestTimestampMs: () => infra.eventQueue.oldestTimestampMs(),
+    }),
+  sse: () => {
+    const stats = infra.sseHub.getStats()
+    const status = stats.broadcast_last_error ? 'warn' : 'ok'
+    return {
+      status,
+      summary: `clients=${stats.connected_clients} backend=${stats.broadcast_backend}`,
+      metrics: stats,
+      ...(stats.broadcast_last_error
+        ? {
+            error_code: 'sse_broadcast_last_error',
+            error_message_redacted: stats.broadcast_last_error.slice(0, 256),
+          }
+        : {}),
+    }
+  },
+  llm: () => ({
+    status: llm.llmGateway.isConfigured ? 'ok' : 'warn',
+    summary: llm.llmGateway.isConfigured ? 'gateway configured' : 'gateway missing credentials',
+    metrics: { configured: llm.llmGateway.isConfigured },
+  }),
+  storageMedia: () => ({
+    status: 'unknown',
+    summary: 'storage/media health collector not wired in this pass',
+  }),
+})
+
+export const llmConnectivityDiagnosticService = new LlmConnectivityDiagnosticService({
+  bundle: llm.registryBundle,
+  invokeGateway: (request) => llm.llmGateway.chat(request),
+})
+
 // ─── Persistence warm-up (Pg mode) ───────────────────────────
 export async function warmPersistenceState(): Promise<void> {
   if (hydratables.length === 0) return

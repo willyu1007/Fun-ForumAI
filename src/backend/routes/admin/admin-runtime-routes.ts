@@ -7,6 +7,7 @@ import {
   guidanceObservabilityService,
   identityGateService,
   inferenceProfileService,
+  llmConnectivityDiagnosticService,
   llmGateway,
   llmRegistryBundle,
   launchProgrammingOpsService,
@@ -14,13 +15,20 @@ import {
   privateChannelServices,
   proactiveInteractionService,
   relationService,
+  runtimeInfraSnapshotService,
   runtimeLoop,
+  runtimeOperationRecordService,
   searchProjectionService,
   searchTelemetryService,
   sseHub,
   usageLedgerRepo,
   warmupGovernanceService,
 } from '../../container.js'
+import {
+  RUNTIME_OPERATION_RECORDS_DEFAULT_LIMIT,
+  encodeRuntimeOperationCursor,
+  parseRuntimeOperationFilters,
+} from './runtime-operation-records-filters.js'
 import { config } from '../../lib/config.js'
 import { AppError } from '../../lib/errors.js'
 import { requireAdmin, requireHumanAuth } from '../../middleware/human-auth.js'
@@ -143,6 +151,10 @@ async function prioritizeRuntimeCloseoutVisibleAgents(input: {
   }
 
   return [...serviceable, ...fallback]
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
 
 export function registerAdminRuntimeRoutes(router: IRouter): void {
@@ -770,4 +782,172 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
       },
     })
   })
+
+  // ─── T-301 admin runtime operation records ──────────────────
+  router.get(
+    '/admin/runtime/operation-records',
+    requireHumanAuth,
+    requireAdmin,
+    async (req, res) => {
+      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
+        res.status(403).json({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Admin runtime records UI is disabled by feature flag.',
+          },
+        })
+        return
+      }
+      const { filters, validationErrors } = parseRuntimeOperationFilters(req.query)
+      if (validationErrors.length > 0) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid filter values',
+            details: validationErrors,
+          },
+        })
+        return
+      }
+      const records = await runtimeOperationRecordService.list(filters)
+      const limit = filters.limit ?? RUNTIME_OPERATION_RECORDS_DEFAULT_LIMIT
+      const hasMore = records.length === limit
+      const last = hasMore ? records[records.length - 1] : null
+      res.json({
+        data: {
+          records,
+          next_cursor:
+            last !== null ? encodeRuntimeOperationCursor({ occurred_at: last.occurred_at, id: last.id }) : null,
+          filters: {
+            severity: filters.severity ?? null,
+            source: filters.source ?? null,
+            status: filters.status ?? null,
+            agent_id: filters.agent_id ?? null,
+            trace_id: filters.trace_id ?? null,
+            correlation_id: filters.correlation_id ?? null,
+            event_id: filters.event_id ?? null,
+            linked_risk_event_id: filters.linked_risk_event_id ?? null,
+            entity: filters.entity ?? null,
+            since: filters.since ? filters.since.toISOString() : null,
+            until: filters.until ? filters.until.toISOString() : null,
+            limit,
+          },
+          write_enabled: config.launch.capabilities.runtimeOperationRecordsWrite,
+          retention_policy: {
+            error_critical_days: 90,
+            warn_days: 30,
+            info_days: 7,
+            governance_linked: 'excluded_from_ordinary_cleanup',
+          },
+        },
+      })
+    },
+  )
+
+  router.get(
+    '/admin/runtime/operation-records/:id',
+    requireHumanAuth,
+    requireAdmin,
+    async (req, res) => {
+      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
+        res.status(403).json({
+          error: { code: 'FORBIDDEN', message: 'Admin runtime records UI is disabled by feature flag.' },
+        })
+        return
+      }
+      const id = req.params.id
+      if (typeof id !== 'string' || id.length === 0) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'id is required' } })
+        return
+      }
+      const record = await runtimeOperationRecordService.getDetail(id)
+      if (!record) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'record not found' } })
+        return
+      }
+      const references: Record<string, string> = {}
+      if (record.linked_agent_run_id) references.agent_run_id = record.linked_agent_run_id
+      if (record.linked_llm_trace_id) references.llm_trace_id = record.linked_llm_trace_id
+      if (record.linked_risk_event_id) references.risk_event_id = record.linked_risk_event_id
+      if (record.event_id) references.event_id = record.event_id
+      if (record.trace_id) references.trace_id = record.trace_id
+      if (record.correlation_id) references.correlation_id = record.correlation_id
+      const payloadSummary = record.payload_json
+        ? {
+            payload: record.payload_json,
+            redaction_meta: (record.payload_json as Record<string, unknown>)._redaction ?? null,
+          }
+        : null
+      res.json({
+        data: {
+          record,
+          references,
+          payload_summary: payloadSummary,
+        },
+      })
+    },
+  )
+
+  router.get(
+    '/admin/runtime/infra-snapshot',
+    requireHumanAuth,
+    requireAdmin,
+    async (_req, res) => {
+      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
+        res.status(403).json({
+          error: { code: 'FORBIDDEN', message: 'Admin runtime records UI is disabled by feature flag.' },
+        })
+        return
+      }
+      const snapshot = await runtimeInfraSnapshotService.snapshot()
+      res.json({ data: snapshot })
+    },
+  )
+
+  router.get(
+    '/admin/runtime/llm-connectivity',
+    requireHumanAuth,
+    requireAdmin,
+    async (_req, res) => {
+      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
+        res.status(403).json({
+          error: { code: 'FORBIDDEN', message: 'Admin runtime records UI is disabled by feature flag.' },
+        })
+        return
+      }
+      const list = llmConnectivityDiagnosticService.list()
+      res.json({ data: list })
+    },
+  )
+
+  router.post(
+    '/admin/runtime/llm-connectivity/test',
+    requireHumanAuth,
+    requireAdmin,
+    async (req, res) => {
+      if (!config.launch.capabilities.adminRuntimeRecordsUi) {
+        res.status(403).json({
+          error: { code: 'FORBIDDEN', message: 'Admin runtime records UI is disabled by feature flag.' },
+        })
+        return
+      }
+      const body = req.body ?? {}
+      const scope = body.scope === 'all_admitted' ? 'all_admitted' : undefined
+      const routeIds = isStringArray(body.route_ids) ? body.route_ids : undefined
+      if (!scope && !routeIds) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'either route_ids[] or scope=all_admitted is required',
+          },
+        })
+        return
+      }
+      const result = await llmConnectivityDiagnosticService.test({
+        scope,
+        route_ids: routeIds,
+      })
+      res.json({ data: result })
+    },
+  )
 }

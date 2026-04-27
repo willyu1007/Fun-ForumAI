@@ -63,3 +63,20 @@
   - Verified the produced table via `\d runtime_operation_records`: 24 columns of correct types, `created_at` defaults to `CURRENT_TIMESTAMP`, all 9 indexes plus PK present, exactly matching the contract.
   - Tore down the local DB (`pnpm db:local:down`) and removed all temp files.
   - Re-ran the targeted vitest suite after the migration replacement: 17 / 17 still passing.
+- 2026-04-27: Batch B (Slice 3 / 4 / 6) implementation landed locally.
+  - `pnpm exec vitest run` against all 6 T-301 test files — 52 / 52 passing:
+    - `runtime-operation-record-repository.test.ts` 7/7
+    - `runtime-operation-record-service.test.ts` 10/10
+    - `runtime-infra-snapshot-service.test.ts` 12/12
+    - `llm-connectivity-diagnostic-service.test.ts` 8/8
+    - `admin-runtime-routes.test.ts` 13/13 (4 prior + 9 new)
+    - `runtime-records-cleanup.test.ts` 2/2
+  - `pnpm lint` — passing after dropping an unused `ProviderAdmissionCandidateEntry` import.
+  - `pnpm typecheck` — only pre-existing unrelated `src/shared/kickoff-workflow.ts` error.
+  - End-to-end CLI smoke against a fresh local Postgres on port 5435 (host had Postgres on 5432):
+    - applied the T-301 migration via `psql -f`
+    - seeded 5 rows (1 old-error, 1 old-warn, 1 old-info, 1 recent error, 1 governance-linked old error)
+    - `pnpm runtime-records:cleanup` (dry-run): `{ errorCritical: 1, warn: 1, info: 1, total: 3 }`
+    - `node scripts/runtime-records-cleanup.mjs --apply`: deleted 3, retained `recent` and `gov-old` (governance-linked)
+    - tore down the container
+  - No runtime instrumentation wired yet — `record()` is dormant until Batch C lands Slice 5.
