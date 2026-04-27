@@ -8,6 +8,7 @@ import { ProgrammingTab } from './admin-panel/ProgrammingTab'
 import { CueBoardTab } from './admin-panel/CueBoardTab'
 import { AutoPatchInboxTab } from './admin-panel/AutoPatchInboxTab'
 import { CueProjectionPreviewTab } from './admin-panel/CueProjectionPreviewTab'
+import { MediaAssetsTab } from './admin-panel/MediaAssetsTab'
 import { MediaPlanAuditTab } from './admin-panel/MediaPlanAuditTab'
 import { MediaPromptsTab } from './admin-panel/MediaPromptsTab'
 import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
@@ -109,6 +110,17 @@ export function AdminMediaPromptsPage() {
   return (
     <AdminPageWrapper title="文生图场景与提示词" description="管理根帖主图的场景配置、提示词编译和路由预览">
       <MediaPromptsTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminMediaAssetsPage() {
+  return (
+    <AdminPageWrapper
+      title="媒体素材导入"
+      description="向 platform_canonical:global 公共池导入图像资产；不修改 DB 结构，仅复用既有媒体链路。"
+    >
+      <MediaAssetsTab />
     </AdminPageWrapper>
   )
 }

@@ -3,7 +3,12 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CommunitySettingsPage } from '../CommunitySettingsPage'
 import { useCommunityBySlug, useCommunityParticipationContract } from '@/api/hooks/forum'
-import { useApplyCommunitySurfaceSettings } from '@/api/hooks/admin'
+import {
+  useAdminCommunityCommonsAssets,
+  useAdminCommunityMediaImportUpload,
+  useAdminCommunityMediaImportUrl,
+  useApplyCommunitySurfaceSettings,
+} from '@/api/hooks/admin'
 import { useAuth } from '@/shared/hooks/use-auth'
 
 vi.mock('@/api/hooks/forum', () => ({
@@ -13,6 +18,9 @@ vi.mock('@/api/hooks/forum', () => ({
 
 vi.mock('@/api/hooks/admin', () => ({
   useApplyCommunitySurfaceSettings: vi.fn(),
+  useAdminCommunityCommonsAssets: vi.fn(),
+  useAdminCommunityMediaImportUpload: vi.fn(),
+  useAdminCommunityMediaImportUrl: vi.fn(),
 }))
 
 vi.mock('@/shared/hooks/use-auth', () => ({
@@ -55,6 +63,9 @@ vi.mock('@/features/forum/components/CommunityHoverCard', () => ({
 const useCommunityBySlugMock = vi.mocked(useCommunityBySlug)
 const useCommunityParticipationContractMock = vi.mocked(useCommunityParticipationContract)
 const useApplyCommunitySurfaceSettingsMock = vi.mocked(useApplyCommunitySurfaceSettings)
+const useAdminCommunityCommonsAssetsMock = vi.mocked(useAdminCommunityCommonsAssets)
+const useAdminCommunityMediaImportUploadMock = vi.mocked(useAdminCommunityMediaImportUpload)
+const useAdminCommunityMediaImportUrlMock = vi.mocked(useAdminCommunityMediaImportUrl)
 const useAuthMock = vi.mocked(useAuth)
 
 function renderPage() {
@@ -142,6 +153,44 @@ describe('CommunitySettingsPage', () => {
       isError: false,
       mutate: vi.fn(),
     } as never)
+
+    useAdminCommunityCommonsAssetsMock.mockReturnValue({
+      data: {
+        data: {
+          pool: { scene_type: 'media_pool', scene_id: 'community_commons:community-1', community_id: 'community-1' },
+          items: [],
+          next_cursor: null,
+        },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as never)
+
+    useAdminCommunityMediaImportUploadMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      error: null,
+      reset: vi.fn(),
+    } as never)
+
+    useAdminCommunityMediaImportUrlMock.mockReturnValue({
+      mutateAsync: vi.fn(),
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      isIdle: true,
+      status: 'idle',
+      error: null,
+      reset: vi.fn(),
+    } as never)
   })
 
   it('shows a custom participation mode state instead of a blank select when the real contract is not a preset', () => {
@@ -153,14 +202,16 @@ describe('CommunitySettingsPage', () => {
     expect(screen.getByText('当前模式来自已存在的社区规则。重新选择后会切换为标准预设。')).toBeTruthy()
   })
 
-  it('opens an in-app dialog when clicking the upload placeholder', () => {
+  it('opens the community commons import dialog from the banner upload entry', () => {
     renderPage()
 
     fireEvent.click(screen.getByRole('button', { name: '编辑' }))
     fireEvent.click(screen.getByRole('button', { name: '编辑 Banner' }))
     fireEvent.click(screen.getByRole('button', { name: '上传图片' }))
 
-    expect(screen.getByText('功能正在开发')).toBeTruthy()
-    expect(screen.getByText('上传图片能力暂未开放，当前仅支持预设图片选择。')).toBeTruthy()
+    expect(screen.getByText('导入社区公共素材')).toBeTruthy()
+    expect(
+      screen.getAllByText(/community_commons:community-1/).length,
+    ).toBeGreaterThan(0)
   })
 })

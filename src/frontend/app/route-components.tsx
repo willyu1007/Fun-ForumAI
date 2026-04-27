@@ -81,6 +81,10 @@ export const AdminMediaPromptsPage = lazyWithDynamicImportRecovery(() =>
   import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminMediaPromptsPage })),
   'route:admin-media-prompts',
 )
+export const AdminMediaAssetsPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminMediaAssetsPage })),
+  'route:admin-media-assets',
+)
 export const AdminUsersPage = lazyWithDynamicImportRecovery(() =>
   import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminUsersPage })),
   'route:admin-users',

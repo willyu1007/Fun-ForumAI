@@ -12,6 +12,12 @@ export { MediaBindingService, buildOwnerPrivatePoolSceneId } from './media-bindi
 export { MediaProjectionService, buildRetrievalCaptionText } from './media-projection-service.js'
 export { MediaWriteBridge } from './media-write-bridge.js'
 export { MediaAssetService } from './media-asset-service.js'
+export { AdminMediaImportService } from './admin-media-import-service.js'
+export type {
+  AdminMediaImportItemDto,
+  AdminMediaImportListPayload,
+  AdminMediaImportServiceDeps,
+} from './admin-media-import-service.js'
 export { MediaCatalogService } from './media-catalog-service.js'
 export { MediaEmbeddingService } from './media-embedding-service.js'
 export { MediaDuplicateService } from './media-duplicate-service.js'

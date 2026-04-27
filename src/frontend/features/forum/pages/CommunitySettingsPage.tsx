@@ -2,9 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ArrowLeft, ImageUp, PencilLine, Settings2 } from 'lucide-react'
 import { useCommunityBySlug, useCommunityParticipationContract } from '@/api/hooks/forum'
-import { useApplyCommunitySurfaceSettings } from '@/api/hooks/admin'
+import {
+  useAdminCommunityCommonsAssets,
+  useAdminCommunityMediaImportUpload,
+  useAdminCommunityMediaImportUrl,
+  useApplyCommunitySurfaceSettings,
+} from '@/api/hooks/admin'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { MediaImportPanel } from '@/features/admin/components/MediaImportPanel'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -535,16 +541,70 @@ export function CommunitySettingsPage() {
         </div>
       </section>
 
-      <Dialog open={pendingUploadDialogOpen} onOpenChange={setPendingUploadDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader className="gap-1.5">
-            <DialogTitle className="text-base">功能正在开发</DialogTitle>
-            <DialogDescription>
-              上传图片能力暂未开放，当前仅支持预设图片选择。
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
+      <CommunityCommonsImportDialog
+        communityId={community.id}
+        activeTarget={activeVisualTarget}
+        open={pendingUploadDialogOpen}
+        onOpenChange={setPendingUploadDialogOpen}
+        onSelectMedia={(mediaUrl) => {
+          if (activeVisualTarget === 'banner') setSelectedBannerUrl(mediaUrl)
+          else if (activeVisualTarget === 'avatar') setSelectedAvatarUrl(mediaUrl)
+        }}
+      />
     </div>
+  )
+}
+
+interface CommunityCommonsImportDialogProps {
+  communityId: string
+  activeTarget: 'banner' | 'avatar' | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSelectMedia: (mediaUrl: string) => void
+}
+
+function CommunityCommonsImportDialog({
+  communityId,
+  activeTarget,
+  open,
+  onOpenChange,
+  onSelectMedia,
+}: CommunityCommonsImportDialogProps) {
+  const listQuery = useAdminCommunityCommonsAssets(communityId, { limit: 50, enabled: open })
+  const uploadMutation = useAdminCommunityMediaImportUpload(communityId)
+  const urlMutation = useAdminCommunityMediaImportUrl(communityId)
+
+  const selectActionLabel =
+    activeTarget === 'banner' ? '选作 Banner' : activeTarget === 'avatar' ? '选作头像' : '选用此图'
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="gap-1.5">
+          <DialogTitle className="text-base">导入社区公共素材</DialogTitle>
+          <DialogDescription>
+            导入到 community_commons:{communityId} 池。导入不会自动应用到 banner / 头像，请在导入完成后手动选作并保存。
+          </DialogDescription>
+        </DialogHeader>
+        <MediaImportPanel
+          title={`社区公共素材池 community_commons:${communityId}`}
+          description="此处导入的资产仅注册到当前社区池；默认仅派生/参考，如需允许直接引用原图需显式打开开关。"
+          uploadMutation={uploadMutation}
+          urlMutation={urlMutation}
+          listQuery={listQuery}
+          selectAction={
+            activeTarget !== null
+              ? {
+                  label: selectActionLabel,
+                  onSelect: (item) => {
+                    onSelectMedia(item.asset.media_url)
+                    onOpenChange(false)
+                  },
+                }
+              : undefined
+          }
+        />
+      </DialogContent>
+    </Dialog>
   )
 }

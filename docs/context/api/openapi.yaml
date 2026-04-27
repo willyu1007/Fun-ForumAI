@@ -618,6 +618,199 @@ paths:
           description: Admin access required
         '404':
           description: Post, thread, or focus target not found
+  /v1/admin/media/platform-canonical/imports/upload:
+    post:
+      operationId: adminPlatformCanonicalMediaImportUpload
+      summary: Import a platform-canonical media asset by direct file upload
+      description: |
+        Admin-only online import of an image into the platform-canonical media pool.
+        Persists asset, semantic snapshot, scene-media binding, and reuse policy
+        through existing media services. Defaults `allow_quote_original=false`.
+        Maximum file size 10MB; only image MIME types are accepted.
+      tags: [admin-media-import]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminMediaImportUploadFormBody'
+      responses:
+        '201':
+          description: Imported asset envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMediaImportResponse'
+        '400':
+          description: Invalid form payload, unsupported MIME type, or oversized file
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+  /v1/admin/media/platform-canonical/imports/url:
+    post:
+      operationId: adminPlatformCanonicalMediaImportUrl
+      summary: Import a platform-canonical media asset by HTTPS image URL
+      description: |
+        Admin-only online import of a remote image into the platform-canonical media pool.
+        Reuses existing remote-image validation: HTTPS scheme, allowed image MIME types,
+        size limit, image signature check. Defaults `allow_quote_original=false`.
+      tags: [admin-media-import]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMediaImportUrlRequest'
+      responses:
+        '201':
+          description: Imported asset envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMediaImportResponse'
+        '400':
+          description: Invalid URL, non-HTTPS scheme, unsupported MIME, oversized image, or remote validation failure
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+  /v1/admin/media/platform-canonical/assets:
+    get:
+      operationId: listAdminPlatformCanonicalMediaAssets
+      summary: List platform-canonical media pool assets with lightweight usage summary
+      description: |
+        DB-backed list of assets registered in `platform_canonical:global` assembled
+        from existing scene-media bindings, media assets, semantic snapshots, reuse
+        policies, retrieval documents, and post-media usage records. No new persistence
+        is added by T-302.
+      tags: [admin-media-import]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminMediaListLimitQuery'
+      responses:
+        '200':
+          description: Pool asset list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMediaImportListResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+  /v1/admin/communities/{communityId}/media/commons/imports/upload:
+    post:
+      operationId: adminCommunityCommonsMediaImportUpload
+      summary: Import a community-commons media asset by direct file upload
+      description: |
+        Admin-only online import of an image into a specific community's
+        `community_commons:<communityId>` pool. Persists through existing media
+        services. Defaults `allow_quote_original=false`; an explicit form switch
+        is required to enable direct original reuse.
+      tags: [admin-media-import]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminMediaImportUploadFormBody'
+      responses:
+        '201':
+          description: Imported asset envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMediaImportResponse'
+        '400':
+          description: Invalid form payload, unsupported MIME type, or oversized file
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Community not found
+  /v1/admin/communities/{communityId}/media/commons/imports/url:
+    post:
+      operationId: adminCommunityCommonsMediaImportUrl
+      summary: Import a community-commons media asset by HTTPS image URL
+      description: |
+        Admin-only online import of a remote image into a community's commons pool.
+        Reuses the existing remote-image validation posture and defaults
+        `allow_quote_original=false`.
+      tags: [admin-media-import]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMediaImportUrlRequest'
+      responses:
+        '201':
+          description: Imported asset envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMediaImportResponse'
+        '400':
+          description: Invalid URL, non-HTTPS scheme, unsupported MIME, oversized image, or remote validation failure
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Community not found
+  /v1/admin/communities/{communityId}/media/commons/assets:
+    get:
+      operationId: listAdminCommunityCommonsMediaAssets
+      summary: List community-commons pool assets with lightweight usage summary
+      description: |
+        DB-backed list of assets registered in `community_commons:<communityId>`
+        assembled from existing media records. No new persistence is added by T-302.
+      tags: [admin-media-import]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/AdminMediaListLimitQuery'
+      responses:
+        '200':
+          description: Pool asset list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMediaImportListResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Community not found
 components:
   parameters:
     CommunityIdParam:
@@ -663,6 +856,16 @@ components:
       schema:
         type: integer
         minimum: 1
+    AdminMediaListLimitQuery:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of pool assets to return.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
   schemas:
     ViewerWriteSourceContext:
       type: object
@@ -2305,6 +2508,255 @@ components:
           properties:
             accepted:
               type: boolean
+          additionalProperties: false
+      additionalProperties: false
+    AdminMediaImportUploadFormBody:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Image file to import. Must be an allowed image MIME type and at most 10MB.
+        allow_quote_original:
+          type: boolean
+          default: false
+          description: |
+            When true, the imported asset's reuse policy includes `quote_original`,
+            allowing direct reuse of the original image. Defaults false; the UI must
+            present an explicit switch to flip this to true.
+      additionalProperties: false
+    AdminMediaImportUrlRequest:
+      type: object
+      required: [source_url]
+      properties:
+        source_url:
+          type: string
+          format: uri
+          description: HTTPS URL pointing to a remote image. Validated against existing remote-image rules.
+        allow_quote_original:
+          type: boolean
+          default: false
+          description: Same semantics as the upload form field; defaults false.
+      additionalProperties: false
+    AdminMediaImportAsset:
+      type: object
+      required:
+        - asset_id
+        - source_kind
+        - media_url
+        - mime_type
+        - file_size_bytes
+        - visibility_policy
+        - lifecycle_status
+        - created_at
+      properties:
+        asset_id:
+          type: string
+        source_kind:
+          type: string
+          description: Existing `VisualSourceKind`; expected to be `platform_canonical` or `community_commons` for T-302 imports.
+        media_url:
+          type: string
+          description: Server-served media URL. Use this for previews and surface selection.
+        mime_type:
+          type: string
+        file_size_bytes:
+          type: integer
+          minimum: 0
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        visibility_policy:
+          type: string
+          description: Existing `MediaVisibilityPolicy`.
+        lifecycle_status:
+          type: string
+          description: Existing `MediaLifecycleStatus`.
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AdminMediaImportSemanticSnapshot:
+      type: object
+      nullable: true
+      required: [snapshot_id]
+      properties:
+        snapshot_id:
+          type: string
+        theme:
+          type: string
+          nullable: true
+        scene:
+          type: string
+          nullable: true
+        mood:
+          type: string
+          nullable: true
+        public_safe_summary:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+    AdminMediaImportPoolBinding:
+      type: object
+      required: [binding_id, scene_type, scene_id, display_policy, created_at]
+      properties:
+        binding_id:
+          type: string
+        scene_type:
+          type: string
+          description: Always `media_pool` for T-302 imports.
+        scene_id:
+          type: string
+          description: Either `platform_canonical:global` or `community_commons:<communityId>`.
+        display_policy:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AdminMediaImportReusePolicy:
+      type: object
+      required: [policy_id, allowed_reuse_modes, cross_agent_quote_allowed, copyright_state, status]
+      properties:
+        policy_id:
+          type: string
+        allowed_reuse_modes:
+          type: array
+          items:
+            type: string
+            description: Existing `MediaReuseMode`. T-302 imports default to modes that exclude `quote_original` unless the admin switch is on.
+        cross_agent_quote_allowed:
+          type: boolean
+        copyright_state:
+          type: string
+          description: Existing `MediaCopyrightState`.
+        status:
+          type: string
+          description: Existing `MediaReusePolicyStatus`.
+      additionalProperties: false
+    AdminMediaImportRetrievalStatus:
+      type: object
+      required: [status, document_ids, doc_scopes, searchable_embedding_count]
+      properties:
+        status:
+          type: string
+          enum: [ready, pending, failed]
+          description: |
+            `ready` when at least one retrieval document for the asset has an active
+            embedding snapshot with `search_status='searchable'`. `pending` when
+            documents exist but no active searchable embedding exists yet, or
+            embedding is backfill-required. `failed` when the latest embedding
+            snapshot exposes an error and is not searchable.
+        document_ids:
+          type: array
+          items:
+            type: string
+        doc_scopes:
+          type: array
+          items:
+            type: string
+        searchable_embedding_count:
+          type: integer
+          minimum: 0
+        last_error_code:
+          type: string
+          nullable: true
+        last_error_message:
+          type: string
+          nullable: true
+      additionalProperties: false
+    AdminMediaImportUsageSummary:
+      type: object
+      required: [total_binding_count, public_display_count]
+      properties:
+        total_binding_count:
+          type: integer
+          minimum: 0
+          description: Total number of scene-media bindings referencing the asset.
+        public_display_count:
+          type: integer
+          minimum: 0
+          description: Bindings whose display policy permits direct public display.
+        latest_usage_at:
+          type: string
+          format: date-time
+          nullable: true
+        scene_type_counts:
+          type: object
+          description: Cheap distribution of binding scene types.
+          additionalProperties:
+            type: integer
+            minimum: 0
+      additionalProperties: false
+    AdminMediaImportItem:
+      type: object
+      required:
+        - asset
+        - pool_binding
+        - reuse_policy
+        - retrieval
+        - usage_summary
+      properties:
+        asset:
+          $ref: '#/components/schemas/AdminMediaImportAsset'
+        semantic_snapshot:
+          $ref: '#/components/schemas/AdminMediaImportSemanticSnapshot'
+        pool_binding:
+          $ref: '#/components/schemas/AdminMediaImportPoolBinding'
+        reuse_policy:
+          $ref: '#/components/schemas/AdminMediaImportReusePolicy'
+        retrieval:
+          $ref: '#/components/schemas/AdminMediaImportRetrievalStatus'
+        usage_summary:
+          $ref: '#/components/schemas/AdminMediaImportUsageSummary'
+      additionalProperties: false
+    AdminMediaImportPoolSummary:
+      type: object
+      required: [scene_type, scene_id]
+      properties:
+        scene_type:
+          type: string
+          description: Always `media_pool` for T-302.
+        scene_id:
+          type: string
+        community_id:
+          type: string
+          nullable: true
+          description: Present only for community-commons pools.
+      additionalProperties: false
+    AdminMediaImportResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminMediaImportItem'
+      additionalProperties: false
+    AdminMediaImportListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [pool, items]
+          properties:
+            pool:
+              $ref: '#/components/schemas/AdminMediaImportPoolSummary'
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminMediaImportItem'
+            next_cursor:
+              type: string
+              nullable: true
+              description: Reserved for cursor pagination; T-302 phase 1 may always return null.
           additionalProperties: false
       additionalProperties: false
   securitySchemes:

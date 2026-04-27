@@ -3,6 +3,9 @@ import { api } from '../client'
 import { queryKeys } from '../query-keys'
 import type {
   ApiResponse,
+  AdminMediaImportItemDto,
+  AdminMediaImportListPayloadDto,
+  AdminMediaImportUrlRequestBody,
   AdminMediaObservabilityData,
   AdminMediaRolloutControllerData,
   CueBoardPayload,
@@ -1590,5 +1593,120 @@ export function useAdminRuntimeLlmConnectivityTest() {
       api
         .post('admin/runtime/llm-connectivity/test', { json: body })
         .json<ApiResponse<LlmConnectivityTestResponseData>>(),
+  })
+}
+
+// ── T-302 Admin media import ──────────────────────────────────────────────
+
+interface AdminMediaImportListParams {
+  limit?: number
+  enabled?: boolean
+}
+
+function buildAdminMediaImportListSearch(limit?: number): string {
+  if (limit === undefined) return ''
+  const search = new URLSearchParams()
+  search.set('limit', String(limit))
+  return `?${search.toString()}`
+}
+
+export function useAdminPlatformCanonicalAssets(params: AdminMediaImportListParams = {}) {
+  const { enabled = true, limit } = params
+  return useQuery({
+    queryKey: queryKeys.adminPlatformCanonicalAssets({ limit }),
+    queryFn: () =>
+      api
+        .get(`admin/media/platform-canonical/assets${buildAdminMediaImportListSearch(limit)}`)
+        .json<ApiResponse<AdminMediaImportListPayloadDto>>(),
+    enabled,
+    retry: false,
+  })
+}
+
+export function useAdminCommunityCommonsAssets(
+  communityId: string | null,
+  params: AdminMediaImportListParams = {},
+) {
+  const { enabled = true, limit } = params
+  return useQuery({
+    queryKey: communityId
+      ? queryKeys.adminCommunityCommonsAssets(communityId, { limit })
+      : ['admin', 'community-commons-assets', 'idle'],
+    queryFn: () =>
+      api
+        .get(
+          `admin/communities/${communityId}/media/commons/assets${buildAdminMediaImportListSearch(limit)}`,
+        )
+        .json<ApiResponse<AdminMediaImportListPayloadDto>>(),
+    enabled: Boolean(communityId) && enabled,
+    retry: false,
+  })
+}
+
+interface UploadImportInput {
+  file: File
+  allow_quote_original?: boolean
+}
+
+function buildUploadFormData(input: UploadImportInput): FormData {
+  const formData = new FormData()
+  formData.set('file', input.file)
+  if (input.allow_quote_original !== undefined) {
+    formData.set('allow_quote_original', input.allow_quote_original ? 'true' : 'false')
+  }
+  return formData
+}
+
+export function useAdminPlatformMediaImportUpload() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: UploadImportInput) =>
+      api
+        .post('admin/media/platform-canonical/imports/upload', { body: buildUploadFormData(input) })
+        .json<ApiResponse<AdminMediaImportItemDto>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'platform-canonical-assets'] })
+    },
+  })
+}
+
+export function useAdminPlatformMediaImportUrl() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: AdminMediaImportUrlRequestBody) =>
+      api
+        .post('admin/media/platform-canonical/imports/url', { json: input })
+        .json<ApiResponse<AdminMediaImportItemDto>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'platform-canonical-assets'] })
+    },
+  })
+}
+
+export function useAdminCommunityMediaImportUpload(communityId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: UploadImportInput) =>
+      api
+        .post(`admin/communities/${communityId}/media/commons/imports/upload`, {
+          body: buildUploadFormData(input),
+        })
+        .json<ApiResponse<AdminMediaImportItemDto>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'community-commons-assets', communityId] })
+    },
+  })
+}
+
+export function useAdminCommunityMediaImportUrl(communityId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: AdminMediaImportUrlRequestBody) =>
+      api
+        .post(`admin/communities/${communityId}/media/commons/imports/url`, { json: input })
+        .json<ApiResponse<AdminMediaImportItemDto>>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'community-commons-assets', communityId] })
+    },
   })
 }

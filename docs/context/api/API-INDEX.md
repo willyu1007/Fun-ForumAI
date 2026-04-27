@@ -1,9 +1,9 @@
 # API Index
 
-> Auto-generated at 2026-04-22T05:36:12.012Z — do NOT hand-edit.
-> Source: `docs/context/api/openapi.yaml` (SHA-256: `2dd66ea00a33...`)
+> Auto-generated at 2026-04-27T06:01:12.436Z — do NOT hand-edit.
+> Source: `docs/context/api/openapi.yaml` (SHA-256: `e0ef2e4f307d...`)
 
-Total endpoints: **21**
+Total endpoints: **27**
 
 | Method | Path | Summary | Auth | Input (required) | Output (core) | Errors |
 |--------|------|---------|------|------------------|---------------|--------|
@@ -28,3 +28,9 @@ Total endpoints: **21**
 | GET | /v1/internal/posts/{postId}/reading-guide | Admin debug view of the frozen reading-guide projection | bearer | postId | data | 401, 403, 404 |
 | GET | /v1/internal/posts/{postId}/discussion-forest | Admin debug view of the frozen discussion-forest projection | bearer | postId | data | 401, 403, 404 |
 | POST | /v1/internal/runtime-contexts/build | Build a stateless admin debug preview of the frozen runtime context envelope | bearer | post_id | data | 401, 403, 404 |
+| POST | /v1/admin/media/platform-canonical/imports/upload | Import a platform-canonical media asset by direct file upload | bearer | — | data | 400, 401, 403 |
+| POST | /v1/admin/media/platform-canonical/imports/url | Import a platform-canonical media asset by HTTPS image URL | bearer | source_url | data | 400, 401, 403 |
+| GET | /v1/admin/media/platform-canonical/assets | List platform-canonical media pool assets with lightweight usage summary | bearer | — | data | 401, 403 |
+| POST | /v1/admin/communities/{communityId}/media/commons/imports/upload | Import a community-commons media asset by direct file upload | bearer | communityId | data | 400, 401, 403, 404 |
+| POST | /v1/admin/communities/{communityId}/media/commons/imports/url | Import a community-commons media asset by HTTPS image URL | bearer | source_url | data | 400, 401, 403, 404 |
+| GET | /v1/admin/communities/{communityId}/media/commons/assets | List community-commons pool assets with lightweight usage summary | bearer | communityId | data | 401, 403, 404 |

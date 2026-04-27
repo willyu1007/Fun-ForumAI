@@ -2,10 +2,11 @@
 
 ## Status
 
-- State: planned
-- Depends on: roadmap alignment, admin media route boundary confirmation, frontend admin/community management landing-point confirmation
-- Current status: roadmap requirements aligned; execution runbook and coverage/contract review drafted; no product code has been changed.
-- Next step: confirm coverage review and Slice 1 review gate, then implement backend/API-contract slice.
+- State: in-progress
+- Implementation phase: code complete and merged into `main` on 2026-04-27; both API-level HTTP smoke (`ops/smoke/t302/run-smoke.ts` 11/11) and DOM-level UI smoke (Chrome MCP, full upload + selectAction flow on both surfaces) have passed. Awaiting product-owner sign-off to move to `done`.
+- Depends on: roadmap alignment, admin media route boundary confirmation, frontend admin/community management landing-point confirmation.
+- Current status: Slices 1–5 landed in code and are integrated with the T-301 `main` changes; OpenAPI/api-index/context verification, project governance sync, typecheck, targeted backend + frontend test suites, target ESLint, and in-process HTTP smoke all pass; zero Prisma schema or migration changes.
+- Next step: product-owner closeout; if accepted, move the task to `done` and archive the bundle.
 
 ## Goal
 
@@ -38,12 +39,12 @@ T-302 should close the online operator workflow around those capabilities rather
 - [x] Platform/global and community media imports default `allow_quote_original=false` with an explicit UI switch to enable direct original reuse.
 - [x] Phase 1 includes DB-backed simple pool asset lists with lightweight usage summaries.
 - [x] Phase 1 supports both upload and URL import for platform/global and community media imports.
-- [ ] Platform canonical online import works from admin console.
-- [ ] Community commons online import works from community management.
+- [x] Platform canonical online import works from admin console (`/admin/media-assets`, route + tab + sidebar entry wired; covered by 15 route integration cases + 6 panel cases).
+- [x] Community commons online import works from community management (`/c/:slug/settings` upload entry; covered by `CommunitySettingsPage` integration test + select-action panel test).
 - [x] Upload and URL import behavior follows approved phase-1 scope.
-- [ ] No Prisma schema or migration changes are introduced.
-- [ ] Imported assets are persisted through existing media asset/snapshot/binding/policy services.
+- [x] No Prisma schema or migration changes are introduced (verified via `git status --short`; zero changes under `prisma/` or any `migrations/`).
+- [x] Imported assets are persisted through existing media asset/snapshot/binding/policy services (`AdminMediaImportService` only orchestrates `ingestManagedAsset` / `ingestManagedRemoteAsset` + `registerPlatformCanonicalAsset` / `registerCommunityCommonsAsset` + `ensureAssetIndexed`).
 - [x] Planner/retrieval consumption is gated by existing retrieval/index readiness and surfaced as ready/pending/failed in operator views.
-- [ ] Pool asset lists are assembled from existing media/binding/policy/usage data without new persistence.
-- [ ] New API/UI behavior is covered by targeted tests and manual smoke checks.
+- [x] Pool asset lists are assembled from existing media/binding/policy/usage data without new persistence (uses `sceneMediaBindingRepo.findByScene`, `mediaAssetRepo.findByIds`, `mediaSemanticSnapshotRepo.findCurrentByAssetId`, `mediaReusePolicyRepo.findBySubject`, `mediaRetrievalDocumentRepo.listByAssetId`, `mediaEmbeddingSnapshotRepo.listByRetrievalDocumentId`, `postMediaRepo.findByAssetId`).
+- [x] New API/UI behavior is covered by targeted tests, a real-HTTP smoke harness (`ops/smoke/t302/run-smoke.ts`, 11/11 assertions passed), and a Chrome-MCP-driven DOM smoke covering both `/admin/media-assets` and `/c/:slug/settings` (full upload + selectAction flow with no auto-save side effect). See `04-verification.md`.
 - [x] Coverage review maps requirements to execution slices and closes planning gaps.

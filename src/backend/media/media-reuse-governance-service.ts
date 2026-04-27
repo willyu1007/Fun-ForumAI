@@ -122,10 +122,10 @@ function defaultModesForSource(input: {
       return ['derive_new', 'reference_only']
     case 'self_public_archive':
     case 'same_episode_public':
-    case 'platform_canonical':
     case 'generated_public':
     case 'private_derived_public':
       return ['quote_original', 'derive_new', 'reference_only']
+    case 'platform_canonical':
     case 'community_commons':
       return input.allow_quote_original
         ? ['quote_original', 'derive_new', 'reference_only']
@@ -142,7 +142,7 @@ function defaultModesForSource(input: {
 }
 
 function defaultCrossAgentQuoteAllowed(sourceKind: VisualSourceKind, allowQuoteOriginal?: boolean): boolean {
-  if (sourceKind === 'platform_canonical') return true
+  if (sourceKind === 'platform_canonical') return Boolean(allowQuoteOriginal)
   if (sourceKind === 'community_commons') return Boolean(allowQuoteOriginal)
   if (sourceKind === 'same_thread_public') return true
   return false
@@ -463,13 +463,14 @@ export class MediaReuseGovernanceService {
   async registerPlatformCanonicalAsset(input: {
     asset_id: string
     actor_user_id: string
+    allow_quote_original?: boolean
   }): Promise<{ binding: SceneMediaBinding; policy: MediaReusePolicy }> {
     return this.registerPoolAsset({
       asset_id: input.asset_id,
       pool_id: buildPlatformCanonicalPoolSceneId(),
       source_kind: 'platform_canonical',
       actor_user_id: input.actor_user_id,
-      allow_quote_original: true,
+      allow_quote_original: input.allow_quote_original,
     })
   }
 

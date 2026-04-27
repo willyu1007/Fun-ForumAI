@@ -2,8 +2,8 @@ version: 1
 task_id: T-302
 project: main
 slug: admin-community-media-import-console
-status: planned
-updated: "2026-04-26"
+status: in-progress
+updated: "2026-04-27"
 keywords:
   - media
   - import
