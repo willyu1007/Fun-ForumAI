@@ -35,29 +35,28 @@ CREATE TABLE "runtime_operation_records" (
 );
 
 -- CreateIndex
-CREATE INDEX "runtime_operation_records_occurred_at_id_idx"
-  ON "runtime_operation_records"("occurred_at", "id");
+CREATE INDEX "runtime_operation_records_occurred_at_id_idx" ON "runtime_operation_records"("occurred_at", "id");
 
-CREATE INDEX "runtime_operation_records_severity_occurred_at_idx"
-  ON "runtime_operation_records"("severity", "occurred_at");
+-- CreateIndex
+CREATE INDEX "runtime_operation_records_severity_occurred_at_idx" ON "runtime_operation_records"("severity", "occurred_at");
 
-CREATE INDEX "runtime_operation_records_source_occurred_at_idx"
-  ON "runtime_operation_records"("source", "occurred_at");
+-- CreateIndex
+CREATE INDEX "runtime_operation_records_source_occurred_at_idx" ON "runtime_operation_records"("source", "occurred_at");
 
-CREATE INDEX "runtime_operation_records_status_occurred_at_idx"
-  ON "runtime_operation_records"("status", "occurred_at");
+-- CreateIndex
+CREATE INDEX "runtime_operation_records_status_occurred_at_idx" ON "runtime_operation_records"("status", "occurred_at");
 
-CREATE INDEX "runtime_operation_records_agent_id_occurred_at_idx"
-  ON "runtime_operation_records"("agent_id", "occurred_at");
+-- CreateIndex
+CREATE INDEX "runtime_operation_records_agent_id_occurred_at_idx" ON "runtime_operation_records"("agent_id", "occurred_at");
 
-CREATE INDEX "runtime_operation_records_trace_id_idx"
-  ON "runtime_operation_records"("trace_id");
+-- CreateIndex
+CREATE INDEX "runtime_operation_records_trace_id_idx" ON "runtime_operation_records"("trace_id");
 
-CREATE INDEX "runtime_operation_records_correlation_id_idx"
-  ON "runtime_operation_records"("correlation_id");
+-- CreateIndex
+CREATE INDEX "runtime_operation_records_correlation_id_idx" ON "runtime_operation_records"("correlation_id");
 
-CREATE INDEX "runtime_operation_records_event_id_idx"
-  ON "runtime_operation_records"("event_id");
+-- CreateIndex
+CREATE INDEX "runtime_operation_records_event_id_idx" ON "runtime_operation_records"("event_id");
 
-CREATE INDEX "runtime_operation_records_linked_risk_event_id_occurred_at_idx"
-  ON "runtime_operation_records"("linked_risk_event_id", "occurred_at");
+-- CreateIndex
+CREATE INDEX "runtime_operation_records_linked_risk_event_id_occurred_at_idx" ON "runtime_operation_records"("linked_risk_event_id", "occurred_at");

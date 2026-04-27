@@ -55,3 +55,11 @@
   - `pnpm lint` — passed.
   - `pnpm typecheck` — only pre-existing unrelated `src/shared/kickoff-workflow.ts` import error; confirmed identical against `git stash` baseline.
   - No product-code behavior change yet; new module is dormant until later slices wire it into runtime paths.
+- 2026-04-27: Local-DB regenerated migration verification (per repo SSOT discipline).
+  - Stood up `pnpm db:local:up` + ensured `pgvector` in `template1` so prisma's auto-shadow inherits it.
+  - Generated the canonical migration SQL via `npx prisma migrate diff --from-schema <schema-without-t301> --to-schema <schema-with-t301> --script` (DB-independent diff between two prisma schemas).
+  - Replaced the handwritten body with the prisma-canonical output and kept the existing task description header. Diff vs. handwritten was purely cosmetic (`-- CreateIndex` markers, single-line `CREATE INDEX`). Semantically identical.
+  - Applied the migration directly via `psql -f /tmp/t301.sql` on the local DB to confirm the SQL runs without errors → 1 `CREATE TABLE` + 9 `CREATE INDEX` succeeded.
+  - Verified the produced table via `\d runtime_operation_records`: 24 columns of correct types, `created_at` defaults to `CURRENT_TIMESTAMP`, all 9 indexes plus PK present, exactly matching the contract.
+  - Tore down the local DB (`pnpm db:local:down`) and removed all temp files.
+  - Re-ran the targeted vitest suite after the migration replacement: 17 / 17 still passing.
