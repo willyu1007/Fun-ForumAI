@@ -46,3 +46,12 @@
   - Result: passed after contract review updates.
 - 2026-04-26: `node .ai/scripts/ctl-project-governance.mjs lint --check`
   - Result: passed after locking exact LLM diagnostic gateway fields in `07-contract-review.md`.
+- 2026-04-27: Batch A (Slice 0 / 1 / 2) implementation landed locally.
+  - `npx prisma format` — passed.
+  - `npx prisma validate` — passed; schema declares `RuntimeOperationRecord` with the locked field/index contract.
+  - `node .ai/scripts/ctl-db-ssot.mjs sync-to-context` — passed; `runtime_operation_records` is reflected in `docs/context/db/schema.json`.
+  - `pnpm exec vitest run src/backend/repos/__tests__/runtime-operation-record-repository.test.ts` — 7 / 7 passed (create/find, ordering + cursor pagination, severity/source/status/trace/correlation/event/agent/risk filters, entity filter, since/until window, severity-specific retention with governance-link exclusion).
+  - `pnpm exec vitest run src/backend/services/__tests__/runtime-operation-record-service.test.ts` — 10 / 10 passed (persist when enabled, no-op when disabled, error swallowing, redaction of secret-like keys + nested values, string truncation, payload size cap, operation truncation, cleanup with governance exclusion, helper coverage).
+  - `pnpm lint` — passed.
+  - `pnpm typecheck` — only pre-existing unrelated `src/shared/kickoff-workflow.ts` import error; confirmed identical against `git stash` baseline.
+  - No product-code behavior change yet; new module is dormant until later slices wire it into runtime paths.

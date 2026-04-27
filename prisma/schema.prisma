@@ -1,6 +1,7 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
 }
@@ -666,40 +667,40 @@ enum ForumSceneMetadataTargetType {
 }
 
 model ForumSceneMetadata {
-  id                   String                       @id @default(cuid())
-  targetType           ForumSceneMetadataTargetType @map("target_type")
-  communityId          String                       @map("community_id")
-  postId               String?                      @map("post_id")
-  threadId             String?                      @unique @map("thread_id")
-  turnId               String?                      @unique @map("turn_id")
-  episodeId            String                       @map("episode_id")
-  selectionId          String                       @map("selection_id")
-  episodePlanId        String                       @map("episode_plan_id")
-  localIntentId        String                       @map("local_intent_id")
-  directorSurface      String                       @map("director_surface")
-  actorSurface         String                       @map("actor_surface")
-  sceneTemplateId      String                       @map("scene_template_id")
-  sceneTemplateVersion String                       @map("scene_template_version")
-  sceneBindingId       String?                      @map("scene_binding_id")
-  overlayId            String?                      @map("overlay_id")
-  beatId               String?                      @map("beat_id")
-  phase                String
-  selectionMode        String                       @map("selection_mode")
-  expiresAt            DateTime?                    @map("expires_at")
-  payloadJson          Json                         @map("payload_json")
+  id                        String                       @id @default(cuid())
+  targetType                ForumSceneMetadataTargetType @map("target_type")
+  communityId               String                       @map("community_id")
+  postId                    String?                      @map("post_id")
+  threadId                  String?                      @unique @map("thread_id")
+  turnId                    String?                      @unique @map("turn_id")
+  episodeId                 String                       @map("episode_id")
+  selectionId               String                       @map("selection_id")
+  episodePlanId             String                       @map("episode_plan_id")
+  localIntentId             String                       @map("local_intent_id")
+  directorSurface           String                       @map("director_surface")
+  actorSurface              String                       @map("actor_surface")
+  sceneTemplateId           String                       @map("scene_template_id")
+  sceneTemplateVersion      String                       @map("scene_template_version")
+  sceneBindingId            String?                      @map("scene_binding_id")
+  overlayId                 String?                      @map("overlay_id")
+  beatId                    String?                      @map("beat_id")
+  phase                     String
+  selectionMode             String                       @map("selection_mode")
+  expiresAt                 DateTime?                    @map("expires_at")
+  payloadJson               Json                         @map("payload_json")
   // T-215 B-M1 — programming column promotion. The cue worker writes both
   // `payloadJson.programming.*` (for backward compatibility during the
   // dual-write window) and these explicit columns. Public projection +
   // admin actuals read via the columns. After one full daypart of stable
   // column writes, payloadJson reads are deprecated; column writes stay
   // canonical thereafter.
-  programmingProductionPath String? @map("programming_production_path")
-  programmingCueId          String? @map("programming_cue_id")
-  programmingAttemptId      String? @map("programming_attempt_id")
-  programmingScheduleId     String? @map("programming_schedule_id")
-  programmingSourceType     String? @map("programming_source_type")
-  createdAt            DateTime                     @default(now()) @map("created_at")
-  updatedAt            DateTime                     @updatedAt @map("updated_at")
+  programmingProductionPath String?                      @map("programming_production_path")
+  programmingCueId          String?                      @map("programming_cue_id")
+  programmingAttemptId      String?                      @map("programming_attempt_id")
+  programmingScheduleId     String?                      @map("programming_schedule_id")
+  programmingSourceType     String?                      @map("programming_source_type")
+  createdAt                 DateTime                     @default(now()) @map("created_at")
+  updatedAt                 DateTime                     @updatedAt @map("updated_at")
 
   community Community          @relation(fields: [communityId], references: [id])
   post      Post?              @relation("PostSceneMetadata", fields: [postId], references: [id])
@@ -4989,17 +4990,55 @@ enum AutoEditorTriggerSource {
 }
 
 model AutoEditorTriggerEvent {
-  id           String                       @id @default(cuid())
-  communityId  String?                      @map("community_id")
-  triggerType  AutoEditorTriggerType        @map("trigger_type")
+  id           String                    @id @default(cuid())
+  communityId  String?                   @map("community_id")
+  triggerType  AutoEditorTriggerType     @map("trigger_type")
   severity     AutoEditorTriggerSeverity
   source       AutoEditorTriggerSource
-  evidenceJson Json                         @map("evidence_json")
-  dedupKey     String                       @unique @map("dedup_key")
-  detectedAt   DateTime                     @map("detected_at")
-  createdAt    DateTime                     @default(now()) @map("created_at")
+  evidenceJson Json                      @map("evidence_json")
+  dedupKey     String                    @unique @map("dedup_key")
+  detectedAt   DateTime                  @map("detected_at")
+  createdAt    DateTime                  @default(now()) @map("created_at")
 
   @@index([communityId, detectedAt])
   @@index([triggerType, detectedAt])
   @@map("auto_editor_trigger_events")
+}
+
+model RuntimeOperationRecord {
+  id                   String   @id @default(cuid())
+  occurredAt           DateTime @map("occurred_at")
+  severity             String
+  source               String
+  operation            String
+  status               String
+  traceId              String?  @map("trace_id")
+  correlationId        String?  @map("correlation_id")
+  eventId              String?  @map("event_id")
+  agentId              String?  @map("agent_id")
+  communityId          String?  @map("community_id")
+  postId               String?  @map("post_id")
+  roomId               String?  @map("room_id")
+  sessionId            String?  @map("session_id")
+  messageId            String?  @map("message_id")
+  linkedAgentRunId     String?  @map("linked_agent_run_id")
+  linkedLlmTraceId     String?  @map("linked_llm_trace_id")
+  linkedRiskEventId    String?  @map("linked_risk_event_id")
+  durationMs           Int?     @map("duration_ms")
+  errorCode            String?  @map("error_code")
+  errorMessageRedacted String?  @map("error_message_redacted")
+  retryCount           Int?     @map("retry_count")
+  payloadJson          Json?    @map("payload_json")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([occurredAt, id])
+  @@index([severity, occurredAt])
+  @@index([source, occurredAt])
+  @@index([status, occurredAt])
+  @@index([agentId, occurredAt])
+  @@index([traceId])
+  @@index([correlationId])
+  @@index([eventId])
+  @@index([linkedRiskEventId, occurredAt])
+  @@map("runtime_operation_records")
 }

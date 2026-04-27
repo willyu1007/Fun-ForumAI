@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-25T14:26:16.030Z",
+  "updatedAt": "2026-04-27T02:54:39.536Z",
   "ssot": {
     "mode": "repo-prisma",
     "source": {
@@ -120,6 +120,32 @@
         "SMS_AUTH",
         "EMAIL_CHANGE",
         "PHONE_CHANGE"
+      ]
+    },
+    {
+      "name": "AutoEditorTriggerSeverity",
+      "values": [
+        "LOW",
+        "STANDARD",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "AutoEditorTriggerSource",
+      "values": [
+        "SCAN",
+        "EVENT"
+      ]
+    },
+    {
+      "name": "AutoEditorTriggerType",
+      "values": [
+        "COMMUNITY_LULL",
+        "SUPPLY_FLOOR_GAP",
+        "EVENING_DISCUSSION_GAP",
+        "FATIGUE_HIGH",
+        "MEDIA_OPPORTUNITY",
+        "GLOBAL_RUNTIME_IDLE"
       ]
     },
     {
@@ -353,6 +379,17 @@
         "ADMIN",
         "SYSTEM_LLM",
         "BASELINE"
+      ]
+    },
+    {
+      "name": "CueMediaPlanOutcome",
+      "values": [
+        "RUNTIME_CONTEXT",
+        "PUBLIC_DISPLAY",
+        "DERIVATIVE_SOURCE",
+        "NOT_USED",
+        "BLOCKED",
+        "DEGRADED"
       ]
     },
     {
@@ -9780,6 +9817,133 @@
       ]
     },
     {
+      "name": "AutoEditorTriggerEvent",
+      "dbName": "auto_editor_trigger_events",
+      "schema": null,
+      "columns": [
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "dedupKey",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "dedup_key",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": true
+        },
+        {
+          "name": "detectedAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "detected_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "evidenceJson",
+          "type": "Json",
+          "nullable": false,
+          "list": false,
+          "dbName": "evidence_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "severity",
+          "type": "AutoEditorTriggerSeverity",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type": "AutoEditorTriggerSource",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "triggerType",
+          "type": "AutoEditorTriggerType",
+          "nullable": false,
+          "list": false,
+          "dbName": "trigger_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "communityId",
+            "detectedAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "triggerType",
+            "detectedAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
       "name": "BiographyBookMemory",
       "dbName": null,
       "schema": null,
@@ -14408,6 +14572,15 @@
           "references": [
             "id"
           ]
+        },
+        {
+          "field": "mediaPlanResolutions",
+          "to": "MediaPlanResolution",
+          "optional": false,
+          "list": true,
+          "relationName": null,
+          "fields": [],
+          "references": []
         }
       ],
       "indexes": [
@@ -16018,6 +16191,61 @@
           "unique": false
         },
         {
+          "name": "programmingAttemptId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "programming_attempt_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "programmingCueId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "programming_cue_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "programmingProductionPath",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "programming_production_path",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "programmingScheduleId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "programming_schedule_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "programmingSourceType",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "programming_source_type",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
           "name": "sceneBindingId",
           "type": "String",
           "nullable": true,
@@ -16193,6 +16421,22 @@
           "type": "index",
           "fields": [
             "postId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "programmingAttemptId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "programmingCueId"
           ],
           "name": null,
           "map": null
@@ -23139,6 +23383,155 @@
           "type": "index",
           "fields": [
             "surface",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "MediaPlanResolution",
+      "dbName": "media_plan_resolutions",
+      "schema": null,
+      "columns": [
+        {
+          "name": "assetId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "asset_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "attemptId",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": "attempt_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "imagePlannerDecisionId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "image_planner_decision_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "planOutcome",
+          "type": "CueMediaPlanOutcome",
+          "nullable": false,
+          "list": false,
+          "dbName": "plan_outcome",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestedRole",
+          "type": "CueMediaRole",
+          "nullable": false,
+          "list": false,
+          "dbName": "requested_role",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "requestedStrength",
+          "type": "CueMediaUsageStrength",
+          "nullable": false,
+          "list": false,
+          "dbName": "requested_strength",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [
+        {
+          "field": "attempt",
+          "to": "CueExecutionAttempt",
+          "optional": false,
+          "list": false,
+          "relationName": null,
+          "fields": [
+            "attemptId"
+          ],
+          "references": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "assetId",
+            "createdAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "attemptId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "planOutcome",
             "createdAt"
           ],
           "name": null,
@@ -33441,6 +33834,358 @@
           "fields": [
             "roomId",
             "createdAt"
+          ],
+          "name": null,
+          "map": null
+        }
+      ]
+    },
+    {
+      "name": "RuntimeOperationRecord",
+      "dbName": "runtime_operation_records",
+      "schema": null,
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "agent_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "communityId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "community_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "correlationId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "correlation_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "created_at",
+          "dbType": null,
+          "default": "now()",
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "durationMs",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "duration_ms",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorCode",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_code",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "errorMessageRedacted",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "error_message_redacted",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "eventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "id",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": "cuid()",
+          "primaryKey": true,
+          "unique": false
+        },
+        {
+          "name": "linkedAgentRunId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_agent_run_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "linkedLlmTraceId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_llm_trace_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "linkedRiskEventId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "linked_risk_event_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "messageId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "message_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "occurredAt",
+          "type": "DateTime",
+          "nullable": false,
+          "list": false,
+          "dbName": "occurred_at",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "operation",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "payloadJson",
+          "type": "Json",
+          "nullable": true,
+          "list": false,
+          "dbName": "payload_json",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "postId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "post_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "retryCount",
+          "type": "Int",
+          "nullable": true,
+          "list": false,
+          "dbName": "retry_count",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "roomId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "room_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "sessionId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "session_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "severity",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "nullable": false,
+          "list": false,
+          "dbName": null,
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        },
+        {
+          "name": "traceId",
+          "type": "String",
+          "nullable": true,
+          "list": false,
+          "dbName": "trace_id",
+          "dbType": null,
+          "default": null,
+          "primaryKey": false,
+          "unique": false
+        }
+      ],
+      "relations": [],
+      "indexes": [
+        {
+          "type": "index",
+          "fields": [
+            "agentId",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "correlationId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "eventId"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "linkedRiskEventId",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "occurredAt",
+            "id"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "severity",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "source",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "status",
+            "occurredAt"
+          ],
+          "name": null,
+          "map": null
+        },
+        {
+          "type": "index",
+          "fields": [
+            "traceId"
           ],
           "name": null,
           "map": null

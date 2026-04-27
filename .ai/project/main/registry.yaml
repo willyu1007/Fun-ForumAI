@@ -1509,7 +1509,7 @@ tasks:
     updated: 2026-04-27
   - id: T-301
     slug: runtime-operation-records-console
-    status: planned
+    status: in-progress
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/runtime-operation-records-console

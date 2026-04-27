@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: planned
+- State: in-progress
 - Depends on: roadmap alignment, DB schema approval, admin console UX scope, retention/redaction policy
-- Current status: phase-1 alignment and contract review are complete; no product code has been changed.
-- Next step: after user approval, begin implementation from `06-execution-plan.md` and `07-contract-review.md`.
+- Current status: Batch A (Slice 0 / 1 / 2) landed locally on 2026-04-27 — Prisma model + migration, repository (in-memory + pg) + container wiring, observability service with redaction/truncation/feature flags, with targeted tests passing (17 / 17). No runtime/business code is invoked yet.
+- Next step: Batch B — admin APIs (Slice 3), infra snapshot + LLM connectivity services (Slice 4), retention cleanup CLI (Slice 6).
 
 ## Goal
 

@@ -182,6 +182,11 @@ const launchCapabilities = {
   riskControlPrivateEnforce: true,
   riskControlProactiveEnforce: true,
   hotTopicPolicyV1: true,
+  runtimeOperationRecordsWrite: readBooleanFlag(
+    env.FF_RUNTIME_OPERATION_RECORDS_WRITE,
+    allowDevTools,
+  ),
+  adminRuntimeRecordsUi: readBooleanFlag(env.FF_ADMIN_RUNTIME_RECORDS_UI, allowDevTools),
 }
 
 export const config = {

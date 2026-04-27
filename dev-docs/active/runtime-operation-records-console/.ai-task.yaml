@@ -2,8 +2,8 @@ version: 1
 task_id: T-301
 project: main
 slug: runtime-operation-records-console
-status: planned
-updated: "2026-04-26"
+status: in-progress
+updated: "2026-04-27"
 keywords:
   - runtime
   - observability

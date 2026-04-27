@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 217 (planned: 3, in-progress: 7, blocked: 0, done: 9, archived: 198)
+- Tasks: 217 (planned: 2, in-progress: 8, blocked: 0, done: 9, archived: 198)
 
 ## Recent tasks
 
@@ -22,7 +22,7 @@ Project: `main`
 | T-214 cue-auto-editor | done | F-060 | dev-docs/active/cue-auto-editor |
 | T-215 cue-public-projection | done | F-060 | dev-docs/active/cue-public-projection |
 | T-216 cue-media-policy | done | F-060 | dev-docs/active/cue-media-policy |
-| T-301 runtime-operation-records-console | planned | F-000 | dev-docs/active/runtime-operation-records-console |
+| T-301 runtime-operation-records-console | in-progress | F-000 | dev-docs/active/runtime-operation-records-console |
 | T-302 admin-community-media-import-console | planned | F-000 | dev-docs/active/admin-community-media-import-console |
 | T-209 cue-data-and-board | done | F-060 | dev-docs/active/cue-data-and-board |
 | T-208 cue-shared-contract | done | F-060 | dev-docs/active/cue-shared-contract |
