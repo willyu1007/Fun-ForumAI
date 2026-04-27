@@ -3559,6 +3559,24 @@ export interface CueProjectionFacet {
 }
 
 // =============================================================================
+// T-302 — admin media import DTO contract
+// =============================================================================
+
+export type {
+  AdminMediaImportAssetDto,
+  AdminMediaImportItemDto,
+  AdminMediaImportListPayloadDto,
+  AdminMediaImportPoolBindingDto,
+  AdminMediaImportPoolSummaryDto,
+  AdminMediaImportRetrievalStatusDto,
+  AdminMediaImportRetrievalStatusValue,
+  AdminMediaImportReusePolicyDto,
+  AdminMediaImportSemanticSnapshotDto,
+  AdminMediaImportUrlRequestBody,
+  AdminMediaImportUsageSummaryDto,
+} from '../../shared/admin-media-import.js'
+
+// =============================================================================
 // T-216 M3 closer — media plan resolution audit row
 // =============================================================================
 

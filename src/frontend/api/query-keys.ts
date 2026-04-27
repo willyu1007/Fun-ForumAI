@@ -121,6 +121,10 @@ export const queryKeys = {
   adminMediaRolloutController: ['admin', 'media-rollout-controller'] as const,
   adminMediaScenePacks: ['admin', 'media-scene-packs'] as const,
   adminMediaScenePack: (sceneId: string) => ['admin', 'media-scene-pack', sceneId] as const,
+  adminPlatformCanonicalAssets: (params?: { limit?: number }) =>
+    ['admin', 'platform-canonical-assets', params ?? null] as const,
+  adminCommunityCommonsAssets: (communityId: string, params?: { limit?: number }) =>
+    ['admin', 'community-commons-assets', communityId, params ?? null] as const,
   adminModerationQueue: (params?: {
     status?: string
     case_type?: string

@@ -13,6 +13,7 @@ const navGroups = [
       { href: '/admin/cue-projection', label: 'Cue 公开预览' },
       { href: '/admin/media-plan-audit', label: 'Media Plan 审计' },
       { href: '/admin/media-prompts', label: '文生图场景与提示词' },
+      { href: '/admin/media-assets', label: '媒体素材导入' },
       { href: '/admin/warmup', label: '预热与启动' },
     ]
   },
