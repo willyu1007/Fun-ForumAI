@@ -15,20 +15,20 @@ Each remaining choice is assigned to a slice entry review below. A slice MUST NO
 
 | Requirement | Contract location | Coverage decision |
 | --- | --- | --- |
-| Runtime operation records for debug/regulation | `00-overview.md`, `02-architecture.md`, this file | Add persisted `RuntimeOperationRecord` and admin list/detail. |
-| Phase 1 read-only admin surface | `roadmap.md`, `06-execution-plan.md` | No retry, release, escalation, override, or destructive cleanup UI. |
-| `/admin/runtime-records` placement | `00-overview.md`, `roadmap.md` | Sidebar group: `状态与运维 -> 运行记录`. |
-| Warn/error/critical default recording | `01-plan.md`, `02-architecture.md` | Store warn/error/critical plus selected lifecycle markers only. |
-| Retention | `02-architecture.md`, this file | `critical/error=90d`, `warn=30d`, sampled `info/succeeded=7d`; governance-linked records excluded from ordinary cleanup. |
-| LLM connectivity table | `02-architecture.md`, this file | Show staging-active/admitted rows with provider, model ID, concrete model name/version, profile/route, credential/pool identifier, and manual test status. |
-| LLM manual test | `02-architecture.md`, this file | Use existing gateway path plus tiny diagnostic prompt; transient result only; no operation-record write. |
-| DB diagnostics | `02-architecture.md`, `06-execution-plan.md` | Lightweight connectivity/latency/error/drift signals only; no raw SQL or result payloads. |
-| Business-critical nodes | `02-architecture.md`, `06-execution-plan.md` | Instrument selected runtime/public-output milestones and failures. |
-| Infra snapshot | `02-architecture.md`, this file | Read-only current/short-window health, 15s UI polling, partial-section failures. |
-| Private chat | `roadmap.md`, `05-pitfalls.md` | Private-chat-specific diagnostics are excluded from this pass. |
-| Payload safety | `02-architecture.md`, this file | Structured summaries only, string truncation around 1-2KB, total target 8-16KB, redaction metadata. |
-| Rollout controls | `02-architecture.md`, this file | Separate write and UI feature flags. |
-| Verification | `04-verification.md`, `06-execution-plan.md` | DB validation, backend/frontend targeted tests, typecheck, lint, optional UI smoke. |
+| Runtime operation records for debug/regulation | `00-overview.md`, this file | Add persisted `RuntimeOperationRecord` and admin list/detail. |
+| Phase 1 read-only admin surface | `00-overview.md`, this file | No retry, release, escalation, override, or destructive cleanup UI. |
+| `/admin/runtime-records` placement | `00-overview.md`, this file | Sidebar group: `状态与运维 -> 运行记录`. |
+| Warn/error/critical default recording | this file | Store warn/error/critical plus selected lifecycle markers only. |
+| Retention | this file | `critical/error=90d`, `warn=30d`, sampled `info/succeeded=7d`; governance-linked records excluded from ordinary cleanup. |
+| LLM connectivity table | this file | Show staging-active/admitted rows with provider, model ID, concrete model name/version, profile/route, credential/pool identifier, and manual test status. |
+| LLM manual test | this file | Use existing gateway path plus tiny diagnostic prompt; transient result only; no operation-record write. |
+| DB diagnostics | this file | Lightweight connectivity/latency/error/drift signals only; no raw SQL or result payloads. |
+| Business-critical nodes | this file | Instrument selected runtime/public-output milestones and failures. |
+| Infra snapshot | this file | Read-only current/short-window health, 15s UI polling, partial-section failures. |
+| Private chat | `05-pitfalls.md`, this file | Private-chat-specific diagnostics are excluded from this pass. |
+| Payload safety | this file | Structured summaries only, string truncation around 1-2KB, total target 8-16KB, redaction metadata. |
+| Rollout controls | this file | Separate write and UI feature flags. |
+| Verification | `04-verification.md`, this file | DB validation, backend/frontend targeted tests, typecheck, lint, optional UI smoke. |
 
 ## Locked Feature Flag Contract
 
@@ -363,7 +363,7 @@ Failure criteria:
 
 ## Final Package Review
 
-The package is implementation-ready after this review because:
+The package was implementation-ready after this review because:
 
 - product scope is locked
 - non-goals are explicit
@@ -371,7 +371,7 @@ The package is implementation-ready after this review because:
 - feature flags are named
 - data safety and retention are bounded
 - runtime instrumentation is constrained to high-value paths
-- every delivery slice has entry and exit checks
+- every delivery slice had entry and exit checks
 - verification and rollback paths are explicit
 
-Implementation SHOULD proceed slice-by-slice. Before moving from one slice to the next, update `03-implementation-notes.md` and `04-verification.md` with the completed exit criteria and any code-local decision made during entry review.
+Implementation is now complete and archived. Future runtime-records expansion should start a new task rather than editing the archived plan history.

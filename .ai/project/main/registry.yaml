@@ -1509,10 +1509,10 @@ tasks:
     updated: 2026-04-27
   - id: T-301
     slug: runtime-operation-records-console
-    status: done
+    status: archived
     milestone_id: M-000
     feature_id: F-000
-    dev_docs_path: dev-docs/active/runtime-operation-records-console
+    dev_docs_path: dev-docs/archive/runtime-operation-records-console
     updated: 2026-04-27
   - id: T-302
     slug: admin-community-media-import-console

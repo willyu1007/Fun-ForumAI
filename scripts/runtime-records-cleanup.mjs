@@ -4,7 +4,7 @@
 //
 // Default mode is dry-run. Pass --apply to execute the deletes.
 //
-// Retention contract (locked in dev-docs/active/runtime-operation-records-console/07-contract-review.md):
+// Retention contract (locked in dev-docs/archive/runtime-operation-records-console/07-contract-review.md):
 //   error / critical: 90 days
 //   warn:             30 days
 //   info / succeeded: 7 days  (only sampled lifecycle markers are stored at this severity)

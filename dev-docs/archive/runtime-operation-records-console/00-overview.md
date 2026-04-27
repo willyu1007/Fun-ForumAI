@@ -2,10 +2,10 @@
 
 ## Status
 
-- State: done
+- State: archived
 - Depends on: roadmap alignment, DB schema approval, admin console UX scope, retention/redaction policy
-- Current status: Batches A / B / C (Slices 0–8) landed locally on 2026-04-27. Phase-1 scope is complete: persistence + repository + service + admin APIs + infra snapshot + LLM connectivity + retention CLI + runtime instrumentation hooks (RuntimeLoop / EventQueue DLQ / AgentExecutor execute & parse / PostScheduler / ProactiveInteractionService) + admin frontend page `/admin/runtime-records` with sidebar entry. Full backend test suite passes (2358/2358 in scope) plus the frontend builds cleanly. Runtime paths now call `record()` through a dormant-by-default singleton; persistence is gated by `FF_RUNTIME_OPERATION_RECORDS_WRITE` and admin UI is gated by `FF_ADMIN_RUNTIME_RECORDS_UI` / `VITE_FF_ADMIN_RUNTIME_RECORDS_UI`.
-- Next step: rollout — enable flags in dev/staging, verify synthetic failures surface, run cleanup CLI dry-run in staging.
+- Current status: Archived on 2026-04-27 after post-review fixes completed for all six T-301 quality/coverage findings: LLM diagnostic gateway routing, trace stitching, DB diagnostic production, freeform error redaction, endpoint/frontend test coverage, and cursor pagination.
+- Next step: operate rollout using the existing split UI/write flags and cleanup CLI; create a new task for any further runtime-records expansion.
 
 ## Goal
 

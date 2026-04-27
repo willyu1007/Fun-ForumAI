@@ -2,7 +2,7 @@ version: 1
 task_id: T-301
 project: main
 slug: runtime-operation-records-console
-status: done
+status: archived
 updated: "2026-04-27"
 keywords:
   - runtime
