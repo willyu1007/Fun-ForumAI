@@ -80,7 +80,7 @@ Project: `main`
 | T-159 batch-slice-governance-and-review-console-v1 | archived | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 | T-301 runtime-operation-records-console | planned | dev-docs/active/runtime-operation-records-console |
-| T-302 admin-community-media-import-console | planned | dev-docs/active/admin-community-media-import-console |
+| T-302 admin-community-media-import-console | in-progress | dev-docs/active/admin-community-media-import-console |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
 | T-907 confirmed-technical-debt-paydown | archived | dev-docs/archive/confirmed-technical-debt-paydown |

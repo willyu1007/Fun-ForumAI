@@ -18,3 +18,15 @@
 
 - 2026-04-26: Open roadmap questions are closed; implementation may proceed after execution runbook confirmation.
 - 2026-04-26: Coverage review closed planning gaps and added per-slice review gates.
+
+## Execution-Time Findings (2026-04-27)
+
+- **Flipping `allow_quote_original` to false on `registerPlatformCanonicalAsset` is not enough by itself.** Two helper functions inside `media-reuse-governance-service.ts` had hardcoded platform-canonical behavior that silently ignored the flag:
+  - `defaultModesForSource` previously returned `['quote_original', 'derive_new', 'reference_only']` unconditionally for `platform_canonical`. Future changes must keep this branched on `allow_quote_original`, mirroring the `community_commons` arm.
+  - `defaultCrossAgentQuoteAllowed` previously returned `true` unconditionally for `platform_canonical`. Future changes must keep it returning `Boolean(allowQuoteOriginal)`.
+  - Lesson: when introducing a flag at a service entry point, audit every helper that branches on the same `source_kind` — a flag added at the top is a no-op if the helpers underneath don't honor it.
+- **`ctl-openapi-quality` does not resolve `$ref` for path parameters.** Community-scoped paths (`/v1/admin/communities/{communityId}/...`) had to declare `communityId` inline rather than reuse `#/components/parameters/CommunityIdParam`. Matches the existing convention in this file; do not "improve" by switching to `$ref`.
+- **Container test access requires explicit re-export.** Adding `vi.spyOn(mediaAssetService, 'ingestManagedRemoteAsset')` in route integration tests required exporting `mediaAssetService` from `src/backend/container/index.ts` (it was previously only used internally inside `llm.ts`). Future T-302-style stubs of internal services should expect this export step.
+- **Test environment retrieval status is always `pending` (`backfill_required`).** With `mediaRetrievalV1=false` (the default test config), `ensureDocumentEmbedding` records `search_status: 'backfill_required'` rather than `searchable`. Route integration tests assert on the schema (`status` is one of `ready|pending|failed`); use the dedicated service unit test to exercise the `ready` and `failed` branches with manufactured embedding snapshots.
+- **`@testing-library/jest-dom` is not installed.** Use plain Vitest matchers (`toBeDefined()`, `(el as HTMLInputElement).checked`, `(el as HTMLButtonElement).disabled`) — `toBeInTheDocument()` / `toBeChecked()` / `toBeDisabled()` will fail with `Invalid Chai property`.
+- **Radix Tabs controlled state did not flip via `fireEvent.click` in the panel test environment.** The test that originally tried to switch tabs and then locate the URL submit button failed to find the button after click. The current test suite avoids needing a tab switch by asserting on the existence of both tab triggers and structuring assertions on the default (upload) tab content. If a test ever needs to programmatically switch tabs, prefer driving it via `userEvent` rather than `fireEvent.click`.
