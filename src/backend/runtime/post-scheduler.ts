@@ -40,6 +40,7 @@ import {
   recordPersonaObservation,
 } from './persona-observation.js'
 import type { WarmupProbeContextInput } from '../../shared/warmup-verifier.js'
+import { compactErrorMessage, recordRuntimeOperation } from './runtime-observability.js'
 
 export interface PostSchedulerConfig {
   postIntervalMs: number
@@ -227,6 +228,14 @@ export class PostScheduler {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       console.error(`[PostScheduler] Failed: ${message}`)
+      recordRuntimeOperation({
+        severity: 'error',
+        source: 'post_scheduler',
+        operation: 'create_post',
+        status: 'failed',
+        duration_ms: Date.now() - start,
+        error_message_redacted: compactErrorMessage(err),
+      })
       return { triggered: true, error: message, latency_ms: Date.now() - start }
     }
   }

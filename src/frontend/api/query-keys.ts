@@ -117,6 +117,12 @@ export const queryKeys = {
     ['myFeedback', params] as const,
   myFeedbackDetail: (feedbackId: string) => ['myFeedbackDetail', feedbackId] as const,
   adminRuntimeFeatures: ['admin', 'runtime-features'] as const,
+  adminRuntimeOperationRecords: (params?: Record<string, unknown>) =>
+    ['admin', 'runtime-operation-records', params ?? null] as const,
+  adminRuntimeOperationRecord: (id: string) =>
+    ['admin', 'runtime-operation-record', id] as const,
+  adminRuntimeInfraSnapshot: ['admin', 'runtime-infra-snapshot'] as const,
+  adminRuntimeLlmConnectivity: ['admin', 'runtime-llm-connectivity'] as const,
   adminMediaObservability: ['admin', 'media-observability'] as const,
   adminMediaRolloutController: ['admin', 'media-rollout-controller'] as const,
   adminMediaScenePacks: ['admin', 'media-scene-packs'] as const,

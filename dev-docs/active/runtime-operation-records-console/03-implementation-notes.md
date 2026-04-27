@@ -149,3 +149,78 @@ Open items carried into Batch C:
 - Slice 5 — runtime / business-node instrumentation (RuntimeLoop, EventQueue, AgentExecutor, PostScheduler, ProactiveInteractionService, runtime-critical repo boundaries).
 - Slice 7 — `/admin/runtime-records` page, sidebar entry, hooks/types, query keys, frontend feature flag `VITE_FF_ADMIN_RUNTIME_RECORDS_UI`.
 - Slice 8 — final verification + rollout notes.
+
+## 2026-04-27 — Batch C (Slice 5 / 7 / 8)
+
+Local commit only (no PR yet) per user direction. Closes phase-1 scope.
+
+**Slice 5 — Runtime / business-node instrumentation**
+
+Used a singleton-style indirection (`src/backend/runtime/runtime-observability.ts`) to keep the diff small across 5 instrumented files: callers do not take the recorder service through their deps interface and tests run with the default no-op recorder (which is also the production fallback if the container hasn't wired the recorder yet).
+
+- `recordRuntimeOperation(input)` is fire-and-forget; the wrapper catches its own throws (defensive `console.warn`) so business code never sees an observability error.
+- Container wiring sets the active recorder to `(input) => void runtimeOperationRecordService.record(input)` — `record()` itself is already side-effect free (write-flag-gated, swallows persistence errors), so observability outages can never poison runtime paths.
+- `compactErrorMessage(err)` truncates to 512 chars and tolerates non-Error throws.
+
+Hook points (only failures + DLQ — no success markers, per phase-1 default):
+
+- `runtime-loop.ts`:
+  - per-event catch → `runtime_loop / process_event / retried` (severity `error`)
+  - tick-level catch → `runtime_loop / tick / failed` (severity `critical`) with a small payload digest
+- `event-queue.ts` (Redis stream impl):
+  - DLQ branch → `event_queue / dead_letter / dead_lettered` (severity `error`) with `retry_count`
+- `agent-executor.ts`:
+  - top-level executeOne catch → `agent_executor / execute / failed` (severity `error`)
+  - parser returned no instruction → `agent_executor / parse_output / failed` (severity `warn`) with `error_code='parse_failed'` and a small payload (template + response length, no body)
+- `post-scheduler.ts`:
+  - createPost outer catch → `post_scheduler / create_post / failed` (severity `error`)
+- `proactive-interaction-service.ts`:
+  - AgentRun persist failure → `proactive_interaction / persist_agent_run / failed` (severity `warn`)
+  - opening media attach failure → `proactive_interaction / attach_opening_media / failed` (severity `warn`)
+
+DB diagnostics: per the agreed Slice 5 entry review, instrumentation is restricted to the runtime-critical paths above. We did **not** add a generic `recordDbDiagnostic` wrapper around every repo boundary — that would have widened the diff and added noise. The same shape can be plugged in later if a specific bug-triage call needs it.
+
+Targeted test: `runtime-observability.test.ts` (4 cases) covers default no-op, active recorder forwarding, throw-swallowing, and `compactErrorMessage`.
+
+Existing runtime test suites (276 cases across `src/backend/runtime/__tests__`) still pass — no instrumented file changed business behavior.
+
+**Slice 7 — Admin frontend page**
+
+- Frontend flag `VITE_FF_ADMIN_RUNTIME_RECORDS_UI` registered in:
+  - `src/frontend/shared/config/frontend-flags.ts` (`FRONTEND_FLAG_KEYS`, `FRONTEND_FLAG_DEFINITIONS`, `readFlagFromImportMetaEnv`)
+  - `src/frontend/shared/config/frontend-capabilities.ts` (`FRONTEND_LAUNCH_CAPABILITIES.adminRuntimeRecordsUi` + `adminRuntimeRecordsUiEnabled` accessor)
+- Sidebar: `AdminSidebar.tsx` rebuilt to compute groups via `buildNavGroups()`; `运行记录` only appears under `状态与运维` when the flag is on. Behavior unchanged for all other entries.
+- Types in `src/frontend/api/types.ts`: `RuntimeOperationRecord`, `RuntimeOperationRecordsListData`, `RuntimeOperationRecordDetailData`, `InfraSnapshotData/Section/Status`, `LlmConnectivityRow`, `LlmConnectivityListData`, `LlmConnectivityTestResult`, `LlmConnectivityTestResponseData`, plus the `RuntimeOperationRecordListFilters` shape that mirrors the locked admin API contract.
+- Query keys in `src/frontend/api/query-keys.ts`: `adminRuntimeOperationRecords(filters)`, `adminRuntimeOperationRecord(id)`, `adminRuntimeInfraSnapshot`, `adminRuntimeLlmConnectivity`.
+- Hooks in `src/frontend/api/hooks/admin.ts`: `useAdminRuntimeOperationRecords`, `useAdminRuntimeOperationRecord`, `useAdminRuntimeInfraSnapshot` (15s `refetchInterval`), `useAdminRuntimeLlmConnectivity`, `useAdminRuntimeLlmConnectivityTest` mutation.
+- Page component `src/frontend/features/admin/pages/RuntimeRecordsPage.tsx`:
+  - Top: infra snapshot panel (overall status badge + section grid with summary/latency/error_message_redacted; partial-failure-friendly).
+  - Middle: LLM connectivity table with per-row "测试" and a "测试全部" button. Test results are kept in component state — strictly transient per contract.
+  - Bottom: filter bar (severity / source / status multi-select, trace ID, agent ID, since/until) + records table (occurred_at, severity, source, operation, status, trace, agent/event, error preview).
+  - Detail drawer renders the redacted record JSON, `references` block, and `payload_summary.payload`.
+  - Empty/disabled states render explicit copy when the user is not admin, the UI flag is off, the write flag is off, or no records match.
+  - No retry / release / escalate / manual-cleanup buttons — phase-1 read-only contract.
+- Page wired into `AdminPages.tsx` (`AdminRuntimeRecordsPage`), `route-components.tsx` (`route:admin-runtime-records`), and `router.tsx` (path `runtime-records` under the admin shell).
+
+**Slice 8 — Verification**
+
+- Targeted vitest sweep: 2358 / 2358 passing in scope (the 2 skipped are pre-existing and unrelated). No regression in any existing runtime test.
+- `pnpm typecheck`: only the pre-existing unrelated `src/shared/kickoff-workflow.ts` import error remains.
+- `pnpm lint`: passing.
+- `pnpm build`: frontend builds cleanly, including the new lazy chunk for `AdminPages` (with `RuntimeRecordsPage` reachable via the admin sidebar entry).
+- Slice 6 CLI smoke (from Batch B) is still valid — the cleanup contract did not change.
+
+**Rollout notes**
+
+1. Land schema/repo/service behind disabled write flag — done (write flag still gates persistence).
+2. Enable admin UI flag with empty/disabled state — set `FF_ADMIN_RUNTIME_RECORDS_UI=true` and `VITE_FF_ADMIN_RUNTIME_RECORDS_UI=true`. Page renders an explicit empty state when no records exist and a banner when the write flag is off.
+3. Enable write flag in dev/staging — set `FF_RUNTIME_OPERATION_RECORDS_WRITE=true`. The instrumented runtime paths begin to record warn/error/critical operation events.
+4. Verify operation records appear for synthetic failures — exercise an event handler that throws (e.g. by tripping the existing executor failure paths in dev) and confirm rows show in `/admin/runtime-records`.
+5. Verify infra snapshot and LLM manual test from the page itself (15s polling on infra; transient on LLM test).
+6. Run cleanup dry-run / apply in staging via `pnpm runtime-records:cleanup` (default dry-run) and `node scripts/runtime-records-cleanup.mjs --apply`.
+
+**Rollback**
+
+- Disable `FF_RUNTIME_OPERATION_RECORDS_WRITE` to stop new records — the singleton recorder still fires but `record()` returns `null` immediately.
+- Disable `VITE_FF_ADMIN_RUNTIME_RECORDS_UI` (frontend rebuild) and/or `FF_ADMIN_RUNTIME_RECORDS_UI` (backend) to hide the page; the existing `/admin/runtime` dashboard remains the fallback.
+- Migration / table can stay in place; no destructive rollback is required.

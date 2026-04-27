@@ -1,45 +1,63 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { NavLink } from 'react-router'
 import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react'
+import { FRONTEND_LAUNCH_CAPABILITIES } from '@/shared/config/frontend-capabilities'
 
-const navGroups = [
-  {
-    title: '内容生产',
-    items: [
-      { href: '/admin/programming', label: '内容编排与排期' },
-      { href: '/admin/cue-board', label: 'Cue Board' },
-      { href: '/admin/auto-patches', label: 'Auto-patch Inbox' },
-      { href: '/admin/cue-projection', label: 'Cue 公开预览' },
-      { href: '/admin/media-plan-audit', label: 'Media Plan 审计' },
-      { href: '/admin/media-prompts', label: '文生图场景与提示词' },
-      { href: '/admin/warmup', label: '预热与启动' },
-    ]
-  },
-  {
-    title: '治理与风控',
-    items: [
-      { href: '/admin/governance', label: '社区与内容治理' },
-      { href: '/admin/hot-topic', label: '热门话题风控' },
-    ]
-  },
-  {
-    title: '状态与运维',
-    items: [
-      { href: '/admin/runtime', label: '系统运行状态' },
-    ]
-  },
-  {
-    title: '平台管理',
-    items: [
-      { href: '/admin/admins', label: '管理员权限' },
-      { href: '/admin/invites', label: '邀请码管理' },
-      { href: '/admin/feedback', label: '意见箱' },
-    ]
+interface NavItem {
+  href: string
+  label: string
+}
+
+interface NavGroupDef {
+  title: string
+  items: NavItem[]
+}
+
+function buildNavGroups(): NavGroupDef[] {
+  const operationsItems: NavItem[] = [
+    { href: '/admin/runtime', label: '系统运行状态' },
+  ]
+  if (FRONTEND_LAUNCH_CAPABILITIES.adminRuntimeRecordsUi) {
+    operationsItems.push({ href: '/admin/runtime-records', label: '运行记录' })
   }
-]
 
-function NavGroup({ group }: { group: typeof navGroups[0] }) {
+  return [
+    {
+      title: '内容生产',
+      items: [
+        { href: '/admin/programming', label: '内容编排与排期' },
+        { href: '/admin/cue-board', label: 'Cue Board' },
+        { href: '/admin/auto-patches', label: 'Auto-patch Inbox' },
+        { href: '/admin/cue-projection', label: 'Cue 公开预览' },
+        { href: '/admin/media-plan-audit', label: 'Media Plan 审计' },
+        { href: '/admin/media-prompts', label: '文生图场景与提示词' },
+        { href: '/admin/warmup', label: '预热与启动' },
+      ],
+    },
+    {
+      title: '治理与风控',
+      items: [
+        { href: '/admin/governance', label: '社区与内容治理' },
+        { href: '/admin/hot-topic', label: '热门话题风控' },
+      ],
+    },
+    {
+      title: '状态与运维',
+      items: operationsItems,
+    },
+    {
+      title: '平台管理',
+      items: [
+        { href: '/admin/admins', label: '管理员权限' },
+        { href: '/admin/invites', label: '邀请码管理' },
+        { href: '/admin/feedback', label: '意见箱' },
+      ],
+    },
+  ]
+}
+
+function NavGroup({ group }: { group: NavGroupDef }) {
   const [isOpen, setIsOpen] = useState(true)
 
   return (
@@ -76,12 +94,13 @@ function NavGroup({ group }: { group: typeof navGroups[0] }) {
 }
 
 export function AdminSidebar() {
+  const navGroups = useMemo(() => buildNavGroups(), [])
   return (
     <div className="flex h-full flex-col border-r bg-muted/10">
       <div className="p-4">
         <h2 className="text-lg font-bold tracking-tight" data-ui="text" data-variant="h3">管理控制台</h2>
       </div>
-      
+
       <nav data-ui="nav" data-variant="admin-sidebar" className="flex-1 overflow-y-auto px-2 py-4">
         {navGroups.map((group) => (
           <NavGroup key={group.title} group={group} />

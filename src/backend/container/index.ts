@@ -1183,6 +1183,13 @@ export const runtimeOperationRecordService = new RuntimeOperationRecordService({
   isWriteEnabled: () => config.launch.capabilities.runtimeOperationRecordsWrite,
 })
 
+const { setRuntimeOperationRecorder } = await import('../runtime/runtime-observability.js')
+// Fire-and-forget: the runtime hot path never awaits the recorder.
+// `record()` already swallows persistence errors and respects the write flag.
+setRuntimeOperationRecorder((input) => {
+  void runtimeOperationRecordService.record(input)
+})
+
 export const runtimeInfraSnapshotService = new RuntimeInfraSnapshotService({
   pollIntervalMs: 15_000,
   process: () => {

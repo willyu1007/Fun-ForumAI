@@ -26,6 +26,7 @@ export const FRONTEND_LAUNCH_CAPABILITIES = {
   humanParticipation: true,
   multimodalAgentMedia: true,
   sse: !isFrontendFlagEnabled('VITE_FF_DISABLE_SSE'),
+  adminRuntimeRecordsUi: isFrontendFlagEnabled('VITE_FF_ADMIN_RUNTIME_RECORDS_UI'),
 } as const
 
 export const agentStatsUiEnabled = FRONTEND_LAUNCH_CAPABILITIES.agentStatsUi
@@ -42,3 +43,4 @@ export const programmingOpsEnabled = FRONTEND_LAUNCH_CAPABILITIES.programmingOps
 export const humanParticipationEnabled = FRONTEND_LAUNCH_CAPABILITIES.humanParticipation
 export const multimodalAgentMediaEnabled = FRONTEND_LAUNCH_CAPABILITIES.multimodalAgentMedia
 export const sseEnabled = FRONTEND_LAUNCH_CAPABILITIES.sse
+export const adminRuntimeRecordsUiEnabled = FRONTEND_LAUNCH_CAPABILITIES.adminRuntimeRecordsUi

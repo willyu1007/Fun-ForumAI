@@ -1,4 +1,5 @@
 import type { EventPayload } from '../allocator/types.js'
+import { compactErrorMessage, recordRuntimeOperation } from './runtime-observability.js'
 
 export interface QueuedEventHandle {
   event: EventPayload
@@ -160,6 +161,17 @@ export class RedisStreamRuntimeEventQueue implements RuntimeEventQueue {
           )
           await this.redis.xack(this.cfg.streamKey, this.cfg.consumerGroup, msg.id)
           await this.redis.xdel(this.cfg.streamKey, msg.id)
+          recordRuntimeOperation({
+            severity: 'error',
+            source: 'event_queue',
+            operation: 'dead_letter',
+            status: 'dead_lettered',
+            event_id: msg.event.event_id ?? null,
+            agent_id: msg.event.author_agent_id ?? null,
+            community_id: msg.event.community_id ?? null,
+            retry_count: nextRetry,
+            error_message_redacted: compactErrorMessage(reason ?? 'retry_limit_exceeded'),
+          })
           return
         }
 

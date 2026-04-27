@@ -3587,3 +3587,150 @@ export interface MediaPlanResolutionRow {
   reason: string | null
   created_at: string
 }
+
+// T-301 admin runtime operation records
+export type RuntimeOperationSeverity = 'info' | 'warn' | 'error' | 'critical'
+
+export type RuntimeOperationSource =
+  | 'runtime_loop'
+  | 'event_queue'
+  | 'agent_executor'
+  | 'post_scheduler'
+  | 'proactive_interaction'
+  | 'llm_gateway'
+  | 'media_worker'
+  | 'guidance_worker'
+  | 'db_diagnostic'
+  | 'system'
+
+export type RuntimeOperationStatus =
+  | 'started'
+  | 'succeeded'
+  | 'failed'
+  | 'retried'
+  | 'dead_lettered'
+  | 'skipped'
+
+export interface RuntimeOperationRecord {
+  id: string
+  occurred_at: string
+  severity: RuntimeOperationSeverity
+  source: RuntimeOperationSource
+  operation: string
+  status: RuntimeOperationStatus
+  trace_id: string | null
+  correlation_id: string | null
+  event_id: string | null
+  agent_id: string | null
+  community_id: string | null
+  post_id: string | null
+  room_id: string | null
+  session_id: string | null
+  message_id: string | null
+  linked_agent_run_id: string | null
+  linked_llm_trace_id: string | null
+  linked_risk_event_id: string | null
+  duration_ms: number | null
+  error_code: string | null
+  error_message_redacted: string | null
+  retry_count: number | null
+  payload_json: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface RuntimeOperationRecordsListData {
+  records: RuntimeOperationRecord[]
+  next_cursor: string | null
+  filters: Record<string, unknown>
+  write_enabled: boolean
+  retention_policy: {
+    error_critical_days: number
+    warn_days: number
+    info_days: number
+    governance_linked: string
+  }
+}
+
+export interface RuntimeOperationRecordDetailData {
+  record: RuntimeOperationRecord
+  references: Record<string, string>
+  payload_summary: {
+    payload: Record<string, unknown>
+    redaction_meta: Record<string, unknown> | null
+  } | null
+}
+
+export type InfraSnapshotStatus = 'ok' | 'warn' | 'critical' | 'unknown' | 'skipped'
+
+export interface InfraSnapshotSection {
+  status: InfraSnapshotStatus
+  latency_ms?: number
+  summary?: string
+  metrics?: Record<string, unknown>
+  error_code?: string
+  error_message_redacted?: string
+}
+
+export interface InfraSnapshotData {
+  generated_at: string
+  poll_interval_ms: number
+  overall_status: InfraSnapshotStatus
+  sections: Record<
+    'process' | 'http' | 'postgres' | 'redisQueue' | 'sse' | 'llm' | 'storageMedia',
+    InfraSnapshotSection
+  >
+}
+
+export interface LlmConnectivityRow {
+  route_id: string
+  provider_id: string
+  model_id: string
+  model_name: string | null
+  model_version: string | null
+  profile_id: string
+  voice_line_id: string
+  policy_id: string
+  intent: string
+  visibility: string
+  tier: string
+  credential_pool_id: string | null
+  endpoint_id: string
+  region: string
+  admission: 'admitted'
+  shadow_dimensions: string[]
+}
+
+export interface LlmConnectivityListData {
+  rows: LlmConnectivityRow[]
+  manual_tests_auto_polled: false
+}
+
+export interface LlmConnectivityTestResult {
+  route_id: string
+  status: 'ok' | 'failed'
+  latency_ms: number | null
+  tested_at: string
+  error_code: string | null
+  error_message_redacted: string | null
+}
+
+export interface LlmConnectivityTestResponseData {
+  results: LlmConnectivityTestResult[]
+}
+
+export interface RuntimeOperationRecordListFilters {
+  severity?: RuntimeOperationSeverity[]
+  source?: RuntimeOperationSource[]
+  status?: RuntimeOperationStatus[]
+  agent_id?: string
+  trace_id?: string
+  correlation_id?: string
+  event_id?: string
+  linked_risk_event_id?: string
+  entity_type?: 'agent' | 'community' | 'post' | 'room' | 'session' | 'message'
+  entity_id?: string
+  since?: string
+  until?: string
+  cursor?: string
+  limit?: number
+}

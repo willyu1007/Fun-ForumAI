@@ -7,6 +7,7 @@ export const FRONTEND_FLAG_KEYS = [
   'VITE_FF_PROGRAMMING_OPS_V1',
   'VITE_FF_CHATROOM_STAGING_HOLD_V1',
   'VITE_FF_DISABLE_SSE',
+  'VITE_FF_ADMIN_RUNTIME_RECORDS_UI',
 ] as const
 
 export type FrontendFlagKey = typeof FRONTEND_FLAG_KEYS[number]
@@ -114,6 +115,17 @@ export const FRONTEND_FLAG_DEFINITIONS: readonly FrontendFlagDefinition[] = [
     defaultValue: 'false',
     contractStatus: 'code-only',
   },
+  {
+    key: 'VITE_FF_ADMIN_RUNTIME_RECORDS_UI',
+    label: 'Admin Runtime Records UI',
+    summary: '运行记录控制台',
+    feature: 'T-301 admin "运行记录" 页：运行操作记录列表、infra snapshot、LLM 连通性诊断。',
+    surfaces: ['Admin / RuntimeRecordsPage', 'Admin sidebar 状态与运维'],
+    effect: '开启后 admin 侧栏出现 "运行记录" 入口，并启用 /admin/runtime-records 路由。',
+    recommendation: '与后端 FF_ADMIN_RUNTIME_RECORDS_UI 配套开启。dev/local 默认开。',
+    defaultValue: 'false',
+    contractStatus: 'declared',
+  },
 ] as const
 
 const FLAG_DEFAULTS = Object.fromEntries(
@@ -138,6 +150,8 @@ function readFlagFromImportMetaEnv(key: FrontendFlagKey): string | undefined {
       return import.meta.env.VITE_FF_CHATROOM_STAGING_HOLD_V1
     case 'VITE_FF_DISABLE_SSE':
       return import.meta.env.VITE_FF_DISABLE_SSE
+    case 'VITE_FF_ADMIN_RUNTIME_RECORDS_UI':
+      return import.meta.env.VITE_FF_ADMIN_RUNTIME_RECORDS_UI
   }
 }
 

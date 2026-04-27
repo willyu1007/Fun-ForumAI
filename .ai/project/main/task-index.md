@@ -159,7 +159,7 @@ Project: `main`
 | T-214 cue-auto-editor | done | F-060 | dev-docs/active/cue-auto-editor |
 | T-215 cue-public-projection | done | F-060 | dev-docs/active/cue-public-projection |
 | T-216 cue-media-policy | done | F-060 | dev-docs/active/cue-media-policy |
-| T-301 runtime-operation-records-console | in-progress | F-000 | dev-docs/active/runtime-operation-records-console |
+| T-301 runtime-operation-records-console | done | F-000 | dev-docs/active/runtime-operation-records-console |
 | T-302 admin-community-media-import-console | planned | F-000 | dev-docs/active/admin-community-media-import-console |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-902 chronicle-chapter-summary-alignment | archived | F-000 | dev-docs/archive/chronicle-chapter-summary-alignment |

@@ -80,3 +80,13 @@
     - `node scripts/runtime-records-cleanup.mjs --apply`: deleted 3, retained `recent` and `gov-old` (governance-linked)
     - tore down the container
   - No runtime instrumentation wired yet — `record()` is dormant until Batch C lands Slice 5.
+- 2026-04-27: Batch C (Slice 5 / 7 / 8) implementation landed locally — phase-1 scope closed.
+  - Slice 5 hook points wired into `runtime-loop.ts`, `event-queue.ts` (Redis stream impl DLQ), `agent-executor.ts` (executeOne catch + parser-no-instruction path), `post-scheduler.ts` (`createPost` outer catch), `proactive-interaction-service.ts` (AgentRun persist + opening-media attach failures). Singleton indirection module `runtime/runtime-observability.ts` keeps the diff small and tests run with a no-op recorder by default.
+  - `pnpm exec vitest run src/backend/runtime/__tests__/runtime-observability.test.ts` — 4 / 4 passing.
+  - `pnpm exec vitest run src/backend/runtime` — 276 / 276 passing (no regression in any existing runtime test).
+  - Slice 7 — frontend types / hooks / query keys / page / route / sidebar entry / frontend flag (`VITE_FF_ADMIN_RUNTIME_RECORDS_UI`) all wired. Page renders correct empty/disabled states for non-admin, UI flag off, and write flag off scenarios.
+  - `pnpm exec vitest run src/backend src/frontend/features/admin scripts/__tests__` — 2358 / 2360 passing (2 pre-existing unrelated skips).
+  - `pnpm lint` — passing.
+  - `pnpm typecheck` — only the pre-existing unrelated `src/shared/kickoff-workflow.ts` import error.
+  - `pnpm build` — passing; new lazy chunk for the frontend admin page builds without warnings.
+  - Did NOT exercise the page in a live browser this round. Static checks (typecheck + build + lint) verify it compiles; the empty-state copy is exercised by reading the component source. A live dev-server smoke is recorded as a follow-up rollout step (not a phase-1 acceptance gate).

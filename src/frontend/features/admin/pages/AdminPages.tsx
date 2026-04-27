@@ -12,6 +12,7 @@ import { MediaPlanAuditTab } from './admin-panel/MediaPlanAuditTab'
 import { MediaPromptsTab } from './admin-panel/MediaPromptsTab'
 import { WarmupGovernanceTab } from './admin-panel/WarmupGovernanceTab'
 import { RuntimeDashboard } from '../components/RuntimeDashboard'
+import { RuntimeRecordsPage as RuntimeRecordsContent } from './RuntimeRecordsPage'
 import { ReactNode } from 'react'
 
 function AdminPageWrapper({ title, description, children }: { title: string, description?: string, children: ReactNode }) {
@@ -156,6 +157,17 @@ export function AdminWarmupPage() {
   return (
     <AdminPageWrapper title="预热与启动">
       <WarmupGovernanceTab />
+    </AdminPageWrapper>
+  )
+}
+
+export function AdminRuntimeRecordsPage() {
+  return (
+    <AdminPageWrapper
+      title="运行记录"
+      description="只读运行操作记录、infra snapshot 与 LLM 连通性诊断（T-301）。"
+    >
+      <RuntimeRecordsContent />
     </AdminPageWrapper>
   )
 }
