@@ -88,6 +88,8 @@
     "smoke:runtime:staging": "node scripts/runtime-staging-smoke.mjs",
     "auth:delivery:smoke": "node scripts/auth-delivery-smoke.mjs",
     "auth:bootstrap-admin": "node scripts/bootstrap-admin-account.mjs",
+    "runtime-records:cleanup": "node scripts/runtime-records-cleanup.mjs",
+    "runtime-records:cleanup:apply": "node scripts/runtime-records-cleanup.mjs --apply",
     "test:e2e:pg:isolated": "node scripts/e2e-pg-isolated.mjs",
     "stage:templates:validate": "node scripts/stage-templates-validate.mjs",
     "stage:templates:export": "node scripts/stage-templates-export.mjs",

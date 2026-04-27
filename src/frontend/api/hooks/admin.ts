@@ -40,6 +40,12 @@ import type {
   ReviewCaseDetail,
   ReviewEvidenceExport,
   RuntimeFeaturesData,
+  RuntimeOperationRecordsListData,
+  RuntimeOperationRecordDetailData,
+  RuntimeOperationRecordListFilters,
+  InfraSnapshotData,
+  LlmConnectivityListData,
+  LlmConnectivityTestResponseData,
   MediaLifecycleRunResult,
   MediaScenePack,
   MediaScenePackCompilePreviewResult,
@@ -1500,5 +1506,89 @@ export function useReleaseDisclosureCapOverride() {
         qc.invalidateQueries({ queryKey: queryKeys.adminAgentRiskProfile(variables.scope_id) })
       }
     },
+  })
+}
+
+// T-301 admin runtime operation records
+function buildRuntimeOperationSearchParams(
+  filters: RuntimeOperationRecordListFilters,
+): Record<string, string | number> {
+  const out: Record<string, string | number> = {}
+  if (filters.severity?.length) out.severity = filters.severity.join(',')
+  if (filters.source?.length) out.source = filters.source.join(',')
+  if (filters.status?.length) out.status = filters.status.join(',')
+  if (filters.agent_id) out.agent_id = filters.agent_id
+  if (filters.trace_id) out.trace_id = filters.trace_id
+  if (filters.correlation_id) out.correlation_id = filters.correlation_id
+  if (filters.event_id) out.event_id = filters.event_id
+  if (filters.linked_risk_event_id) out.linked_risk_event_id = filters.linked_risk_event_id
+  if (filters.entity_type) out.entity_type = filters.entity_type
+  if (filters.entity_id) out.entity_id = filters.entity_id
+  if (filters.since) out.since = filters.since
+  if (filters.until) out.until = filters.until
+  if (filters.cursor) out.cursor = filters.cursor
+  if (typeof filters.limit === 'number') out.limit = filters.limit
+  return out
+}
+
+export function useAdminRuntimeOperationRecords(
+  filters: RuntimeOperationRecordListFilters = {},
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: queryKeys.adminRuntimeOperationRecords(filters as Record<string, unknown>),
+    queryFn: () =>
+      api
+        .get('admin/runtime/operation-records', {
+          searchParams: buildRuntimeOperationSearchParams(filters),
+        })
+        .json<ApiResponse<RuntimeOperationRecordsListData>>(),
+    enabled: options.enabled !== false,
+    retry: false,
+  })
+}
+
+export function useAdminRuntimeOperationRecord(
+  id: string | null | undefined,
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: queryKeys.adminRuntimeOperationRecord(id ?? ''),
+    queryFn: () =>
+      api
+        .get(`admin/runtime/operation-records/${id}`)
+        .json<ApiResponse<RuntimeOperationRecordDetailData>>(),
+    enabled: Boolean(id) && options.enabled !== false,
+    retry: false,
+  })
+}
+
+export function useAdminRuntimeInfraSnapshot(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: queryKeys.adminRuntimeInfraSnapshot,
+    queryFn: () =>
+      api.get('admin/runtime/infra-snapshot').json<ApiResponse<InfraSnapshotData>>(),
+    enabled: options.enabled !== false,
+    refetchInterval: 15_000,
+    retry: false,
+  })
+}
+
+export function useAdminRuntimeLlmConnectivity(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: queryKeys.adminRuntimeLlmConnectivity,
+    queryFn: () =>
+      api.get('admin/runtime/llm-connectivity').json<ApiResponse<LlmConnectivityListData>>(),
+    enabled: options.enabled !== false,
+    retry: false,
+  })
+}
+
+export function useAdminRuntimeLlmConnectivityTest() {
+  return useMutation({
+    mutationFn: (body: { route_ids?: string[]; scope?: 'all_admitted' }) =>
+      api
+        .post('admin/runtime/llm-connectivity/test', { json: body })
+        .json<ApiResponse<LlmConnectivityTestResponseData>>(),
   })
 }

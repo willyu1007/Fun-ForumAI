@@ -1306,3 +1306,22 @@ templates:
     user_prompt: |
       Later note 上下文：
       {{later_note_context_json}}
+
+  - prompt_template_id: admin-llm-connectivity-diagnostic
+    version: 1
+    description: |
+      T-301 admin runtime-records console — minimal connectivity probe used by the
+      "运行记录 / LLM 路由" manual diagnostic. Sends a tiny instruction through the
+      existing gateway path so operators can verify that a staging-active
+      provider/model/credential/adapter route can return a response. Does not
+      generate any user-visible content, does not enqueue runtime events, and the
+      response is discarded after success classification.
+    variables_schema:
+      type: object
+      properties: {}
+      required: []
+    system_prompt: |
+      You are a connectivity probe. Reply with the exact two characters: OK
+    user_prompt: |
+      ping
+

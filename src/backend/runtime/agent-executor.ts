@@ -39,6 +39,7 @@ import {
   parseRoamingDecision,
   resolveForumExecutionPlan,
 } from './forum-roaming.js'
+import { compactErrorMessage, recordRuntimeOperation } from './runtime-observability.js'
 
 export interface AgentExecutorDeps {
   llmGateway: LLMGateway
@@ -193,6 +194,18 @@ export class AgentExecutor {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       console.error(`[AgentExecutor] Failed for agent ${agent.agent_id}: ${message}`)
+      recordRuntimeOperation({
+        severity: 'error',
+        source: 'agent_executor',
+        operation: 'execute',
+        status: 'failed',
+        agent_id: agent.agent_id,
+        event_id: event.event_id,
+        community_id: event.community_id,
+        post_id: event.post_id ?? null,
+        duration_ms: Date.now() - start,
+        error_message_redacted: compactErrorMessage(err),
+      })
       return {
         agent_id: agent.agent_id,
         event_id: event.event_id,
@@ -658,6 +671,23 @@ export class AgentExecutor {
       })
       recordPersonaObservation(failedObservation)
       console.warn(`[AgentExecutor] No valid instruction from LLM for agent ${input.agent.agent_id}`)
+      recordRuntimeOperation({
+        severity: 'warn',
+        source: 'agent_executor',
+        operation: 'parse_output',
+        status: 'failed',
+        agent_id: input.agent.agent_id,
+        event_id: input.event.event_id,
+        community_id: input.event.community_id,
+        duration_ms: latencyMs,
+        error_code: 'parse_failed',
+        error_message_redacted: 'LLM output could not be parsed into a valid action',
+        payload_json: {
+          prompt_template_id: templateId.id,
+          prompt_version: templateId.version,
+          response_length: llmResponse.content.length,
+        },
+      })
       return {
         agent_id: input.agent.agent_id,
         event_id: input.event.event_id,

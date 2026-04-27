@@ -7,6 +7,7 @@ import type { RuntimeTickResult, AgentExecutionResult } from './types.js'
 import type { LeaderElector } from './leader-elector.js'
 import type { RuntimeEventQueue } from './event-queue.js'
 import type { RuntimeBaselineAdmission } from '../services/warmup-governance-service.js'
+import { compactErrorMessage, recordRuntimeOperation } from './runtime-observability.js'
 
 export interface RuntimeLoopConfig {
   intervalMs: number
@@ -134,6 +135,17 @@ export class RuntimeLoop {
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err)
           console.error(`[RuntimeLoop] Failed to process event ${event.event_id}: ${message}`)
+          recordRuntimeOperation({
+            severity: 'error',
+            source: 'runtime_loop',
+            operation: 'process_event',
+            status: 'retried',
+            event_id: event.event_id,
+            agent_id: event.author_agent_id ?? null,
+            community_id: event.community_id,
+            post_id: event.post_id ?? null,
+            error_message_redacted: compactErrorMessage(err),
+          })
           await handle.retry(message)
         }
       }
@@ -182,6 +194,18 @@ export class RuntimeLoop {
       }
     } catch (err) {
       console.error('[RuntimeLoop] Tick error:', err)
+      recordRuntimeOperation({
+        severity: 'critical',
+        source: 'runtime_loop',
+        operation: 'tick',
+        status: 'failed',
+        error_message_redacted: compactErrorMessage(err),
+        payload_json: {
+          processed_events: processedEvents,
+          allocated_agents: totalAllocated,
+          executions: executions.length,
+        },
+      })
       return {
         processed_events: processedEvents,
         executions,

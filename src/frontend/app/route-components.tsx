@@ -105,6 +105,12 @@ export const AdminWarmupPage = lazyWithDynamicImportRecovery(() =>
   import('../features/admin/pages/AdminPages').then((m) => ({ default: m.AdminWarmupPage })),
   'route:admin-warmup',
 )
+export const AdminRuntimeRecordsPage = lazyWithDynamicImportRecovery(() =>
+  import('../features/admin/pages/AdminPages').then((m) => ({
+    default: m.AdminRuntimeRecordsPage,
+  })),
+  'route:admin-runtime-records',
+)
 export const ChatRoomListPage = lazyWithDynamicImportRecovery(() =>
   import('../features/chat/pages/ChatRoomListPage').then((m) => ({
     default: m.ChatRoomListPage,

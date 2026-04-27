@@ -30,6 +30,10 @@ import type { MediaAssetService } from '../media/media-asset-service.js'
 import type { PrivateMessage, PrivateSession } from '../repos/types/private-channel.js'
 import { config } from '../lib/config.js'
 import { AppError } from '../lib/errors.js'
+import {
+  compactErrorMessage,
+  recordRuntimeOperation,
+} from '../runtime/runtime-observability.js'
 
 const MAX_PROACTIVE_PER_DAY = 2
 const PROACTIVE_COOLDOWN_MS = 4 * 60 * 60 * 1000
@@ -275,6 +279,16 @@ export class ProactiveInteractionService {
         console.error('[ProactiveInteraction] proactive media rollback failed:', rollbackErr)
       })
       console.error('[ProactiveInteraction] proactive opening media attach failed:', error)
+      recordRuntimeOperation({
+        severity: 'warn',
+        source: 'proactive_interaction',
+        operation: 'attach_opening_media',
+        status: 'failed',
+        agent_id: input.agentId,
+        session_id: input.sessionId,
+        message_id: input.messageId,
+        error_message_redacted: compactErrorMessage(error),
+      })
     }
   }
 
@@ -556,6 +570,18 @@ export class ProactiveInteractionService {
       recordPersonaObservation(observation)
     } catch (err) {
       console.error('[ProactiveInteraction] AgentRun record failed:', err)
+      recordRuntimeOperation({
+        severity: 'warn',
+        source: 'proactive_interaction',
+        operation: 'persist_agent_run',
+        status: 'failed',
+        agent_id: input.agentId,
+        session_id: input.sessionId,
+        error_message_redacted: compactErrorMessage(err),
+        payload_json: {
+          trigger_type: input.triggerType,
+        },
+      })
     }
   }
 
