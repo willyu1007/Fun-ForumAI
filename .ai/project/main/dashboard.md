@@ -8,24 +8,24 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 217 (planned: 1, in-progress: 8, blocked: 0, done: 9, archived: 199)
+- Tasks: 217 (planned: 1, in-progress: 6, blocked: 0, done: 0, archived: 210)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-207 admin-auto-programming | in-progress | F-060 | dev-docs/active/admin-auto-programming |
-| T-210 cue-editor-admin | done | F-060 | dev-docs/active/cue-editor-admin |
-| T-211 post-scheduler-boundary | done | F-060 | dev-docs/active/post-scheduler-boundary |
-| T-212 cue-worker-runtime | done | F-060 | dev-docs/active/cue-worker-runtime |
-| T-213 cue-load-control | done | F-060 | dev-docs/active/cue-load-control |
-| T-214 cue-auto-editor | done | F-060 | dev-docs/active/cue-auto-editor |
-| T-215 cue-public-projection | done | F-060 | dev-docs/active/cue-public-projection |
-| T-216 cue-media-policy | done | F-060 | dev-docs/active/cue-media-policy |
+| T-207 admin-auto-programming | archived | F-060 | dev-docs/archive/admin-auto-programming |
+| T-208 cue-shared-contract | archived | F-060 | dev-docs/archive/cue-shared-contract |
+| T-209 cue-data-and-board | archived | F-060 | dev-docs/archive/cue-data-and-board |
+| T-210 cue-editor-admin | archived | F-060 | dev-docs/archive/cue-editor-admin |
+| T-211 post-scheduler-boundary | archived | F-060 | dev-docs/archive/post-scheduler-boundary |
+| T-212 cue-worker-runtime | archived | F-060 | dev-docs/archive/cue-worker-runtime |
+| T-213 cue-load-control | archived | F-060 | dev-docs/archive/cue-load-control |
+| T-214 cue-auto-editor | archived | F-060 | dev-docs/archive/cue-auto-editor |
+| T-215 cue-public-projection | archived | F-060 | dev-docs/archive/cue-public-projection |
+| T-216 cue-media-policy | archived | F-060 | dev-docs/archive/cue-media-policy |
 | T-301 runtime-operation-records-console | archived | F-000 | dev-docs/archive/runtime-operation-records-console |
-| T-302 admin-community-media-import-console | in-progress | F-000 | dev-docs/active/admin-community-media-import-console |
-| T-209 cue-data-and-board | done | F-060 | dev-docs/active/cue-data-and-board |
-| T-208 cue-shared-contract | done | F-060 | dev-docs/active/cue-shared-contract |
+| T-302 admin-community-media-import-console | archived | F-000 | dev-docs/archive/admin-community-media-import-console |
 | T-991 kickoff-live-run-v3 | archived | F-000 | dev-docs/archive/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | archived | F-000 | dev-docs/archive/agent-follow-event-semantics-and-durability |

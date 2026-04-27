@@ -12,7 +12,7 @@ import {
   buildCommunityCommonsPoolSceneId,
   buildPlatformCanonicalPoolSceneId,
 } from '../../media/media-reuse-governance-service.js'
-import { mediaAssetService } from '../../container.js'
+import { mediaAssetService, sceneMediaBindingRepo } from '../../container.js'
 
 setupFeatureFlagGuard()
 
@@ -88,6 +88,16 @@ describe('Admin media import routes (T-302)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .field('allow_quote_original', 'false')
       expect(res.status).toBe(400)
+    })
+
+    it('rejects upload with an invalid allow_quote_original form flag', async () => {
+      const res = await request(app)
+        .post('/v1/admin/media/platform-canonical/imports/upload')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .field('allow_quote_original', 'definitely')
+        .attach('file', VALID_PNG_BUFFER, { filename: 'platform-invalid-flag.png', contentType: 'image/png' })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
     })
 
     it('rejects upload with unsupported MIME', async () => {
@@ -237,6 +247,48 @@ describe('Admin media import routes (T-302)', () => {
       expect(listRes.body.data.pool.scene_id).toBe(buildCommunityCommonsPoolSceneId(community.id))
       expect(listRes.body.data.pool.community_id).toBe(community.id)
       expect(listRes.body.data.items.some((item: { asset: { asset_id: string } }) => item.asset.asset_id === assetId)).toBe(true)
+    })
+
+    it('returns 404 for missing community upload and does not create an orphan pool', async () => {
+      const missingCommunityId = `missing-t302-upload-${Date.now()}`
+      const res = await request(app)
+        .post(`/v1/admin/communities/${missingCommunityId}/media/commons/imports/upload`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', VALID_PNG_BUFFER, { filename: 'orphan.png', contentType: 'image/png' })
+
+      expect(res.status).toBe(404)
+      expect(res.body.error.code).toBe('NOT_FOUND')
+      const bindings = await sceneMediaBindingRepo.findByScene(
+        'media_pool',
+        buildCommunityCommonsPoolSceneId(missingCommunityId),
+      )
+      expect(bindings).toHaveLength(0)
+    })
+
+    it('returns 404 for missing community URL import before remote ingest', async () => {
+      const missingCommunityId = `missing-t302-url-${Date.now()}`
+      const ingestSpy = vi
+        .spyOn(mediaAssetService, 'ingestManagedRemoteAsset')
+        .mockRejectedValue(new Error('missing community should be rejected before remote ingest'))
+
+      const res = await request(app)
+        .post(`/v1/admin/communities/${missingCommunityId}/media/commons/imports/url`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ source_url: 'https://cdn.example.com/orphan.png' })
+
+      expect(res.status).toBe(404)
+      expect(res.body.error.code).toBe('NOT_FOUND')
+      expect(ingestSpy).not.toHaveBeenCalled()
+    })
+
+    it('returns 404 when listing a missing community pool', async () => {
+      const missingCommunityId = `missing-t302-list-${Date.now()}`
+      const res = await request(app)
+        .get(`/v1/admin/communities/${missingCommunityId}/media/commons/assets`)
+        .set('Authorization', `Bearer ${adminToken}`)
+
+      expect(res.status).toBe(404)
+      expect(res.body.error.code).toBe('NOT_FOUND')
     })
   })
 })

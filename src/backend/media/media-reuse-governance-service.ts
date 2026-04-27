@@ -5,6 +5,7 @@ import type { MediaContextProjectionRepository } from '../repos/media-context-pr
 import type { MediaReusePolicyRepository, UpdateMediaReusePolicyPatch } from '../repos/media-reuse-policy-repository.js'
 import type { MediaGenerationJobRepository } from '../repos/media-generation-job-repository.js'
 import type { ImagePlanRepository } from '../repos/image-plan-repository.js'
+import type { CommunityRepository } from '../repos/community-repository.js'
 import type {
   MediaAsset,
   MediaContextProjection,
@@ -30,6 +31,7 @@ export interface MediaReuseGovernanceServiceDeps {
   mediaReusePolicyRepo: MediaReusePolicyRepository
   mediaGenerationJobRepo: MediaGenerationJobRepository
   imagePlanRepo: ImagePlanRepository
+  communityRepo?: Pick<CommunityRepository, 'findById'>
   mediaBindingService: MediaBindingService
   mediaObservabilityService?: Pick<MediaObservabilityService, 'record'> | null
 }
@@ -480,11 +482,18 @@ export class MediaReuseGovernanceService {
     actor_user_id: string
     allow_quote_original?: boolean
   }): Promise<{ binding: SceneMediaBinding; policy: MediaReusePolicy }> {
+    const communityId = input.community_id.trim()
+    if (communityId.length === 0) {
+      throw new ValidationError('community_id is required')
+    }
+    if (this.deps.communityRepo && !this.deps.communityRepo.findById(communityId)) {
+      throw new NotFoundError('Community', communityId)
+    }
     return this.registerPoolAsset({
       asset_id: input.asset_id,
-      pool_id: buildCommunityCommonsPoolSceneId(input.community_id),
+      pool_id: buildCommunityCommonsPoolSceneId(communityId),
       source_kind: 'community_commons',
-      community_id: input.community_id,
+      community_id: communityId,
       actor_user_id: input.actor_user_id,
       allow_quote_original: input.allow_quote_original,
     })

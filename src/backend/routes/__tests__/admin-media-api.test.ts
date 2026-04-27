@@ -102,6 +102,15 @@ describe('Admin media API', () => {
     expect(canonicalRes.body.data.binding.scene_type).toBe('media_pool')
     expect(canonicalRes.body.data.binding.scene_id).toBe(buildPlatformCanonicalPoolSceneId())
     expect(canonicalRes.body.data.policy.source_kind).toBe('platform_canonical')
+    expect(canonicalRes.body.data.policy.allowed_reuse_modes).toEqual(['derive_new', 'reference_only'])
+    expect(canonicalRes.body.data.policy.cross_agent_quote_allowed).toBe(false)
+
+    const missingCommonsRes = await request(app)
+      .post(`/v1/admin/communities/missing-community-${Date.now()}/media/commons/assets`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ asset_id: assetId })
+    expect(missingCommonsRes.status).toBe(404)
+    expect(missingCommonsRes.body.error.code).toBe('NOT_FOUND')
 
     const commonsRes = await request(app)
       .post(`/v1/admin/communities/${community.id}/media/commons/assets`)

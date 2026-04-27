@@ -10,6 +10,7 @@ import { InMemoryMediaReusePolicyRepository } from '../../repos/media-reuse-poli
 import { InMemoryMediaRetrievalDocumentRepository } from '../../repos/media-retrieval-document-repository.js'
 import { InMemoryMediaEmbeddingSnapshotRepository } from '../../repos/media-embedding-snapshot-repository.js'
 import { InMemoryPostMediaRepository } from '../../repos/post-media-repository.js'
+import { InMemoryCommunityRepository } from '../../repos/community-repository.js'
 import type {
   MediaAsset,
   MediaEmbeddingSnapshot,
@@ -36,6 +37,7 @@ async function buildHarness(): Promise<Harness> {
   const mediaRetrievalDocumentRepo = new InMemoryMediaRetrievalDocumentRepository()
   const mediaEmbeddingSnapshotRepo = new InMemoryMediaEmbeddingSnapshotRepository()
   const postMediaRepo = new InMemoryPostMediaRepository()
+  const communityRepo = new InMemoryCommunityRepository()
 
   const asset = await mediaAssetRepo.create({
     id: 'asset-platform-1',
@@ -118,6 +120,7 @@ async function buildHarness(): Promise<Harness> {
     mediaRetrievalDocumentRepo,
     mediaEmbeddingSnapshotRepo,
     postMediaRepo,
+    communityRepo,
     storage: { publicUrl: (key: string) => `/v1/media/local/${encodeURIComponent(key)}` },
   })
 
@@ -203,6 +206,7 @@ describe('AdminMediaImportService.resolveRetrievalStatus (via list)', () => {
     const mediaRetrievalDocumentRepo = new InMemoryMediaRetrievalDocumentRepository()
     const mediaEmbeddingSnapshotRepo = new InMemoryMediaEmbeddingSnapshotRepository()
     const postMediaRepo = new InMemoryPostMediaRepository()
+    const communityRepo = new InMemoryCommunityRepository()
 
     const asset = await mediaAssetRepo.create({
       id: 'asset-no-doc-1',
@@ -249,6 +253,7 @@ describe('AdminMediaImportService.resolveRetrievalStatus (via list)', () => {
       mediaRetrievalDocumentRepo,
       mediaEmbeddingSnapshotRepo,
       postMediaRepo,
+      communityRepo,
       storage: { publicUrl: (key: string) => `/v1/media/local/${encodeURIComponent(key)}` },
     })
 

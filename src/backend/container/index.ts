@@ -251,6 +251,7 @@ const llm = createLlmServices({
   mediaImportJobItemRepo: repos.mediaImportJobItemRepo,
   forumSceneMetadataRepo: repos.forumSceneMetadataRepo,
   messageRepo: repos.messageRepo,
+  communityRepo: repos.communityRepo,
   eventRepo: repos.eventRepo,
   agentRunRepo: repos.agentRunRepo,
   usageLedgerRepo: pgUsageLedgerRepo,

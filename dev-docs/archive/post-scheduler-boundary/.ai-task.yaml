@@ -1,0 +1,13 @@
+version: 1
+task_id: T-211
+project: main
+slug: post-scheduler-boundary
+status: archived
+updated: "2026-04-27"
+keywords:
+  - post-scheduler
+  - cue-worker
+  - production-path
+  - community-budget
+  - boundary-doc
+  - phase-2-5

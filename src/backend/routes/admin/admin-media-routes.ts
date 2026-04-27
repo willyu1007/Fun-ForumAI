@@ -62,8 +62,17 @@ function handleAdminMediaUploadParse(
 }
 
 function parseAdminMediaImportFormFields(body: unknown): { allow_quote_original?: boolean } {
-  const parsed = adminMediaImportUploadFormSchema.parse(body ?? {})
-  return { allow_quote_original: parsed.allow_quote_original }
+  const parsed = adminMediaImportUploadFormSchema.safeParse(body ?? {})
+  if (!parsed.success) {
+    throw new ValidationError(
+      'Invalid upload form fields',
+      parsed.error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+      })),
+    )
+  }
+  return { allow_quote_original: parsed.data.allow_quote_original }
 }
 
 function parseAdminMediaImportListLimit(query: unknown): number {

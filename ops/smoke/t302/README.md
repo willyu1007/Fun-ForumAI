@@ -17,9 +17,11 @@ exercises every T-302 admin media import endpoint over real HTTP.
 - Community commons upload: registers into
   `community_commons:<communityId>` with the correct default policy.
 - Community asset list: scoped to `community.id`.
+- Missing community commons list: returns 404 instead of reading an
+  orphan `community_commons:<missingId>` pool.
 - Multipart upload rejection when `file` is missing.
 
-11 assertions in total. Output is `[ok]` / `[fail]` per line plus a
+12 assertions in total. Output is `[ok]` / `[fail]` per line plus a
 final `[summary] N/M assertions passed` line.
 
 ## Why no Postgres/Redis

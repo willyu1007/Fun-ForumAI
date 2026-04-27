@@ -728,18 +728,18 @@ export const createCommunityCommonsAssetSchema = z
   })
   .strict()
 
-const adminMediaImportFlagFromForm = z
-  .union([z.boolean(), z.string()])
-  .optional()
-  .transform((value) => {
+const adminMediaImportFlagFromForm = z.preprocess(
+  (value) => {
     if (typeof value === 'boolean') return value
     if (typeof value === 'string') {
       const normalized = value.trim().toLowerCase()
       if (normalized === 'true' || normalized === '1' || normalized === 'on') return true
       if (normalized === 'false' || normalized === '0' || normalized === 'off' || normalized === '') return false
     }
-    return undefined
-  })
+    return value
+  },
+  z.boolean().optional(),
+)
 
 export const adminMediaImportUrlBodySchema = z
   .object({

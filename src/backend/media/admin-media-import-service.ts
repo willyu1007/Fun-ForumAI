@@ -1,4 +1,4 @@
-import { ValidationError } from '../lib/errors.js'
+import { NotFoundError, ValidationError } from '../lib/errors.js'
 import type {
   MediaAsset,
   MediaEmbeddingSnapshot,
@@ -15,6 +15,7 @@ import type { MediaReusePolicyRepository } from '../repos/media-reuse-policy-rep
 import type { MediaRetrievalDocumentRepository } from '../repos/media-retrieval-document-repository.js'
 import type { MediaEmbeddingSnapshotRepository } from '../repos/media-embedding-snapshot-repository.js'
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
+import type { CommunityRepository } from '../repos/community-repository.js'
 import type { StorageAdapter } from '../services/storage-adapter.js'
 import type { MediaAssetService } from './media-asset-service.js'
 import type { MediaReuseGovernanceService } from './media-reuse-governance-service.js'
@@ -42,6 +43,7 @@ export interface AdminMediaImportServiceDeps {
   mediaRetrievalDocumentRepo: Pick<MediaRetrievalDocumentRepository, 'listByAssetId'>
   mediaEmbeddingSnapshotRepo: Pick<MediaEmbeddingSnapshotRepository, 'listByRetrievalDocumentId'>
   postMediaRepo: Pick<PostMediaRepository, 'findByAssetId'>
+  communityRepo: Pick<CommunityRepository, 'findById'>
   storage: Pick<StorageAdapter, 'publicUrl'>
 }
 
@@ -112,6 +114,11 @@ interface ImportContext {
   community_id: string | null
 }
 
+interface CommunityImportContext extends ImportContext {
+  pool_source_kind: 'community_commons'
+  community_id: string
+}
+
 export class AdminMediaImportService {
   constructor(private readonly deps: AdminMediaImportServiceDeps) {}
 
@@ -156,13 +163,13 @@ export class AdminMediaImportService {
     const ctx = this.communityContext(input.community_id)
     const { asset, snapshot } = await this.ingestUpload(ctx, input.actor_user_id, input.file)
     const { binding, policy } = await this.deps.mediaReuseGovernanceService.registerCommunityCommonsAsset({
-      community_id: input.community_id,
+      community_id: ctx.community_id,
       asset_id: asset.id,
       actor_user_id: input.actor_user_id,
       allow_quote_original: input.allow_quote_original,
     })
     await this.attemptRetrievalIndex(ctx, asset, snapshot, input.actor_user_id)
-    return this.assembleItem({ asset, snapshot, binding, policy, community_id: input.community_id })
+    return this.assembleItem({ asset, snapshot, binding, policy, community_id: ctx.community_id })
   }
 
   async importCommunityUrl(input: {
@@ -174,13 +181,13 @@ export class AdminMediaImportService {
     const ctx = this.communityContext(input.community_id)
     const { asset, snapshot } = await this.ingestUrl(ctx, input.actor_user_id, input.source_url)
     const { binding, policy } = await this.deps.mediaReuseGovernanceService.registerCommunityCommonsAsset({
-      community_id: input.community_id,
+      community_id: ctx.community_id,
       asset_id: asset.id,
       actor_user_id: input.actor_user_id,
       allow_quote_original: input.allow_quote_original,
     })
     await this.attemptRetrievalIndex(ctx, asset, snapshot, input.actor_user_id)
-    return this.assembleItem({ asset, snapshot, binding, policy, community_id: input.community_id })
+    return this.assembleItem({ asset, snapshot, binding, policy, community_id: ctx.community_id })
   }
 
   async listPlatformAssets(input: { limit?: number }): Promise<AdminMediaImportListPayload> {
@@ -206,14 +213,19 @@ export class AdminMediaImportService {
     }
   }
 
-  private communityContext(communityId: string): ImportContext {
-    if (!communityId || communityId.trim().length === 0) {
+  private communityContext(communityId: string): CommunityImportContext {
+    const normalizedCommunityId = communityId.trim()
+    if (normalizedCommunityId.length === 0) {
       throw new ValidationError('community_id is required')
+    }
+    const community = this.deps.communityRepo.findById(normalizedCommunityId)
+    if (!community) {
+      throw new NotFoundError('Community', normalizedCommunityId)
     }
     return {
       pool_source_kind: 'community_commons',
-      pool_scene_id: buildCommunityCommonsPoolSceneId(communityId),
-      community_id: communityId,
+      pool_scene_id: buildCommunityCommonsPoolSceneId(community.id),
+      community_id: community.id,
     }
   }
 

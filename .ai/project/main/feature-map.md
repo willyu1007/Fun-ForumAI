@@ -80,7 +80,7 @@ Project: `main`
 | T-159 batch-slice-governance-and-review-console-v1 | archived | dev-docs/archive/batch-slice-governance-and-review-console-v1 |
 | T-201 llm-matrix-refresh-and-media-fallback-v1 | in-progress | dev-docs/active/llm-matrix-refresh-and-media-fallback-v1 |
 | T-301 runtime-operation-records-console | archived | dev-docs/archive/runtime-operation-records-console |
-| T-302 admin-community-media-import-console | in-progress | dev-docs/active/admin-community-media-import-console |
+| T-302 admin-community-media-import-console | archived | dev-docs/archive/admin-community-media-import-console |
 | T-902 chronicle-chapter-summary-alignment | archived | dev-docs/archive/chronicle-chapter-summary-alignment |
 | T-903 owner-mindset-residual-risk-closure | archived | dev-docs/archive/owner-mindset-residual-risk-closure |
 | T-907 confirmed-technical-debt-paydown | archived | dev-docs/archive/confirmed-technical-debt-paydown |
@@ -217,16 +217,16 @@ Project: `main`
 | T-099 scene-pool-authoring-schema-v2-migration | archived | dev-docs/archive/scene-pool-authoring-schema-v2-migration |
 | T-100 scene-pool-authoring-v2-hardening-and-e2e-followup | archived | dev-docs/archive/scene-pool-authoring-v2-hardening-and-e2e-followup |
 | T-101 director-report-history-lifecycle-and-segmentation | archived | dev-docs/archive/director-report-history-lifecycle-and-segmentation |
-| T-207 admin-auto-programming | in-progress | dev-docs/active/admin-auto-programming |
-| T-208 cue-shared-contract | done | dev-docs/active/cue-shared-contract |
-| T-209 cue-data-and-board | done | dev-docs/active/cue-data-and-board |
-| T-210 cue-editor-admin | done | dev-docs/active/cue-editor-admin |
-| T-211 post-scheduler-boundary | done | dev-docs/active/post-scheduler-boundary |
-| T-212 cue-worker-runtime | done | dev-docs/active/cue-worker-runtime |
-| T-213 cue-load-control | done | dev-docs/active/cue-load-control |
-| T-214 cue-auto-editor | done | dev-docs/active/cue-auto-editor |
-| T-215 cue-public-projection | done | dev-docs/active/cue-public-projection |
-| T-216 cue-media-policy | done | dev-docs/active/cue-media-policy |
+| T-207 admin-auto-programming | archived | dev-docs/archive/admin-auto-programming |
+| T-208 cue-shared-contract | archived | dev-docs/archive/cue-shared-contract |
+| T-209 cue-data-and-board | archived | dev-docs/archive/cue-data-and-board |
+| T-210 cue-editor-admin | archived | dev-docs/archive/cue-editor-admin |
+| T-211 post-scheduler-boundary | archived | dev-docs/archive/post-scheduler-boundary |
+| T-212 cue-worker-runtime | archived | dev-docs/archive/cue-worker-runtime |
+| T-213 cue-load-control | archived | dev-docs/archive/cue-load-control |
+| T-214 cue-auto-editor | archived | dev-docs/archive/cue-auto-editor |
+| T-215 cue-public-projection | archived | dev-docs/archive/cue-public-projection |
+| T-216 cue-media-policy | archived | dev-docs/archive/cue-media-policy |
 
 ### F-070 Owner Nurture & Life Overview
 

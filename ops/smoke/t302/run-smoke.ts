@@ -323,7 +323,22 @@ async function main(): Promise<number> {
       )
     }
 
-    // 11. Reject upload without a file
+    // 11. Missing community pool does not create/read an orphan commons scope
+    {
+      const missingCommunityId = `missing-t302-smoke-${Date.now()}`
+      const res = await fetch(
+        `${baseUrl}/v1/admin/communities/${missingCommunityId}/media/commons/assets`,
+        { headers: { 'Authorization': `Bearer ${adminToken}` } },
+      )
+      const body = (await readJson(res)) as { error?: { code?: string } } | null
+      record(
+        'Missing community commons list → 404',
+        res.status === 404 && body?.error?.code === 'NOT_FOUND',
+        `status=${res.status} code=${body?.error?.code ?? 'unknown'}`,
+      )
+    }
+
+    // 12. Reject upload without a file
     {
       const form = new FormData()
       form.set('allow_quote_original', 'false')

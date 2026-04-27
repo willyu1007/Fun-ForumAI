@@ -70,6 +70,7 @@ import type { MediaImportJobItemRepository } from '../repos/media-import-job-ite
 import type { ForumSceneMetadataRepository } from '../repos/forum-scene-metadata-repository.js'
 import type { EventRepository, AgentRunRepository } from '../repos/event-repository.js'
 import type { MessageRepository } from '../repos/message-repository.js'
+import type { CommunityRepository } from '../repos/community-repository.js'
 
 export function createLlmServices(deps: {
   agentRepo: AgentRepository
@@ -96,6 +97,7 @@ export function createLlmServices(deps: {
   mediaImportJobItemRepo: MediaImportJobItemRepository
   forumSceneMetadataRepo: ForumSceneMetadataRepository
   messageRepo: MessageRepository
+  communityRepo: CommunityRepository
   eventRepo: EventRepository
   agentRunRepo: AgentRunRepository
   usageLedgerRepo?: UsageLedgerRepository
@@ -189,6 +191,7 @@ export function createLlmServices(deps: {
     mediaReusePolicyRepo: deps.mediaReusePolicyRepo,
     mediaGenerationJobRepo: deps.mediaGenerationJobRepo,
     imagePlanRepo: deps.imagePlanRepo,
+    communityRepo: deps.communityRepo,
     mediaBindingService,
     mediaObservabilityService,
   })
@@ -311,6 +314,7 @@ export function createLlmServices(deps: {
     mediaRetrievalDocumentRepo: deps.mediaRetrievalDocumentRepo,
     mediaEmbeddingSnapshotRepo: deps.mediaEmbeddingSnapshotRepo,
     postMediaRepo: deps.postMediaRepo,
+    communityRepo: deps.communityRepo,
     storage: mediaAssetStorage,
   })
 
