@@ -94,6 +94,7 @@ RUN set -eu; \
     dist/frontend/bundle-report.json; \
   rm -f prisma.config.ts; \
   printf 'import{defineConfig}from"prisma/config";export default defineConfig({schema:"prisma/schema.prisma",migrations:{path:"prisma/migrations"},datasource:{url:process.env.DATABASE_URL}});\n' > prisma.config.js; \
+  node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.packageManager;fs.writeFileSync('package.json',JSON.stringify(p));" ; \
   find public dist/frontend -name '.DS_Store' -delete; \
   check_no_repo_tests() { \
     found="$({ \
