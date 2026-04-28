@@ -45,6 +45,7 @@ RUN set -eu; \
     fi; \
   }; \
   check_no_repo_tests src apps packages scripts ops docs ui
+RUN pnpm ui:packages:build
 RUN pnpm stage:templates:export
 RUN pnpm build
 RUN if [ -n "$FRONTEND_BUILD_PROFILE" ]; then node ops/packaging/scripts/frontend-build-profile.mjs --profile "$FRONTEND_BUILD_PROFILE" --out dist/frontend/frontend-build-capabilities.json; fi
@@ -67,16 +68,16 @@ COPY env/secrets ./env/secrets
 COPY docs/project/policy.yaml ./docs/project/policy.yaml
 COPY docs/stage-templates/source ./docs/stage-templates/source
 COPY packages/design-tokens/package.json ./packages/design-tokens/package.json
-COPY packages/design-tokens/dist ./packages/design-tokens/dist
+COPY --from=builder /app/packages/design-tokens/dist ./packages/design-tokens/dist
 COPY packages/design-tokens/styles ./packages/design-tokens/styles
 COPY packages/ui-contract/package.json ./packages/ui-contract/package.json
-COPY packages/ui-contract/dist ./packages/ui-contract/dist
+COPY --from=builder /app/packages/ui-contract/dist ./packages/ui-contract/dist
 COPY packages/ui-contract/contract ./packages/ui-contract/contract
 COPY packages/ui-web/package.json ./packages/ui-web/package.json
-COPY packages/ui-web/dist ./packages/ui-web/dist
+COPY --from=builder /app/packages/ui-web/dist ./packages/ui-web/dist
 COPY packages/ui-web/styles ./packages/ui-web/styles
 COPY packages/ui-mobile/package.json ./packages/ui-mobile/package.json
-COPY packages/ui-mobile/dist ./packages/ui-mobile/dist
+COPY --from=builder /app/packages/ui-mobile/dist ./packages/ui-mobile/dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist/frontend ./dist/frontend
 COPY --from=builder /app/docs/stage-templates/dist ./docs/stage-templates/dist
