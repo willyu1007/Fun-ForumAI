@@ -1,9 +1,16 @@
 name: ${COMPOSE_PROJECT_NAME:-fun-forum}
 
+# node:20-alpine ships docker-entrypoint.sh which rewrites the command to
+# `node $@` whenever `command -v $1` returns empty. busybox ash returns empty
+# for relative paths like `node_modules/.bin/tsx` or `./node_modules/.bin/prisma`,
+# which makes node parse the shell shim as JS and fail. Set `entrypoint: []`
+# on every service so the image CMD/command runs directly via execve and
+# follows the shim's #!/bin/sh shebang.
 services:
   web:
     image: ${IMAGE_REF?set IMAGE_REF to an immutable sha image reference}
     restart: unless-stopped
+    entrypoint: []
     env_file:
       - .env
     environment:
@@ -27,6 +34,7 @@ services:
     profiles: ["staging-same-host-worker"]
     image: ${IMAGE_REF?set IMAGE_REF to an immutable sha image reference}
     restart: unless-stopped
+    entrypoint: []
     env_file:
       - .env
     environment:
@@ -50,11 +58,9 @@ services:
   migrate:
     image: ${IMAGE_REF?set IMAGE_REF to an immutable sha image reference}
     restart: "no"
+    entrypoint: []
     env_file:
       - .env
     environment:
       RUNTIME_ENABLED: "false"
-    # node:20-alpine's docker-entrypoint.sh prefixes `node` when `command -v $1`
-    # returns empty (true for relative paths in busybox ash). Calling node
-    # directly with the prisma entry skips that rewrite and the .bin shim.
     command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
