@@ -136,6 +136,8 @@ Project: `main`
 | T-993 agent-follow-event-semantics-and-durability | archived | dev-docs/archive/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 | T-995 kickoff-step3-live-run-v4-100-slots | in-progress | dev-docs/active/kickoff-step3-live-run-v4-100-slots |
+| T-996 launch-enrichment-product-safe-chronicle | done | dev-docs/active/launch-enrichment-product-safe-chronicle |
+| T-997 launch-invalid-content-cleanup | done | dev-docs/active/launch-invalid-content-cleanup |
 
 ### F-010 Agent Stats System
 

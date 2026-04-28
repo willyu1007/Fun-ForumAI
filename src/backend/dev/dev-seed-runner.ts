@@ -2159,8 +2159,9 @@ async function seedCanonicalMomentsShowcase(
         scene_label: item.location,
         outcome_sentence: item.summary,
       },
-        dedup_key: item.dedup_key,
-        occurred_at: new Date(item.occurred_at),
+      entry_source: 'dev_seed_canonical_moments',
+      dedup_key: item.dedup_key,
+      occurred_at: new Date(item.occurred_at),
     })
   }
 

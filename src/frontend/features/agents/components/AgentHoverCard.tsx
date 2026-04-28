@@ -267,7 +267,7 @@ function HoverBadgeWall({ agentName, badges }: { agentName: string; badges: Publ
                       )}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-64 border border-border bg-popover text-popover-foreground shadow-md">
+                  <TooltipContent side="bottom" className="z-[80] max-w-64 border border-border bg-popover text-popover-foreground shadow-md">
                     <BadgeTooltipBody label={badge.label} visual={visual} />
                   </TooltipContent>
                 </Tooltip>

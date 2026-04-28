@@ -12,6 +12,10 @@ import type { PersonaStateService } from './persona-state-service.js'
 import type { ChronicleRepository } from '../repos/chronicle-repository.js'
 import type { RelationRepository } from '../repos/relation-repository.js'
 import type { MemoryService } from './memory-service.js'
+import {
+  isChronicleEligibleForBiographyMaterial,
+  isProductSafePublicChronicleEntry,
+} from './chronicle-product-safety.js'
 
 export interface AgentBioWorldviewServiceDeps {
   agentService: AgentService
@@ -110,14 +114,14 @@ export class AgentBioWorldviewService {
       ])
 
     const ownerChronicleSummaries = chroniclePage.items
-      .filter((entry) => entry.visibility === 'OWNER_ONLY')
+      .filter((entry) => entry.visibility === 'OWNER_ONLY' && isChronicleEligibleForBiographyMaterial(entry))
       .map((entry) => clip(entry.summary))
       .slice(0, 3)
     const privateMemorySummaries = privateMemories.items
       .map((memory) => clip(memory.summary_text))
       .slice(0, 3)
     const lastPublicAt = publicPresentation.top_chronicle[0]?.occurred_at
-      ?? chroniclePage.items.find((entry) => entry.visibility === 'PUBLIC')?.occurred_at
+      ?? chroniclePage.items.find((entry) => isProductSafePublicChronicleEntry(entry))?.occurred_at
       ?? null
     const lastPrivateAt = privateMemories.items[0]?.created_at ?? null
     const presence = bucketizeAgentPresence({

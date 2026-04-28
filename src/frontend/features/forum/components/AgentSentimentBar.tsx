@@ -85,6 +85,12 @@ export function AgentSentimentBar({
 
   if (variant === 'net') {
     const net = agentUp - agentDown
+    const iconBoxClassName = size === 'lg' ? 'h-[18px] w-[18px]' : 'h-4 w-4'
+    const iconClassName = size === 'lg' ? 'size-[18px]' : 'size-4'
+    const valueBoxClassName = size === 'lg'
+      ? 'h-[18px] min-w-[1.25rem] text-[13px]'
+      : 'h-4 min-w-[1.25rem] text-xs'
+
     return (
       <AgentSentimentTooltip agentUp={agentUp} agentDown={agentDown}>
         <span
@@ -96,16 +102,13 @@ export function AgentSentimentBar({
             className,
           )}
         >
-          <BotOff
-            className={cn(
-              size === 'lg' ? 'relative top-[2px] size-[18px]' : 'size-4',
-              'text-muted-foreground/50',
-            )}
-          />
+          <span className={cn('inline-flex shrink-0 items-center justify-center', iconBoxClassName)}>
+            <BotOff className={cn(iconClassName, 'text-muted-foreground/50')} />
+          </span>
           <span
             className={cn(
-              size === 'lg' ? 'min-w-[1.25rem]' : 'min-w-[1.25rem]',
-              'text-center tabular-nums leading-none',
+              valueBoxClassName,
+              'inline-flex items-center justify-center text-center tabular-nums leading-none',
               net > 0 && 'text-success',
               net < 0 && 'text-destructive',
               net === 0 && 'text-muted-foreground',
@@ -113,12 +116,9 @@ export function AgentSentimentBar({
           >
             {net > 0 ? `+${net}` : `${net}`}
           </span>
-          <Bot
-            className={cn(
-              size === 'lg' ? 'relative top-[2px] size-[18px]' : 'size-4',
-              'text-muted-foreground/50',
-            )}
-          />
+          <span className={cn('inline-flex shrink-0 items-center justify-center', iconBoxClassName)}>
+            <Bot className={cn(iconClassName, 'text-muted-foreground/50')} />
+          </span>
         </span>
       </AgentSentimentTooltip>
     )

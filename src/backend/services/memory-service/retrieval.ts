@@ -7,8 +7,12 @@ import type {
   RawContextEventRepository,
   SelfModelStateRepository,
 } from '../../repos/context-memory-repository.js'
-import type { ChronicleEntry, ContextMemoryScene, PaginatedResult } from '../../repos/types.js'
+import type { ChronicleEntry, ContextMemoryScene } from '../../repos/types.js'
 import type { TypedRetrievalState } from '../../context-memory/contracts.js'
+import {
+  listChronicleEntriesEligibleForBiographyMaterial,
+  listProductSafePublicChronicleEntries,
+} from '../chronicle-product-safety.js'
 
 const TYPED_EPISODIC_RETRIEVAL_LIMIT = 8
 const TYPED_SHADOW_RETRIEVAL_LIMIT = 3
@@ -47,10 +51,6 @@ export async function loadTypedRetrievalState(input: {
   const runtime = input.runtime
   if (!runtime) return emptyTypedRetrievalState()
 
-  const chronicleVisibility = input.scene === 'private_chat'
-    ? ['OWNER_ONLY', 'PUBLIC'] as const
-    : ['PUBLIC'] as const
-
   const [
     privateCards,
     allCards,
@@ -61,7 +61,7 @@ export async function loadTypedRetrievalState(input: {
     selfModel,
     tensions,
     privateShadows,
-    chronicleEntries,
+    safeChronicleEntries,
   ] = await Promise.all([
     runtime.episodicCardRepo.listByAgent(input.agentId, {
       limit: Math.max(input.topK * 2, TYPED_EPISODIC_RETRIEVAL_LIMIT),
@@ -78,11 +78,13 @@ export async function loadTypedRetrievalState(input: {
     runtime.activeTensionRepo.listByAgent(input.agentId, 3),
     runtime.privateShadowRepo.listByAgent(input.agentId, TYPED_SHADOW_RETRIEVAL_LIMIT),
     runtime.chronicleRepo
-      ? runtime.chronicleRepo.findByAgent(input.agentId, {
-          limit: 2,
-          visibility: [...chronicleVisibility],
-        })
-      : Promise.resolve<PaginatedResult<ChronicleEntry>>({ items: [], next_cursor: null }),
+      ? input.scene === 'private_chat'
+        ? listChronicleEntriesEligibleForBiographyMaterial(runtime.chronicleRepo, input.agentId, {
+            limit: 2,
+            visibility: ['OWNER_ONLY', 'PUBLIC'],
+          })
+        : listProductSafePublicChronicleEntries(runtime.chronicleRepo, input.agentId, { limit: 2 })
+      : Promise.resolve<ChronicleEntry[]>([]),
   ])
 
   return {
@@ -95,6 +97,6 @@ export async function loadTypedRetrievalState(input: {
     selfModel,
     tensions,
     privateShadows,
-    chronicleEntries: chronicleEntries.items,
+    chronicleEntries: safeChronicleEntries,
   }
 }

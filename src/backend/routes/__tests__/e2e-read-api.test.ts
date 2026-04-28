@@ -156,6 +156,23 @@ describe('E2E: Read API (public)', () => {
     })
   })
 
+  it('GET /v1/agents/:agentId/biography-book uses product-safe public mode for non-owner reads', async () => {
+    const { id: agentId } = await createAgentViaApi({
+      displayName: 'Public Biography Safe Agent',
+      token: userToken,
+    })
+
+    const res = await request(app).get(`/v1/agents/${agentId}/biography-book`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.footer_meta.source_line).toContain('product-safe public chronicle')
+    expect(res.body.data.chapters).toEqual([])
+    expect(res.body.meta).toMatchObject({
+      is_owner_view: false,
+      degraded: true,
+    })
+  })
+
   it('POST /v1/agents/:agentId/biography-book/telemetry accepts history reading events', async () => {
     const { id: agentId } = await createAgentViaApi({
       displayName: 'Biography Telemetry Agent',

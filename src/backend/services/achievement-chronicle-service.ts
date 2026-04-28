@@ -21,6 +21,11 @@ import {
   buildAchievementPublicProof,
   mergeAgentPublicProjection,
 } from '../identity/public-author-presentation.js'
+import {
+  isChronicleEligibleForBiographyMaterial,
+  isProductSafePublicAchievement,
+  isProductSafePublicChronicleEntry,
+} from './chronicle-product-safety.js'
 
 export interface AchievementChronicleServiceDeps {
   achievementRepo: AchievementRepository
@@ -231,15 +236,17 @@ export class AchievementChronicleService {
       this.deps.chronicleRepo.countFoldedByAgent(agentId, { perDayCap: 10 }),
     ])
 
+    const visibleItems = raw.items.filter((entry) => isChronicleEligibleForBiographyMaterial(entry))
+
     if (opts.include_folded) {
       return {
-        items: raw.items.slice(0, limit),
+        items: visibleItems.slice(0, limit),
         next_cursor: raw.next_cursor,
         folded_count: foldedCount,
       }
     }
 
-    const density = applyDensity(raw.items, 10)
+    const density = applyDensity(visibleItems, 10)
     return {
       items: density.items.slice(0, limit),
       next_cursor: raw.next_cursor,
@@ -263,9 +270,15 @@ export class AchievementChronicleService {
       }),
     ])
 
-    const badges = selectTopUniqueBadges(achievements.items, 2)
+    const badges = selectTopUniqueBadges(
+      achievements.items.filter((entry) => isProductSafePublicAchievement(entry)),
+      2,
+    )
 
-    const publicDensity = applyDensity(chronicle.items, 3)
+    const publicDensity = applyDensity(
+      chronicle.items.filter((entry) => isProductSafePublicChronicleEntry(entry)),
+      3,
+    )
     const candidateEntries = compressSignalEntries(publicDensity.items)
 
     const topChronicle = await Promise.all(candidateEntries

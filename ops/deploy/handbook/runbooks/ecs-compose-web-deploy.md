@@ -98,15 +98,19 @@ cd /srv/apps/fun-forum
 1. Render the target env file from Bitwarden into `ops/deploy/env-files/<env>.env`
 2. Run `env_cloudctl.py plan/apply --runtime-target ecs --workload api` to inject `/srv/apps/fun-forum/.env`
    - temporary staging exception: local compile + manual install is allowed until formal deploy workspace exists
-3. Validate host files and `.env`
-4. `docker login` with the read-only ACR pull identity
-5. `docker compose pull web migrate`
-6. Optionally `docker compose run --rm migrate`
-7. `docker compose up -d --no-deps web`
-8. Loopback health check on `http://127.0.0.1:14000/health`
-9. `./smoke.sh`
-10. Write `releases/current.json` and append to `releases/history.jsonl`
-11. Mark repo-side rollout progress:
+3. Sync the host deploy files from `ops/deploy/vm-compose/fun-forum/`
+4. Validate host files and `.env`
+   - `compose.yaml` must set `entrypoint: []` on `web`, `worker`, and `migrate`
+   - `migrate.command` must be `["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]`
+   - stale host files can surface as `Cannot find module '/app/pnpm'` during `docker compose run --rm migrate`
+5. `docker login` with the read-only ACR pull identity
+6. `docker compose pull web migrate`
+7. Optionally `docker compose run --rm migrate`
+8. `docker compose up -d --no-deps web`
+9. Loopback health check on `http://127.0.0.1:14000/health`
+10. `./smoke.sh`
+11. Write `releases/current.json` and append to `releases/history.jsonl`
+12. Mark repo-side rollout progress:
 
 ```bash
 IMAGE_REF="$(node ops/deploy/scripts/release-intent.mjs resolve --env <staging|prod>)"

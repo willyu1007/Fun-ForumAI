@@ -13,6 +13,7 @@ import {
   buildCommunityCommonsPoolSceneId,
   buildPlatformCanonicalPoolSceneId,
 } from './media-reuse-governance-service.js'
+import { resolveBrowserMediaUrl } from './media-url.js'
 
 type AttachmentSceneType =
   | 'forum_post'
@@ -48,7 +49,7 @@ export function toSurfaceMediaAttachmentView(payload: unknown): SurfaceMediaAtta
 
   return {
     asset_id: payload.asset_id,
-    media_url: payload.media_url,
+    media_url: resolveBrowserMediaUrl(payload.media_url),
     mime_type: payload.mime_type,
     width: typeof payload.width === 'number' ? payload.width : null,
     height: typeof payload.height === 'number' ? payload.height : null,

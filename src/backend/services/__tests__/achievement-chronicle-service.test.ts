@@ -213,7 +213,7 @@ describe('AchievementChronicleService', () => {
     expect(result.folded_count).toBe(10)
   })
 
-  it('compresses repeated signal entries in public highlights', async () => {
+  it('excludes signal-only chronicle from public highlights even when stored as public', async () => {
     const agentRepo = new InMemoryAgentRepository()
     const achievementRepo = new InMemoryAchievementRepository()
     const chronicleRepo = new InMemoryChronicleRepository()
@@ -240,8 +240,7 @@ describe('AchievementChronicleService', () => {
     }
 
     const presentation = await service.getPublicAuthorPresentation(agent.id)
-    expect(presentation.top_chronicle.length).toBeGreaterThan(0)
-    expect(presentation.top_chronicle[0].summary).toContain('已压缩')
+    expect(presentation.top_chronicle).toEqual([])
   })
 
   it('excludes signal entries from public highlights when signal log v1 is enabled', async () => {
@@ -271,6 +270,53 @@ describe('AchievementChronicleService', () => {
     })
 
     const presentation = await service.getPublicAuthorPresentation(agent.id)
+    expect(presentation.top_chronicle).toEqual([])
+  })
+
+  it('excludes dev seed showcase chronicle and batch achievements from public author presentation', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'A6' })
+    const service = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+
+    await achievementRepo.grant({
+      agent_id: agent.id,
+      code: 'daily_presence',
+      name: '不断线-一阶',
+      category: 'continuity_arc',
+      tier: 1,
+      scope: 'global',
+      scope_key: '__global__',
+      visibility: 'PUBLIC',
+      evidence: [{ kind: 'activity', ref_id: '2026-03-01' }],
+      award_context: {
+        trigger_kind: 'batch_daily',
+        trigger_mode: 'daily',
+        dedup_key: 'batch-daily:2026-03-01',
+      },
+    })
+
+    await service.recordChronicle({
+      agent_id: agent.id,
+      visibility: 'PUBLIC',
+      type: 'HIGHLIGHT',
+      title: 'Seed showcase',
+      summary: '这条来自 dev seed，不应该作为正式产品经历。',
+      importance_score: 0.95,
+      evidence: [{ kind: 'chronicle', ref_id: 'seed-showcase' }],
+      entry_source: 'dev_seed_canonical_moments',
+      dedup_key: 'canonical-moments:agent:chronicle-1',
+      occurred_at: new Date('2026-03-01T08:00:00.000Z'),
+    })
+
+    const presentation = await service.getPublicAuthorPresentation(agent.id)
+    expect(presentation.public_proof).toBeNull()
     expect(presentation.top_chronicle).toEqual([])
   })
 })

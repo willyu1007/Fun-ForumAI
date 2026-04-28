@@ -7,15 +7,17 @@
   "approved_at": "2026-04-28T06:48:13.860Z",
   "approved_by": "willyu1007",
   "recorded_at": "2026-04-28T06:48:13.860Z",
-  "updated_at": "2026-04-28T06:48:13.860Z",
+  "updated_at": "2026-04-28T07:10:09.799Z",
   "db_compat": "backwards",
   "db_plan": "",
   "notes": "fix: empty entrypoint on all compose services to bypass docker-entrypoint.sh shim rewrite",
   "targets": {
     "ecs_web": {
-      "status": "pending",
+      "status": "applied",
       "notes": "",
-      "updated_at": "2026-04-28T06:48:13.860Z"
+      "updated_at": "2026-04-28T07:10:09.799Z",
+      "applied_at": "2026-04-28T07:10:09.799Z",
+      "applied_image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-7c8afef513742df57582fa2a9bf6ca7186e06781"
     },
     "eci_worker": {
       "status": "pending",
@@ -23,5 +25,5 @@
       "updated_at": "2026-04-28T06:48:13.860Z"
     }
   },
-  "status": "pending"
+  "status": "partially_applied"
 }

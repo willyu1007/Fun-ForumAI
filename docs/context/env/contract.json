@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-27T16:07:30Z",
+  "generated_at_utc": "2026-04-28T07:40:49Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -574,7 +574,7 @@
       "type": "string"
     },
     "EXPO_PUBLIC_FF_CHATROOM_STAGING_HOLD_V1": {
-      "default": "false",
+      "default": "true",
       "deprecate_after": null,
       "description": "Mobile toggle for replacing the chatroom tab stack with a staging hold / coming-soon surface.",
       "legacy": {
@@ -2991,7 +2991,7 @@
       "type": "enum"
     },
     "VITE_FF_CHATROOM_STAGING_HOLD_V1": {
-      "default": "false",
+      "default": "true",
       "deprecate_after": null,
       "description": "Frontend toggle for replacing chatroom routes with a staging hold / coming-soon surface.",
       "legacy": {

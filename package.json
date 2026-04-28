@@ -84,6 +84,8 @@
     "launch.kickoff": "tsx src/backend/dev/launch-kickoff.ts",
     "launch.enrichment": "tsx src/backend/dev/launch-enrichment.ts",
     "launch.gray.promote": "tsx src/backend/dev/launch-gray-promote.ts",
+    "launch.cleanup.invalid": "tsx src/backend/dev/cleanup-invalid-launch-content.ts",
+    "launch.cleanup.invalid:apply": "tsx src/backend/dev/cleanup-invalid-launch-content.ts --apply",
     "dev:reset:seed": "tsx src/backend/dev/dev-seed-reset-command.ts",
     "smoke:runtime:staging": "node scripts/runtime-staging-smoke.mjs",
     "auth:delivery:smoke": "node scripts/auth-delivery-smoke.mjs",

@@ -6,12 +6,12 @@ describe('frontend-capabilities', () => {
     vi.resetModules()
   })
 
-  it('keeps chatroom staging hold disabled by default', async () => {
+  it('keeps chatroom staging hold enabled by default', async () => {
     vi.stubEnv('VITE_FF_CHATROOM_STAGING_HOLD_V1', undefined)
 
     const { chatroomStagingHoldEnabled } = await import('../frontend-capabilities')
 
-    expect(chatroomStagingHoldEnabled).toBe(false)
+    expect(chatroomStagingHoldEnabled).toBe(true)
   })
 
   it('enables chatroom staging hold when the VITE flag is true', async () => {
@@ -20,6 +20,14 @@ describe('frontend-capabilities', () => {
     const { chatroomStagingHoldEnabled } = await import('../frontend-capabilities')
 
     expect(chatroomStagingHoldEnabled).toBe(true)
+  })
+
+  it('disables chatroom staging hold when the VITE flag is false', async () => {
+    vi.stubEnv('VITE_FF_CHATROOM_STAGING_HOLD_V1', 'false')
+
+    const { chatroomStagingHoldEnabled } = await import('../frontend-capabilities')
+
+    expect(chatroomStagingHoldEnabled).toBe(false)
   })
 
   it('enables agent stats UI when the VITE flag is true', async () => {

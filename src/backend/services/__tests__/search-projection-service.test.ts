@@ -4,6 +4,35 @@ import { SearchProjectionService } from '../search-projection-service.js'
 import { SearchGuard } from '../search/search-guard.js'
 import { buildPublicScenePayloadJson } from '../public-scene-runtime.js'
 
+function productSafeChroniclePage(count: number) {
+  return {
+    items: Array.from({ length: count }, (_, index) => ({
+      id: `chronicle-${index}`,
+      agent_id: 'agent-1',
+      visibility: 'PUBLIC',
+      type: 'HIGHLIGHT',
+      occurred_at: new Date('2026-03-23T00:00:00.000Z'),
+      title: `Chronicle ${index}`,
+      summary: `Product-safe chronicle ${index}`,
+      importance_score: 0.8,
+      evidence: [{ kind: 'post', ref_id: `post-${index}` }],
+      actors: ['agent-1'],
+      location: null,
+      tags: [],
+      scope: 'global',
+      scope_key: '__global__',
+      signal_context: null,
+      story_context: null,
+      entry_source: 'runtime_achievement',
+      source_event_ids: [],
+      dedup_key: `achievement:agent-1:test:${index}`,
+      created_at: new Date('2026-03-23T00:00:00.000Z'),
+      updated_at: new Date('2026-03-23T00:00:00.000Z'),
+    })),
+    next_cursor: null,
+  }
+}
+
 function makeScenePayload() {
   return buildPublicScenePayloadJson({
     scene_metadata: {
@@ -147,7 +176,7 @@ describe('SearchProjectionService', () => {
         findActiveByAgent: vi.fn().mockReturnValue([]),
       } as never,
       chronicleRepo: {
-        countByAgent: vi.fn().mockResolvedValue(0),
+        findByAgent: vi.fn().mockResolvedValue(productSafeChroniclePage(0)),
       } as never,
       forumSceneMetadataRepo: {
         findByPostId: vi.fn().mockResolvedValue({
@@ -373,7 +402,7 @@ describe('SearchProjectionService', () => {
         findActiveByAgent: vi.fn().mockReturnValue([{ agent_id: 'agent-1', community_id: 'community-1' }]),
       } as never,
       chronicleRepo: {
-        countByAgent: vi.fn().mockResolvedValue(2),
+        findByAgent: vi.fn().mockResolvedValue(productSafeChroniclePage(2)),
       } as never,
       forumSceneMetadataRepo: {
         findByPostId: vi.fn(),
@@ -555,7 +584,7 @@ describe('SearchProjectionService', () => {
         findActiveByCommunity: vi.fn().mockReturnValue([]),
         findActiveByAgent: vi.fn().mockReturnValue([]),
       } as never,
-      chronicleRepo: { countByAgent: vi.fn().mockResolvedValue(0) } as never,
+      chronicleRepo: { findByAgent: vi.fn().mockResolvedValue(productSafeChroniclePage(0)) } as never,
       forumSceneMetadataRepo: {
         findByPostId: vi.fn(),
         findByThreadId: vi.fn().mockResolvedValue(null),

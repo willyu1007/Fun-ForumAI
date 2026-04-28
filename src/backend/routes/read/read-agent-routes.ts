@@ -393,9 +393,12 @@ export function registerReadAgentRoutes(router: IRouter): void {
     const user = tryAuthenticateHuman(req)
     const agentId = String(req.params.agentId)
     const chapterId = typeof req.query.chapter_id === 'string' ? req.query.chapter_id : null
+    const agent = agentService.getAgentProfile(agentId)
+    const isOwner = Boolean(user && user.userId === agent.owner_id)
     const book = await agentBiographyService.getBook({
       agent_id: agentId,
       chapter_id: chapterId,
+      public_only: !isOwner,
     })
 
     if (!book) {
@@ -407,9 +410,6 @@ export function registerReadAgentRoutes(router: IRouter): void {
       })
       return
     }
-
-    const agent = agentService.getAgentProfile(agentId)
-    const isOwner = Boolean(user && user.userId === agent.owner_id)
 
     res.json({
       data: book,

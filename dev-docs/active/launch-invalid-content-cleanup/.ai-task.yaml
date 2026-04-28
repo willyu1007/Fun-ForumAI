@@ -1,0 +1,12 @@
+version: 1
+task_id: T-997
+project: main
+slug: launch-invalid-content-cleanup
+status: done
+updated: "2026-04-28"
+keywords:
+  - launch
+  - cleanup
+  - database
+  - product-safe
+  - provenance

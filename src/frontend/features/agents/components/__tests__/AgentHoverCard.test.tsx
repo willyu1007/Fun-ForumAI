@@ -35,7 +35,9 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-  TooltipContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <div data-testid="tooltip-content" className={className}>{children}</div>
+  ),
 }))
 
 const useAgentProfileMock = vi.mocked(useAgentProfile)
@@ -174,6 +176,9 @@ describe('AgentHoverCard', () => {
       screen.getByRole('img', { name: 'Chronicle Spotlight T2' }).querySelector('img')?.getAttribute('src'),
     ).toBe('/badges/achievements/chronicle_spotlight_3.svg')
     expect(document.querySelector('img[src="/badges/agent/rookie-exclusive.svg"]')).toBeTruthy()
+    expect(
+      screen.getAllByTestId('tooltip-content').every((item) => item.className.includes('z-[80]')),
+    ).toBe(true)
 
     fireEvent.click(screen.getByRole('button', { name: '已关注' }))
     expect(unfollowMutate).toHaveBeenCalledTimes(1)

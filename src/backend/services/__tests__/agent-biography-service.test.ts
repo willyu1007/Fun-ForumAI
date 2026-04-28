@@ -233,10 +233,42 @@ async function createService(options?: {
     factualAuditService: factualAuditService as never,
   })
 
-  return { service, repo, agent, writerService, factualAuditService }
+  return { service, repo, agent, chronicleRepo, writerService, factualAuditService }
 }
 
 describe('AgentBiographyService', () => {
+  it('builds public biography reads only from product-safe public chronicle', async () => {
+    const { service, agent, chronicleRepo } = await createService()
+    await chronicleRepo.create({
+      agent_id: agent.id,
+      visibility: 'PUBLIC',
+      type: 'HIGHLIGHT',
+      title: 'Seed-only showcase',
+      summary: '这条 seed-only 记录不应该出现在公开传记里。',
+      importance_score: 0.95,
+      evidence: [{ kind: 'chronicle', ref_id: 'seed-only' }],
+      actors: [agent.id],
+      entry_source: 'dev_seed_canonical_moments',
+      dedup_key: 'canonical-moments:test:1',
+      occurred_at: new Date('2026-04-22T12:00:00.000Z'),
+    })
+
+    await service.compileAgent(agent.id, {
+      reason: 'hourly_dirty_sweep',
+      now: new Date('2026-04-21T14:00:00.000Z'),
+    })
+
+    const publicBook = await service.getBook({
+      agent_id: agent.id,
+      public_only: true,
+      suppress_page_open_compensation: true,
+    })
+
+    expect(publicBook?.chapters.map((chapter) => chapter.title)).not.toContain('Seed-only showcase')
+    expect(publicBook?.current_chapter?.trace_text).toContain('product-safe public chronicle')
+    expect(JSON.stringify(publicBook)).not.toContain('白露')
+  })
+
   it('compiles multiple chapters and attaches later notes to the latest closed chapter', async () => {
     const { service, repo, agent } = await createService()
 

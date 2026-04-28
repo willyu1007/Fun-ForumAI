@@ -16,6 +16,10 @@ import { AchievementChronicleService } from './achievement-chronicle-service.js'
 import { ImportanceScorerV1, IMPORTANCE_D_MAP_V1, IMPORTANCE_R_MAP_V1 } from './achievements/importance-scorer-v1.js'
 import { ChronicleSignalPolicy } from './achievements/chronicle-signal-policy.js'
 import { parseRelationStateChangedEvent } from './relation-domain-event.js'
+import {
+  collectProductSafePublicChronicleMetrics,
+  hasProductSafePublicChronicleEntry,
+} from './chronicle-product-safety.js'
 
 export interface AchievementSignal {
   kind: AchievementSignalKind
@@ -62,6 +66,7 @@ export interface AchievementsOrchestratorDeps {
 const SIGNAL_TAG_PREFIX = 'signal:'
 const GLOBAL_SCOPE_KEY = '__global__'
 const OWNER_SCOPE_KEY = 'owner'
+const SYSTEM_BATCH_SIGNALS = new Set<AchievementSignalKind>(['batch_daily', 'batch_weekly'])
 
 function startOfDay(date: Date): Date {
   const d = new Date(date)
@@ -88,6 +93,10 @@ function getSignalChronicleType(kind: AchievementSignalKind): ChronicleEntry['ty
     default:
       return 'HIGHLIGHT'
   }
+}
+
+function getSignalEntrySource(kind: AchievementSignalKind): string {
+  return SYSTEM_BATCH_SIGNALS.has(kind) ? 'system_batch_signal' : 'runtime_signal'
 }
 
 function signalImportanceSignals(
@@ -382,12 +391,21 @@ export class AchievementsOrchestrator {
     })
   }
 
-  async runDailyBatch(now = new Date()): Promise<{ scanned: number }> {
-    if (!config.launch.capabilities.achievementChronicleV1) return { scanned: 0 }
+  async runDailyBatch(now = new Date()): Promise<{
+    scanned: number
+    emitted: number
+    skipped_without_product_activity: number
+  }> {
+    if (!config.launch.capabilities.achievementChronicleV1) {
+      return { scanned: 0, emitted: 0, skipped_without_product_activity: 0 }
+    }
 
     let cursor: string | undefined
     let scanned = 0
+    let emitted = 0
+    let skippedWithoutProductActivity = 0
     const dayKey = startOfDay(now).toISOString().slice(0, 10)
+    const from = startOfDay(now)
 
     while (true) {
       const page = this.deps.agentRepo.findActive({ cursor, limit: 100 })
@@ -395,6 +413,15 @@ export class AchievementsOrchestrator {
 
       for (const agent of page.items) {
         scanned += 1
+        const hasProductActivity = await hasProductSafePublicChronicleEntry(
+          this.deps.chronicleRepo,
+          agent.id,
+          { from },
+        )
+        if (!hasProductActivity) {
+          skippedWithoutProductActivity += 1
+          continue
+        }
         await this.processSignal({
           kind: 'batch_daily',
           agent_id: agent.id,
@@ -404,21 +431,35 @@ export class AchievementsOrchestrator {
             { kind: 'chronicle', ref_id: `day:${dayKey}` },
           ],
         })
+        emitted += 1
       }
 
       if (!page.next_cursor) break
       cursor = page.next_cursor
     }
 
-    return { scanned }
+    return {
+      scanned,
+      emitted,
+      skipped_without_product_activity: skippedWithoutProductActivity,
+    }
   }
 
-  async runWeeklyBatch(now = new Date()): Promise<{ scanned: number }> {
-    if (!config.launch.capabilities.achievementChronicleV1) return { scanned: 0 }
+  async runWeeklyBatch(now = new Date()): Promise<{
+    scanned: number
+    emitted: number
+    skipped_without_product_activity: number
+  }> {
+    if (!config.launch.capabilities.achievementChronicleV1) {
+      return { scanned: 0, emitted: 0, skipped_without_product_activity: 0 }
+    }
 
     let cursor: string | undefined
     let scanned = 0
+    let emitted = 0
+    let skippedWithoutProductActivity = 0
     const weekKey = startOfWeek(now).toISOString().slice(0, 10)
+    const from = startOfWeek(now)
 
     while (true) {
       const page = this.deps.agentRepo.findActive({ cursor, limit: 100 })
@@ -426,6 +467,15 @@ export class AchievementsOrchestrator {
 
       for (const agent of page.items) {
         scanned += 1
+        const hasProductActivity = await hasProductSafePublicChronicleEntry(
+          this.deps.chronicleRepo,
+          agent.id,
+          { from },
+        )
+        if (!hasProductActivity) {
+          skippedWithoutProductActivity += 1
+          continue
+        }
         await this.processSignal({
           kind: 'batch_weekly',
           agent_id: agent.id,
@@ -436,13 +486,18 @@ export class AchievementsOrchestrator {
             { kind: 'chronicle', ref_id: `week:${weekKey}` },
           ],
         })
+        emitted += 1
       }
 
       if (!page.next_cursor) break
       cursor = page.next_cursor
     }
 
-    return { scanned }
+    return {
+      scanned,
+      emitted,
+      skipped_without_product_activity: skippedWithoutProductActivity,
+    }
   }
 
   async processSignal(signal: AchievementSignal): Promise<void> {
@@ -510,6 +565,7 @@ export class AchievementsOrchestrator {
       scope: signalScope.scope,
       scope_key: signalScope.scope_key,
       signal_context: signalContext,
+      entry_source: getSignalEntrySource(signal.kind),
       dedup_key: signal.dedup_key,
       occurred_at: occurredAt,
       maxEvidence: 5,
@@ -618,6 +674,7 @@ export class AchievementsOrchestrator {
         scope: scopeContext.scope,
         scope_key: scopeContext.scope_key,
         signal_context: signalContext,
+        entry_source: 'runtime_achievement',
         dedup_key: `achievement:${signal.agent_id}:${definition.code}:${definition.tier}:${scopeContext.scope}:${scopeContext.scope_key}`,
         occurred_at: occurredAt,
         maxEvidence: definition.evidencePolicy.maxEvidence,
@@ -673,6 +730,14 @@ export class AchievementsOrchestrator {
           scope_key: scopeContext.scope_key,
         })
       : summary
+    const productSafeChronicle = await collectProductSafePublicChronicleMetrics(
+      this.deps.chronicleRepo,
+      agentId,
+      {
+        scope: scopeContext.scope,
+        scope_key: scopeContext.scope_key,
+      },
+    )
 
     const effectiveRelations = scopeContext.scope === 'global' && this.deps.relationRepo
       ? await this.deps.relationRepo.countOutgoingByStates(agentId, ['effective'])
@@ -686,10 +751,10 @@ export class AchievementsOrchestrator {
       private_digests: signalSummary.signal_counts.private_digest ?? 0,
       effective_relations: effectiveRelations,
       governance_actions: signalSummary.signal_counts.governance ?? 0,
-      public_entries: summary.public_entries,
-      activity_days: summary.activity_days,
+      public_entries: productSafeChronicle.public_entries,
+      activity_days: productSafeChronicle.activity_days,
       cross_scene: this.computeCrossSceneCount(signalSummary.signal_counts, effectiveRelations),
-      chronicle_entries: summary.narrative_entries,
+      chronicle_entries: productSafeChronicle.chronicle_entries,
       featured_highlights: signalSummary.signal_counts.highlight_featured ?? 0,
       aftershow_exports: signalSummary.signal_counts.aftershow_published ?? 0,
       storyline_continuations: signalSummary.signal_counts.storyline_callback ?? 0,

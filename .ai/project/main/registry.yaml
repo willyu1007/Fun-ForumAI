@@ -2003,3 +2003,17 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/kickoff-step3-live-run-v4-100-slots
     updated: 2026-04-25
+  - id: T-996
+    slug: launch-enrichment-product-safe-chronicle
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/launch-enrichment-product-safe-chronicle
+    updated: 2026-04-28
+  - id: T-997
+    slug: launch-invalid-content-cleanup
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/launch-invalid-content-cleanup
+    updated: 2026-04-28

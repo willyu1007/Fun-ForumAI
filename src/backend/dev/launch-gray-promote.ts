@@ -5,6 +5,7 @@ process.env.FF_ACHIEVEMENT_CHRONICLE_V1 ??= 'true'
 
 import { spawnSync } from 'node:child_process'
 import { resolve as resolvePath } from 'node:path'
+import { countProductSafePublicChronicleEntries } from '../services/chronicle-product-safety.js'
 
 function readArg(name: string): string | undefined {
   const prefix = `--${name}=`
@@ -51,10 +52,11 @@ interface ArtifactProbe {
   has_bio_projection: boolean
   has_biography_chapters: boolean
   chronicle_count: number
+  product_safe_chronicle_count: number
 }
 
 async function probeEnrichmentArtifacts(): Promise<ArtifactProbe[]> {
-  const { agentRepo, agentBioRefreshService, achievementChronicleService, agentBiographyService } =
+  const { agentRepo, agentBioRefreshService, achievementChronicleService, agentBiographyService, chronicleRepo } =
     await import('../container.js')
   const page = agentRepo.findActive({ limit: 3 })
   const probes: ArtifactProbe[] = []
@@ -62,16 +64,19 @@ async function probeEnrichmentArtifacts(): Promise<ArtifactProbe[]> {
     const projection = await agentBioRefreshService.getProjection(agent.id).catch(() => null)
     const book = await agentBiographyService.getBook({
       agent_id: agent.id,
+      public_only: true,
       suppress_page_open_compensation: true,
     }).catch(() => null)
     const chronicle = await achievementChronicleService
       .listChronicleForOwner(agent.id, { include_folded: false, limit: 4 })
       .catch(() => ({ items: [] as unknown[] }))
+    const productSafeChronicleCount = await countProductSafePublicChronicleEntries(chronicleRepo, agent.id)
     probes.push({
       agent_id: agent.id,
       has_bio_projection: Boolean(projection),
       has_biography_chapters: (book?.chapters?.length ?? 0) > 0,
       chronicle_count: chronicle.items.length,
+      product_safe_chronicle_count: productSafeChronicleCount,
     })
   }
   return probes
@@ -99,7 +104,7 @@ async function main() {
     }
 
     // 2. enrichment artifact check — require every probed agent to carry
-    //    bio projection + biography chapters + chronicle entries. Fail unless
+    //    bio projection + biography chapters + product-safe chronicle. Fail unless
     //    --allow-missing-enrichment is passed.
     let probes: ArtifactProbe[] = []
     let probeError: unknown = null
@@ -112,7 +117,7 @@ async function main() {
       (probe) =>
         !probe.has_bio_projection
         || !probe.has_biography_chapters
-        || probe.chronicle_count === 0,
+        || probe.product_safe_chronicle_count === 0,
     )
     if (probeError || probes.length === 0 || missing.length > 0) {
       const detail = probeError

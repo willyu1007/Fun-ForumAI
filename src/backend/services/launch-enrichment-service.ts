@@ -6,6 +6,8 @@ import type { WarmupGovernanceService } from './warmup-governance-service.js'
 import type { AftershowService } from './aftershow-service.js'
 import type { ForumReadService, PostWithMeta } from './forum-read-service.js'
 import type { AgentRepository } from '../repos/agent-repository.js'
+import type { ChronicleRepository } from '../repos/chronicle-repository.js'
+import { countProductSafePublicChronicleEntries } from './chronicle-product-safety.js'
 import {
   readAftershowExportBias,
   readContentKind,
@@ -14,6 +16,7 @@ import {
 
 export interface LaunchEnrichmentServiceDeps {
   agentRepo: AgentRepository
+  chronicleRepo: ChronicleRepository
   agentBioRefreshService: Pick<AgentBioRefreshService, 'processMajorRefreshSweep'>
   achievementsOrchestrator: Pick<AchievementsOrchestrator, 'runDailyBatch' | 'runWeeklyBatch'>
   searchProjectionService: Pick<SearchProjectionService, 'refreshAgent'>
@@ -39,7 +42,13 @@ export interface BioStepResult {
 
 export interface ChronicleStepResult {
   daily_scanned: number
+  daily_emitted: number
+  daily_skipped_without_product_activity: number
   weekly_scanned: number
+  weekly_emitted: number
+  weekly_skipped_without_product_activity: number
+  product_safe_ready: number
+  product_safe_missing_agent_ids: string[]
   duration_ms: number
 }
 
@@ -174,9 +183,21 @@ export class LaunchEnrichmentService {
     const started = Date.now()
     const daily = await this.deps.achievementsOrchestrator.runDailyBatch(now)
     const weekly = await this.deps.achievementsOrchestrator.runWeeklyBatch(now)
+    const proof = await this.collectProductSafeChronicleProof()
+    if (proof.missing.length > 0) {
+      throw new Error(
+        `enrichment chronicle proof failed: ${proof.missing.length}/${proof.scanned} active agent(s) lack product-safe public chronicle: ${proof.missing.slice(0, 10).join(', ')}`,
+      )
+    }
     return {
       daily_scanned: daily.scanned,
+      daily_emitted: daily.emitted ?? 0,
+      daily_skipped_without_product_activity: daily.skipped_without_product_activity ?? 0,
       weekly_scanned: weekly.scanned,
+      weekly_emitted: weekly.emitted ?? 0,
+      weekly_skipped_without_product_activity: weekly.skipped_without_product_activity ?? 0,
+      product_safe_ready: proof.ready,
+      product_safe_missing_agent_ids: proof.missing,
       duration_ms: Date.now() - started,
     }
   }
@@ -328,6 +349,26 @@ export class LaunchEnrichmentService {
       count += 1
     }
     return count
+  }
+
+  private async collectProductSafeChronicleProof(): Promise<{
+    scanned: number
+    ready: number
+    missing: string[]
+  }> {
+    const missing: string[] = []
+    let scanned = 0
+    let ready = 0
+    for (const agentId of this.iterateActiveAgentIds()) {
+      scanned += 1
+      const count = await countProductSafePublicChronicleEntries(this.deps.chronicleRepo, agentId)
+      if (count > 0) {
+        ready += 1
+      } else {
+        missing.push(agentId)
+      }
+    }
+    return { scanned, ready, missing }
   }
 
   private *iterateActiveAgentIds(): IterableIterator<string> {

@@ -1046,7 +1046,20 @@ function ShelfSection({
   )
 }
 
-function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
+export function HomeProgrammingSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-48 rounded-3xl" />
+      <Skeleton className="h-72 rounded-3xl" />
+      <div className="grid gap-3 md:grid-cols-2">
+        <Skeleton className="h-56 rounded-3xl" />
+        <Skeleton className="h-56 rounded-3xl" />
+      </div>
+    </div>
+  )
+}
+
+export function HomeProgrammingBody({ payload }: { payload: HomeProgrammingPayload }) {
   const orderedShelves = useMemo(() => {
     const shelves = [...payload.shelves]
     const mustWatchIndex = shelves.findIndex((shelf) => shelf.id === 'must_watch_today')
@@ -1195,16 +1208,7 @@ export function HomePage() {
   const homeProgramming = useHomeProgramming(homeProgrammingEnabled)
 
   if (homeProgramming.isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-48 rounded-3xl" />
-        <Skeleton className="h-72 rounded-3xl" />
-        <div className="grid gap-3 md:grid-cols-2">
-          <Skeleton className="h-56 rounded-3xl" />
-          <Skeleton className="h-56 rounded-3xl" />
-        </div>
-      </div>
-    )
+    return <HomeProgrammingSkeleton />
   }
 
   if (homeProgramming.error || !homeProgramming.data?.data?.enabled) {

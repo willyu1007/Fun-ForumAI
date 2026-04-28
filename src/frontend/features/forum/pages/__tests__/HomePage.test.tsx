@@ -519,3 +519,29 @@ describe('HomePage', () => {
     expect(screen.getByText('即将开放')).toBeTruthy()
   })
 })
+
+describe('RecommendationPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+  })
+
+  it('does not fall back to FeedPage when recommendation programming is unavailable', async () => {
+    useHomeProgrammingMock.mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: undefined,
+    } as never)
+    const { RecommendationPage } = await import('../RecommendationPage')
+
+    render(
+      <MemoryRouter>
+        <RecommendationPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByTestId('feed-page-fallback')).toBeNull()
+    expect(screen.getByRole('heading', { name: '推荐内容暂不可用' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '查看广场' }).getAttribute('href')).toBe('/feed')
+  })
+})

@@ -8,3 +8,5 @@ RUNTIME_LEADER_BACKEND: redis
 SSE_BROADCAST_BACKEND: redis
 MEDIA_STORAGE_BACKEND: s3
 MEDIA_S3_BUCKET: bucket-forum-prod
+MEDIA_S3_REGION: cn-hangzhou
+MEDIA_S3_ENDPOINT: https://s3.oss-cn-hangzhou.aliyuncs.com

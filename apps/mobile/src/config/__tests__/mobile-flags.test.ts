@@ -20,8 +20,8 @@ beforeEach(() => {
 })
 
 describe('mobile-flags', () => {
-  it('returns false when the chatroom staging hold flag is unset', () => {
-    expect(isMobileChatroomStagingHoldEnabled()).toBe(false)
+  it('returns true when the chatroom staging hold flag is unset', () => {
+    expect(isMobileChatroomStagingHoldEnabled()).toBe(true)
   })
 
   it('returns true when the chatroom staging hold flag is enabled', () => {
@@ -29,5 +29,12 @@ describe('mobile-flags', () => {
     env.EXPO_PUBLIC_FF_CHATROOM_STAGING_HOLD_V1 = 'true'
 
     expect(isMobileChatroomStagingHoldEnabled()).toBe(true)
+  })
+
+  it('returns false when the chatroom staging hold flag is disabled', () => {
+    const env = getProcessEnv()
+    env.EXPO_PUBLIC_FF_CHATROOM_STAGING_HOLD_V1 = 'false'
+
+    expect(isMobileChatroomStagingHoldEnabled()).toBe(false)
   })
 })

@@ -251,6 +251,19 @@ describe('AchievementsOrchestrator', () => {
       agent_id: agent.id,
       visibility: 'PUBLIC',
       type: 'HIGHLIGHT',
+      title: '真实公开高光',
+      summary: '一条真实公开经历，用于允许 daily/weekly 批处理读取产品活动。',
+      importance_score: 0.9,
+      evidence: [{ kind: 'post', ref_id: 'post-real-1' }],
+      tags: ['launch', 'chronicle'],
+      scope: 'global',
+      scope_key: '__global__',
+      occurred_at: now,
+    })
+    await chronicleRepo.create({
+      agent_id: agent.id,
+      visibility: 'PUBLIC',
+      type: 'HIGHLIGHT',
       title: 'Global Chronicle Signal',
       summary: '一条全局公共 chronicle，用于点亮 daily spotlight。',
       importance_score: 0.88,
@@ -665,5 +678,41 @@ describe('AchievementsOrchestrator', () => {
       visibility: ['PUBLIC'],
     })
     expect(chronicle.items.every((item) => !item.tags.includes('signal:forum_post'))).toBe(true)
+  })
+
+  it('does not emit daily or weekly batch chronicle for agents without product-safe public activity', async () => {
+    const agentRepo = new InMemoryAgentRepository()
+    const achievementRepo = new InMemoryAchievementRepository()
+    const chronicleRepo = new InMemoryChronicleRepository()
+
+    const agent = agentRepo.create({ owner_id: 'u1', display_name: 'No Activity' })
+    const chronicleService = new AchievementChronicleService({
+      achievementRepo,
+      chronicleRepo,
+      agentRepo,
+    })
+    const orchestrator = new AchievementsOrchestrator({
+      agentRepo,
+      achievementRepo,
+      chronicleRepo,
+      chronicleService,
+    })
+
+    const now = new Date('2026-04-28T08:00:00.000Z')
+    const daily = await orchestrator.runDailyBatch(now)
+    const weekly = await orchestrator.runWeeklyBatch(now)
+
+    expect(daily).toMatchObject({
+      scanned: 1,
+      emitted: 0,
+      skipped_without_product_activity: 1,
+    })
+    expect(weekly).toMatchObject({
+      scanned: 1,
+      emitted: 0,
+      skipped_without_product_activity: 1,
+    })
+    const chronicle = await chronicleRepo.findByAgent(agent.id, { limit: 10 })
+    expect(chronicle.items).toEqual([])
   })
 })

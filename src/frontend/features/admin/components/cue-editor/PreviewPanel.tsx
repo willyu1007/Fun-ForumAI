@@ -6,13 +6,8 @@
  */
 
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge as UiStatusBadge, type StatusTone } from '@fun-forum/ui-web/patterns'
 import type { CuePreviewPayload, PreviewStage } from '@/api/types'
-
-const STATUS_TONE: Record<PreviewStage['status'], string> = {
-  ok: 'border-success/40 bg-success/10 text-success',
-  warning: 'border-warning/40 bg-warning/10 text-warning',
-  error: 'border-destructive/40 bg-destructive/10 text-destructive',
-}
 
 const STAGE_LABEL: Record<PreviewStage['stage'], string> = {
   schema: '1. Schema validation',
@@ -20,6 +15,17 @@ const STAGE_LABEL: Record<PreviewStage['stage'], string> = {
   load: '3. Load preview (cached ~30 秒 TTL；admission 路径独立读取实时 snapshot)',
   media: '4. Media revalidation',
   director_compile: '5. Director brief dry-run (T-212 supplies; stub placeholder)',
+}
+
+function previewStatusToTone(status: PreviewStage['status']): StatusTone {
+  switch (status) {
+    case 'ok':
+      return 'success'
+    case 'warning':
+      return 'warning'
+    case 'error':
+      return 'danger'
+  }
 }
 
 export function PreviewPanel({
@@ -57,9 +63,9 @@ export function PreviewPanel({
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-xs">
         <span className="font-semibold text-muted-foreground">overall</span>
-        <Badge variant="outline" className={STATUS_TONE[overallToStatus(result.overall)]}>
+        <UiStatusBadge tone={previewStatusToTone(overallToStatus(result.overall))}>
           {result.overall}
-        </Badge>
+        </UiStatusBadge>
       </div>
       <ul className="space-y-2">
         {result.stages.map((stage) => (
@@ -69,9 +75,7 @@ export function PreviewPanel({
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-foreground">{STAGE_LABEL[stage.stage]}</span>
-              <Badge variant="outline" className={STATUS_TONE[stage.status]}>
-                {stage.status}
-              </Badge>
+              <UiStatusBadge tone={previewStatusToTone(stage.status)}>{stage.status}</UiStatusBadge>
               {stage.source ? (
                 <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning">
                   {stage.source}

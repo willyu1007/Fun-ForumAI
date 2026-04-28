@@ -74,6 +74,18 @@ load_host_env() {
   grep -Eq '^DATABASE_URL=' "$APP_DIR/.env" || die "DATABASE_URL must be set in .env."
 }
 
+validate_compose_contract() {
+  local entrypoint_count
+  entrypoint_count="$(grep -Ec '^[[:space:]]*entrypoint:[[:space:]]*\[\][[:space:]]*(#.*)?$' "$APP_DIR/compose.yaml" || true)"
+  if (( entrypoint_count < 3 )); then
+    die "compose.yaml is stale: web, worker, and migrate must set 'entrypoint: []'. Sync $APP_DIR/compose.yaml from ops/deploy/vm-compose/fun-forum/ before deploying."
+  fi
+
+  if ! grep -Eq '^[[:space:]]*command:[[:space:]]*\[[[:space:]]*"node"[[:space:]]*,[[:space:]]*"node_modules/prisma/build/index\.js"[[:space:]]*,[[:space:]]*"migrate"[[:space:]]*,[[:space:]]*"deploy"[[:space:]]*\][[:space:]]*(#.*)?$' "$APP_DIR/compose.yaml"; then
+    die "compose.yaml is stale: migrate must run 'node node_modules/prisma/build/index.js migrate deploy' directly. Sync $APP_DIR/compose.yaml from ops/deploy/vm-compose/fun-forum/ before deploying."
+  fi
+}
+
 docker_login_readonly() {
   local login_server
   login_server="${IMAGE_REF%%/*}"
@@ -196,6 +208,8 @@ export WEB_BIND_PORT
 export WORKER_HOST_PORT
 export CONTAINER_PORT
 export COMPOSE_PROJECT_NAME
+
+validate_compose_contract
 
 echo "[info] Validating host files and environment"
 echo "[info] Deploying $IMAGE_REF into $APP_ENV from $APP_DIR"

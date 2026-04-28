@@ -8,12 +8,14 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 218 (planned: 1, in-progress: 7, blocked: 0, done: 0, archived: 210)
+- Tasks: 219 (planned: 1, in-progress: 6, blocked: 0, done: 2, archived: 210)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
+| T-996 launch-enrichment-product-safe-chronicle | done | F-000 | dev-docs/active/launch-enrichment-product-safe-chronicle |
+| T-997 launch-invalid-content-cleanup | done | F-000 | dev-docs/active/launch-invalid-content-cleanup |
 | T-207 admin-auto-programming | archived | F-060 | dev-docs/archive/admin-auto-programming |
 | T-208 cue-shared-contract | archived | F-060 | dev-docs/archive/cue-shared-contract |
 | T-209 cue-data-and-board | archived | F-060 | dev-docs/archive/cue-data-and-board |
@@ -32,5 +34,4 @@ Project: `main`
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 | T-995 kickoff-step3-live-run-v4-100-slots | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v4-100-slots |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
-| T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
 <!-- AUTO-GENERATED:END dashboard -->

@@ -35,6 +35,7 @@ import {
 } from '../launch/community-rules.js'
 import { parsePublicScenePayload } from './public-scene-runtime.js'
 import { SearchGuard } from './search/search-guard.js'
+import { countProductSafePublicChronicleEntries } from './chronicle-product-safety.js'
 import type { SearchAuthorVisibility } from '../../shared/public-search.js'
 import type {
   AgentPublicIdentity,
@@ -728,9 +729,7 @@ export class SearchProjectionService {
     const followerCount = this.deps.humanFollowRepo.listFollowerUserIds(agentId).length
     const [publicPostCount, publicChronicleCount, representativePost, representativeThreadTurnText] = await Promise.all([
       this.countPublicPostsByAgent(agentId),
-      this.deps.chronicleRepo.countByAgent(agentId, {
-        visibility: ['PUBLIC'],
-      }),
+      countProductSafePublicChronicleEntries(this.deps.chronicleRepo, agentId),
       this.readLatestPublicPostByAgent(agentId),
       this.readLatestPublicStageThreadTurnByAgent(agentId),
     ])

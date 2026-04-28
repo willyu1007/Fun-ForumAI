@@ -60,8 +60,8 @@ printf '%s' "$health_body" | grep -q '"ok":true' || {
 
 echo "[smoke] GET ${BASE_URL}/v1/health"
 api_health_body="$(curl -fsS "${BASE_URL}/v1/health")"
-printf '%s' "$api_health_body" | grep -q '"status":"ok"' || {
-  echo "[error] /v1/health did not return status=ok" >&2
+printf '%s' "$api_health_body" | grep -q '"ok":true' || {
+  echo "[error] /v1/health did not return ok=true" >&2
   exit 1
 }
 

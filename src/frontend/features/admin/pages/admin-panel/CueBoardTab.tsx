@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { StatusBadge as UiStatusBadge, type StatusTone } from '@fun-forum/ui-web/patterns'
 import { Badge } from '@/components/ui/badge'
 import { useAdminCueBoard, useAdminCueBoardBaselineImport } from '@/api/hooks'
 import { CueDetailEditor } from '@/features/admin/components/cue-editor/CueDetailEditor'
@@ -14,35 +15,6 @@ import type {
 // =============================================================================
 // Visual helpers
 // =============================================================================
-
-const LANE_TONE: Record<CueLane, string> = {
-  prime: 'border-warning/40 bg-warning/10 text-warning',
-  standard: 'border-border bg-muted/30 text-foreground',
-  background: 'border-border/60 bg-muted/10 text-muted-foreground',
-}
-
-const RISK_TONE: Record<CueRiskLevel, string> = {
-  low: 'border-border/60 bg-muted/10 text-muted-foreground',
-  standard: 'border-border bg-muted/30 text-foreground',
-  high: 'border-destructive/40 bg-destructive/10 text-destructive',
-  strict_review: 'border-destructive/60 bg-destructive/20 text-destructive',
-}
-
-const STATUS_TONE: Partial<Record<PublicDiscussionCueStatus, string>> = {
-  draft: 'border-border/60 bg-muted/20 text-muted-foreground',
-  validated: 'border-border bg-muted/30 text-foreground',
-  scheduled: 'border-success/40 bg-success/10 text-success',
-  prewarming: 'border-warning/40 bg-warning/10 text-warning',
-  due: 'border-warning/40 bg-warning/10 text-warning',
-  claimed: 'border-warning/40 bg-warning/10 text-warning',
-  executing: 'border-warning/40 bg-warning/10 text-warning',
-  consumed: 'border-success/40 bg-success/10 text-success',
-  deferred: 'border-muted/40 bg-muted/20 text-muted-foreground',
-  skipped: 'border-muted/40 bg-muted/20 text-muted-foreground',
-  expired: 'border-destructive/40 bg-destructive/10 text-destructive',
-  cancelled: 'border-destructive/40 bg-destructive/10 text-destructive',
-  failed: 'border-destructive/40 bg-destructive/10 text-destructive',
-}
 
 function formatTriggerAt(iso: string, timezone: string): string {
   // Use Intl.DateTimeFormat with explicit timeZone so the rendered time
@@ -61,6 +33,55 @@ function formatTriggerAt(iso: string, timezone: string): string {
     return `${formatter.format(new Date(iso))} (${timezone})`
   } catch {
     return `${new Date(iso).toISOString()} (${timezone})`
+  }
+}
+
+function laneToTone(lane: CueLane): StatusTone {
+  switch (lane) {
+    case 'prime':
+      return 'warning'
+    case 'standard':
+      return 'neutral'
+    case 'background':
+      return 'info'
+  }
+}
+
+function cueStatusToTone(status: PublicDiscussionCueStatus): StatusTone {
+  switch (status) {
+    case 'scheduled':
+    case 'consumed':
+      return 'success'
+    case 'prewarming':
+    case 'due':
+    case 'claimed':
+    case 'executing':
+      return 'warning'
+    case 'expired':
+    case 'cancelled':
+    case 'failed':
+      return 'danger'
+    case 'draft':
+      return 'neutral'
+    case 'validated':
+      return 'info'
+    case 'deferred':
+    case 'skipped':
+      return 'neutral'
+    default:
+      return 'neutral'
+  }
+}
+
+function riskToTone(riskLevel: CueRiskLevel): StatusTone {
+  switch (riskLevel) {
+    case 'low':
+      return 'info'
+    case 'standard':
+      return 'neutral'
+    case 'high':
+    case 'strict_review':
+      return 'danger'
   }
 }
 
@@ -106,18 +127,9 @@ function CueCard({
         <span className="text-sm font-medium text-foreground">
           {formatTriggerAt(cue.trigger_at, cue.timezone)}
         </span>
-        <Badge variant="outline" className={LANE_TONE[cue.lane]}>
-          lane:{cue.lane}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={STATUS_TONE[cue.status] ?? 'border-border bg-muted/30 text-foreground'}
-        >
-          {cue.status}
-        </Badge>
-        <Badge variant="outline" className={RISK_TONE[cue.risk_level]}>
-          risk:{cue.risk_level}
-        </Badge>
+        <UiStatusBadge tone={laneToTone(cue.lane)}>lane:{cue.lane}</UiStatusBadge>
+        <UiStatusBadge tone={cueStatusToTone(cue.status)}>{cue.status}</UiStatusBadge>
+        <UiStatusBadge tone={riskToTone(cue.risk_level)}>risk:{cue.risk_level}</UiStatusBadge>
         <Badge variant="outline">priority:{cue.priority}</Badge>
         {cue.community_id ? (
           <Badge variant="outline">{cue.community_id}</Badge>
@@ -442,16 +454,33 @@ function ScheduleHeader({
 // T-213 M4 — load heatmap panel
 // =============================================================================
 
-const LOAD_STATE_TONE: Record<'green' | 'yellow' | 'red', string> = {
-  green: 'border-success/40 bg-success/10 text-success',
-  yellow: 'border-warning/40 bg-warning/10 text-warning',
-  red: 'border-destructive/40 bg-destructive/10 text-destructive',
-}
-
 const LOAD_STATE_LABEL: Record<'green' | 'yellow' | 'red', string> = {
   green: '空闲',
   yellow: '吃紧',
   red: '过载',
+}
+
+function LoadStateBadge({ entry }: { entry: CueBoardLoadStateEntry }) {
+  switch (entry.load_state) {
+    case 'green':
+      return (
+        <UiStatusBadge tone="success">
+          {LOAD_STATE_LABEL[entry.load_state]} · {entry.load_state}
+        </UiStatusBadge>
+      )
+    case 'yellow':
+      return (
+        <UiStatusBadge tone="warning">
+          {LOAD_STATE_LABEL[entry.load_state]} · {entry.load_state}
+        </UiStatusBadge>
+      )
+    case 'red':
+      return (
+        <UiStatusBadge tone="danger">
+          {LOAD_STATE_LABEL[entry.load_state]} · {entry.load_state}
+        </UiStatusBadge>
+      )
+  }
 }
 
 function LoadHeatmapPanel({
@@ -487,9 +516,7 @@ function LoadHeatmapPanel({
             key={entry.community_id}
             className="flex flex-wrap items-center gap-3 border-l-2 border-border/40 pl-3 py-1"
           >
-            <Badge variant="outline" className={LOAD_STATE_TONE[entry.load_state]}>
-              {LOAD_STATE_LABEL[entry.load_state]} · {entry.load_state}
-            </Badge>
+            <LoadStateBadge entry={entry} />
             <span className="text-xs font-medium text-foreground">
               {entry.community_id}
             </span>

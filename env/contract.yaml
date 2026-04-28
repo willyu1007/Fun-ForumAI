@@ -232,7 +232,7 @@ variables:
     type: enum
     enum: ["true", "false"]
     required: false
-    default: "false"
+    default: "true"
     description: Mobile toggle for replacing the chatroom tab stack with a staging hold / coming-soon surface.
 
   EXPO_EAS_PROJECT_ID:
@@ -314,7 +314,7 @@ variables:
     type: enum
     enum: ["true", "false"]
     required: false
-    default: "false"
+    default: "true"
     description: Frontend toggle for replacing chatroom routes with a staging hold / coming-soon surface.
 
   DASHSCOPE_API_KEY:

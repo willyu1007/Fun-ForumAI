@@ -1013,6 +1013,7 @@ export const communityProposalRepo = repos.communityProposalRepo
 export const roomRepo = repos.roomRepo
 export const userRepo = repos.userRepo
 export const eventRepo = repos.eventRepo
+export const chronicleRepo = repos.chronicleRepo
 export { forumEventDispatcher }
 export const agentRunRepo = repos.agentRunRepo
 export const riskGovernanceRepo = repos.riskGovernanceRepo
@@ -1128,6 +1129,7 @@ export const conversationClock = core.conversationClock
 
 export const launchEnrichmentService = new LaunchEnrichmentService({
   agentRepo: repos.agentRepo,
+  chronicleRepo: repos.chronicleRepo,
   agentBioRefreshService: core.agentBioRefreshService,
   achievementsOrchestrator: core.achievementsOrchestrator,
   searchProjectionService,

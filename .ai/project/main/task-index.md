@@ -227,4 +227,6 @@ Project: `main`
 | T-993 agent-follow-event-semantics-and-durability | archived | F-000 | dev-docs/archive/agent-follow-event-semantics-and-durability |
 | T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
 | T-995 kickoff-step3-live-run-v4-100-slots | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v4-100-slots |
+| T-996 launch-enrichment-product-safe-chronicle | done | F-000 | dev-docs/active/launch-enrichment-product-safe-chronicle |
+| T-997 launch-invalid-content-cleanup | done | F-000 | dev-docs/active/launch-invalid-content-cleanup |
 <!-- AUTO-GENERATED:END task-index -->

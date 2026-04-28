@@ -35,6 +35,10 @@ import type {
 import { buildDeterministicChapterBody } from './biography-writer-service.js'
 import type { BiographyWriterService } from './biography-writer-service.js'
 import type { BiographyFactualAuditService } from './biography-factual-audit-service.js'
+import {
+  isChronicleEligibleForBiographyMaterial,
+  listProductSafePublicChronicleEntries,
+} from './chronicle-product-safety.js'
 
 type WorldviewCompile = Awaited<ReturnType<AgentBioWorldviewService['compile']>>
 type PersonalityNarrative = Awaited<ReturnType<InferenceProfileService['getNarrative']>>
@@ -296,9 +300,14 @@ export class AgentBiographyService {
     agent_id: string
     chapter_id?: string | null
     suppress_page_open_compensation?: boolean
+    public_only?: boolean
   }): Promise<AgentBiographyBookViewModel | null> {
     const agent = this.deps.agentRepo.findById(input.agent_id)
     if (!agent) return null
+
+    if (input.public_only) {
+      return this.buildPublicSafeBookView(input.agent_id, input.chapter_id ?? null)
+    }
 
     const state = await this.ensureCompileState(input.agent_id)
     const published = await this.deps.repo.getPublishedBookView(input.agent_id)
@@ -540,7 +549,9 @@ export class AgentBiographyService {
       } as BiographyMaterial['actors'][number]
     }
 
-    const chronicleMaterials = chroniclePage.items.map((entry) => {
+    const chronicleMaterials = chroniclePage.items
+      .filter((entry) => isChronicleEligibleForBiographyMaterial(entry))
+      .map((entry) => {
       const sourceType: BiographyMaterialSourceType =
         entry.type === 'PRIVATE_DIGEST'
           ? 'PRIVATE_DIGEST'
@@ -1426,6 +1437,82 @@ export class AgentBiographyService {
       case 'steady':
       default:
         return '成形阶段'
+    }
+  }
+
+  private async buildPublicSafeBookView(
+    agentId: string,
+    chapterId: string | null,
+  ): Promise<AgentBiographyBookViewModel | null> {
+    const agent = this.deps.agentRepo.findById(agentId)
+    if (!agent) return null
+
+    const entries = await listProductSafePublicChronicleEntries(this.deps.chronicleRepo, agentId, {
+      limit: 12,
+    })
+    const selected =
+      entries.find((entry) => entry.id === chapterId)
+      ?? entries[0]
+      ?? null
+
+    const chapters = entries.map((entry, index) => ({
+      chapter_id: entry.id,
+      chapter_no: index + 1,
+      title: clip(entry.title, 28),
+      one_line_summary: ensureSentence(entry.summary),
+      status_label: '已发布' as BiographyDirectoryStatusLabel,
+      is_current: selected?.id === entry.id,
+    }))
+
+    return {
+      agent_id: agentId,
+      agent_name: agent.display_name,
+      book: {
+        title: `${agent.display_name} 编年史`,
+        subtitle: entries.length > 0 ? '公开经历' : '等待公开经历',
+        agent_name: agent.display_name,
+        current_stage: entries.length > 0 ? '公开记录已形成' : '资料正在整理',
+        cover_line: entries[0]?.summary
+          ? ensureSentence(entries[0].summary)
+          : '公开传记只会展示已经发生且可被公开验证的经历。',
+        visual_motif: {
+          motif_type: 'PAPER',
+          intensity: entries.length > 0 ? 'MEDIUM' : 'LOW',
+          notes: 'product-safe-public-biography',
+        },
+      },
+      current_chapter: selected
+        ? {
+            chapter_id: selected.id,
+            chapter_no: Math.max(1, entries.findIndex((entry) => entry.id === selected.id) + 1),
+            title: clip(selected.title, 28),
+            subtitle: selected.location ?? undefined,
+            status_label: '已发布',
+            opening: ensureSentence(selected.summary),
+            body_sections: [{
+              title: selected.location ?? '公开经历',
+              text: ensureSentence(selected.story_context?.outcome_sentence ?? selected.summary),
+              visual_anchor: selected.location ?? undefined,
+            }],
+            turning_point: selected.story_context?.next_hook
+              ? {
+                  title: '后续线索',
+                  text: ensureSentence(selected.story_context.next_hook),
+                }
+              : undefined,
+            afterword: ensureSentence(selected.story_context?.reaction_sentence ?? selected.summary),
+            closing_line: selected.story_context?.outcome_sentence
+              ? ensureSentence(selected.story_context.outcome_sentence)
+              : '这条公开记录已经进入可回看的角色经历。',
+            trace_text: '公开传记仅使用 product-safe public chronicle，不读取 owner-only 或系统批处理记录。',
+          }
+        : null,
+      chapters,
+      footer_meta: {
+        source_line: '由 product-safe public chronicle 生成；不包含 dev seed、系统批处理、signal-only 或 owner-only 记录。',
+        generated_at: new Date().toISOString(),
+        degraded: entries.length === 0,
+      },
     }
   }
 

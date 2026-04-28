@@ -126,6 +126,7 @@ Environment-specific non-secret values:
 
 - `staging`: `MEDIA_S3_BUCKET=bucket-forum-stag`
 - `prod`: `MEDIA_S3_BUCKET=bucket-forum-prod`
+- staging/prod OSS S3-compatible endpoint: `MEDIA_S3_REGION=cn-hangzhou` and `MEDIA_S3_ENDPOINT=https://s3.oss-cn-hangzhou.aliyuncs.com`
 
 Operational notes:
 
@@ -214,6 +215,14 @@ export ACR_PULL_PASSWORD='<acr-password>'
 sudo -E ./deploy.sh --image-ref "$IMAGE_REF" --with-migrate --db-compat backwards
 ```
 
+If `docker compose run --rm migrate` fails with `Cannot find module '/app/pnpm'`, the ECS host is using a stale `/srv/apps/fun-forum/compose.yaml`. The current host compose file must set `entrypoint: []` on `web`, `worker`, and `migrate`, and `migrate.command` must be:
+
+```yaml
+command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+```
+
+Sync `/srv/apps/fun-forum/compose.yaml` from `ops/deploy/vm-compose/fun-forum/compose.yaml`, then rerun the same `sudo -E ./deploy.sh ...` command.
+
 What `deploy.sh` does:
 
 1. validates `.env`
@@ -245,7 +254,7 @@ Expected signals:
 
 - `web` status is `healthy`
 - `/health` returns top-level `"ok":true`
-- `/v1/health` still exposes legacy wrapped `"status":"ok"`
+- `/v1/health` returns top-level `"ok":true`
 - logs show Redis runtime and SSE backend connected when staging/prod run in Redis mode
 
 ## Phase 7: Mark ECS web applied
@@ -322,6 +331,9 @@ Do not perform image-only rollback when the current release recorded `db_compat=
 - `MEDIA_STORAGE_BACKEND=s3 requires MEDIA_S3_BUCKET`
   - cause: bucket name missing from env values
   - fix: set `MEDIA_S3_BUCKET` in `env/values/<env>.yaml`, regenerate env, reinject
+- `NoSuchBucket` / `SignatureDoesNotMatch` from media storage
+  - cause: OSS endpoint or region does not match the bucket region
+  - fix: set `MEDIA_S3_REGION=cn-hangzhou` and `MEDIA_S3_ENDPOINT=https://s3.oss-cn-hangzhou.aliyuncs.com`, regenerate env, reinject, and restart web/worker
 - `smoke.sh` fails after service is healthy
   - cause: drift between smoke assertions and health route contracts
   - fix: sync host `smoke.sh` from repo before rerun

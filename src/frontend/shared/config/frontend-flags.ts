@@ -86,7 +86,7 @@ export const FRONTEND_FLAG_DEFINITIONS: readonly FrontendFlagDefinition[] = [
     feature: '聊天室 staging 占位页。',
     surfaces: ['ChatRoomListPage', 'ChatRoomPage'],
     effect: '开启后 `/rooms` 和 `/rooms/:roomId` 会展示亮点介绍与敬请期待，而不进入真实聊天室。',
-    recommendation: '仅用于 staging 表层降级，重开后应删除。',
+    recommendation: '默认保持 hold；确认聊天室可公开使用后，显式设为 false 以重开真实聊天室。',
     debugCommands: [
       {
         label: '本地前端 hold',
@@ -101,7 +101,7 @@ export const FRONTEND_FLAG_DEFINITIONS: readonly FrontendFlagDefinition[] = [
         command: 'curl -s http://localhost:4000/frontend-build-capabilities.json | jq',
       },
     ],
-    defaultValue: 'false',
+    defaultValue: 'true',
     contractStatus: 'code-only',
   },
   {

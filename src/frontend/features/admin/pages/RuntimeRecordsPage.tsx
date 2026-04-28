@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { StatusBadge as UiStatusBadge, type StatusTone } from '@fun-forum/ui-web/patterns'
 import {
   useAdminRuntimeInfraSnapshot,
   useAdminRuntimeLlmConnectivity,
@@ -20,7 +21,6 @@ import type {
   RuntimeOperationSource,
   RuntimeOperationStatus,
 } from '@/api/types'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 const SEVERITIES: RuntimeOperationSeverity[] = ['info', 'warn', 'error', 'critical']
@@ -57,22 +57,22 @@ const SECTION_LABELS: Record<keyof InfraSnapshotData['sections'], string> = {
   storageMedia: 'Storage / Media',
 }
 
-function statusToToneClass(status: InfraSnapshotStatus | RuntimeOperationSeverity | string): string {
+function statusToTone(status: InfraSnapshotStatus | RuntimeOperationSeverity | string): StatusTone {
   switch (status) {
     case 'critical':
     case 'error':
     case 'failed':
     case 'dead_lettered':
-      return 'border-destructive text-destructive'
+      return 'danger'
     case 'warn':
     case 'retried':
-      return 'border-warning text-warning'
+      return 'warning'
     case 'unknown':
     case 'skipped':
     case 'info':
-      return 'border-muted-foreground text-muted-foreground'
+      return 'neutral'
     default:
-      return ''
+      return 'neutral'
   }
 }
 
@@ -220,11 +220,11 @@ function InfraSnapshotPanel({ data, isError }: { data: InfraSnapshotData | null;
   return (
     <div className="border rounded">
       <div className="flex items-center justify-between p-3 border-b bg-muted/40">
-        <div>
+        <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Overall</span>
-          <Badge variant="outline" className={`ml-2 ${statusToToneClass(data.overall_status)}`}>
+          <UiStatusBadge tone={statusToTone(data.overall_status)}>
             {data.overall_status}
-          </Badge>
+          </UiStatusBadge>
         </div>
         <span className="text-xs text-muted-foreground">
           {formatDateTime(data.generated_at)} · poll {Math.round(data.poll_interval_ms / 1000)}s
@@ -235,9 +235,9 @@ function InfraSnapshotPanel({ data, isError }: { data: InfraSnapshotData | null;
           <div key={key} className="border rounded p-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{SECTION_LABELS[key]}</span>
-              <Badge variant="outline" className={statusToToneClass(section.status)}>
+              <UiStatusBadge tone={statusToTone(section.status)}>
                 {section.status}
-              </Badge>
+              </UiStatusBadge>
             </div>
             {section.summary && (
               <p className="text-xs text-muted-foreground mt-1">{section.summary}</p>
@@ -310,9 +310,9 @@ function LlmConnectivityPanel({
                     <td className="px-2 py-1 text-xs">
                       {result ? (
                         <div>
-                          <Badge variant="outline" className={statusToToneClass(result.status)}>
+                          <UiStatusBadge tone={statusToTone(result.status)}>
                             {result.status}
-                          </Badge>
+                          </UiStatusBadge>
                           <div className="text-muted-foreground mt-1">
                             {result.latency_ms !== null && <span>{result.latency_ms}ms · </span>}
                             {formatDateTime(result.tested_at)}
@@ -383,16 +383,16 @@ function RecordsTable({
               >
                 <td className="px-2 py-1 text-xs">{formatDateTime(rec.occurred_at)}</td>
                 <td className="px-2 py-1">
-                  <Badge variant="outline" className={statusToToneClass(rec.severity)}>
+                  <UiStatusBadge tone={statusToTone(rec.severity)}>
                     {rec.severity}
-                  </Badge>
+                  </UiStatusBadge>
                 </td>
                 <td className="px-2 py-1 text-xs">{rec.source}</td>
                 <td className="px-2 py-1 text-xs">{rec.operation}</td>
                 <td className="px-2 py-1">
-                  <Badge variant="outline" className={statusToToneClass(rec.status)}>
+                  <UiStatusBadge tone={statusToTone(rec.status)}>
                     {rec.status}
-                  </Badge>
+                  </UiStatusBadge>
                 </td>
                 <td className="px-2 py-1 font-mono text-xs">{rec.trace_id ?? '—'}</td>
                 <td className="px-2 py-1 text-xs">
@@ -476,11 +476,10 @@ export function RuntimeRecordsPage() {
   const isAnyTestPending = llmTest.isPending
 
   const writeFlagBadge = useMemo(() => {
-    return (
-      <Badge variant="outline" className={writeEnabled ? '' : 'border-amber-500 text-amber-700'}>
-        {writeEnabled ? 'write_enabled=true' : 'write_enabled=false'}
-      </Badge>
-    )
+    if (writeEnabled) {
+      return <UiStatusBadge>write_enabled=true</UiStatusBadge>
+    }
+    return <UiStatusBadge tone="warning">write_enabled=false</UiStatusBadge>
   }, [writeEnabled])
 
   if (!isAdmin) {

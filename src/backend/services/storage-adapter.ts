@@ -29,6 +29,10 @@ export interface StorageAdapter {
   publicUrl(key: string): string
 }
 
+function proxiedMediaUrl(key: string): string {
+  return `/v1/media/local/${encodeURIComponent(key)}`
+}
+
 export class LocalStorageAdapter implements StorageAdapter {
   readonly backend = 'local' as const
   private readonly baseDir: string
@@ -169,7 +173,7 @@ export class S3StorageAdapter implements StorageAdapter {
     if (this.publicBaseUrl) {
       return `${this.publicBaseUrl}/${encodeURIComponent(key)}`
     }
-    return `s3://${this.bucket}/${key}`
+    return proxiedMediaUrl(key)
   }
 }
 

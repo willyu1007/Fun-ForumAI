@@ -1,6 +1,22 @@
 import type { MediaAsset } from '../repos/types.js'
 import type { StorageAdapter } from '../services/storage-adapter.js'
 
+export function resolveBrowserMediaUrl(mediaUrl: string): string {
+  try {
+    const parsed = new URL(mediaUrl)
+    if (parsed.protocol === 's3:') {
+      const storageKey = decodeURIComponent(parsed.pathname.replace(/^\/+/, ''))
+      if (storageKey) {
+        return `/v1/media/local/${encodeURIComponent(storageKey)}`
+      }
+    }
+  } catch {
+    return mediaUrl
+  }
+
+  return mediaUrl
+}
+
 export function resolveMediaAssetUrl(
   asset: Pick<MediaAsset, 'storage_key' | 'origin_url'>,
   storage: Pick<StorageAdapter, 'publicUrl'>,

@@ -6,20 +6,32 @@
  */
 
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge as UiStatusBadge, type StatusTone } from '@fun-forum/ui-web/patterns'
 import type { CueChangeDomain } from '@/api/types'
 
-const APPROVAL_TONE: Record<CueChangeDomain['approval_status'], string> = {
-  pending: 'border-warning/40 bg-warning/10 text-warning',
-  auto_applied: 'border-success/40 bg-success/10 text-success',
-  approved: 'border-success/40 bg-success/10 text-success',
-  rejected: 'border-destructive/40 bg-destructive/10 text-destructive',
-  rolled_back: 'border-muted/40 bg-muted/20 text-muted-foreground',
+function sourceToTone(source: CueChangeDomain['source']): StatusTone {
+  switch (source) {
+    case 'manual':
+      return 'neutral'
+    case 'automated':
+      return 'warning'
+    case 'system':
+      return 'info'
+  }
 }
 
-const SOURCE_TONE: Record<CueChangeDomain['source'], string> = {
-  manual: 'border-border bg-muted/30 text-foreground',
-  automated: 'border-warning/40 bg-warning/10 text-warning',
-  system: 'border-border/60 bg-muted/10 text-muted-foreground',
+function approvalToTone(status: CueChangeDomain['approval_status']): StatusTone {
+  switch (status) {
+    case 'pending':
+      return 'warning'
+    case 'auto_applied':
+    case 'approved':
+      return 'success'
+    case 'rejected':
+      return 'danger'
+    case 'rolled_back':
+      return 'neutral'
+  }
 }
 
 export function PatchDiffPanel({ change }: { change: CueChangeDomain }) {
@@ -28,12 +40,10 @@ export function PatchDiffPanel({ change }: { change: CueChangeDomain }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono">{change.id}</span>
         <Badge variant="outline">{change.change_type}</Badge>
-        <Badge variant="outline" className={SOURCE_TONE[change.source]}>
-          source:{change.source}
-        </Badge>
-        <Badge variant="outline" className={APPROVAL_TONE[change.approval_status]}>
+        <UiStatusBadge tone={sourceToTone(change.source)}>source:{change.source}</UiStatusBadge>
+        <UiStatusBadge tone={approvalToTone(change.approval_status)}>
           {change.approval_status}
-        </Badge>
+        </UiStatusBadge>
         {change.actor_user_id ? (
           <Badge variant="outline">actor:{change.actor_user_id}</Badge>
         ) : null}

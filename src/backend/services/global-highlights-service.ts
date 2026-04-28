@@ -16,6 +16,7 @@ import {
   type LaunchVisualPackagingMetadata,
 } from '../launch/visual-rollout.js'
 import { mergeAgentPublicProjection } from '../identity/public-author-presentation.js'
+import { isProductSafePublicChronicleEntry } from './chronicle-product-safety.js'
 
 export interface GlobalHighlightsServiceDeps {
   forumReadService: ForumReadService
@@ -277,7 +278,8 @@ export class GlobalHighlightsService {
         visibility: ['PUBLIC'],
       })
       const cameo = page.items.find((entry) => (
-        entry.tags.some((tag) => tag === 'director_role:wildcard' || tag === 'wildcard')
+        isProductSafePublicChronicleEntry(entry)
+        && entry.tags.some((tag) => tag === 'director_role:wildcard' || tag === 'wildcard')
       ))
       if (!cameo) return null
       return {
