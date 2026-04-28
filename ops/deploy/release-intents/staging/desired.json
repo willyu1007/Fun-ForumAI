@@ -1,26 +1,26 @@
 {
   "schema_version": 1,
   "env": "staging",
-  "image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-37f57621589308f48577e7b982be19efa67971d6",
-  "git_sha": "37f57621589308f48577e7b982be19efa67971d6",
-  "published_at": "2026-04-28T05:53:20.999Z",
-  "approved_at": "2026-04-28T05:53:20.999Z",
+  "image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-88835ff13fe6458545b1e23f4b6121acbacde000",
+  "git_sha": "88835ff13fe6458545b1e23f4b6121acbacde000",
+  "published_at": "2026-04-28T06:10:30.095Z",
+  "approved_at": "2026-04-28T06:10:30.095Z",
   "approved_by": "willyu1007",
-  "recorded_at": "2026-04-28T05:53:20.999Z",
-  "updated_at": "2026-04-28T05:53:20.999Z",
+  "recorded_at": "2026-04-28T06:10:30.095Z",
+  "updated_at": "2026-04-28T06:10:30.095Z",
   "db_compat": "backwards",
   "db_plan": "",
-  "notes": "fix prisma.config.ts -> .js, migrations work cleanly",
+  "notes": "fix: strip packageManager from prod package.json so prisma ni cannot resolve /app/pnpm",
   "targets": {
     "ecs_web": {
       "status": "pending",
       "notes": "",
-      "updated_at": "2026-04-28T05:53:20.999Z"
+      "updated_at": "2026-04-28T06:10:30.095Z"
     },
     "eci_worker": {
       "status": "pending",
       "notes": "",
-      "updated_at": "2026-04-28T05:53:20.999Z"
+      "updated_at": "2026-04-28T06:10:30.095Z"
     }
   },
   "status": "pending"
