@@ -91,8 +91,9 @@ RUN set -eu; \
     src/backend/routes/dev-kickoff.ts \
     src/backend/routes/dev-badge-debug.ts \
     src/backend/routes/dev-guidance.ts \
-    dist/frontend/bundle-report.json \
-    prisma.config.ts; \
+    dist/frontend/bundle-report.json; \
+  rm -f prisma.config.ts; \
+  printf 'import{defineConfig}from"prisma/config";export default defineConfig({schema:"prisma/schema.prisma",migrations:{path:"prisma/migrations"},datasource:{url:process.env.DATABASE_URL}});\n' > prisma.config.js; \
   find public dist/frontend -name '.DS_Store' -delete; \
   check_no_repo_tests() { \
     found="$({ \
