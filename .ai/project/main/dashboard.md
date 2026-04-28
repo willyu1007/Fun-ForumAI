@@ -8,7 +8,7 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 217 (planned: 1, in-progress: 6, blocked: 0, done: 0, archived: 210)
+- Tasks: 218 (planned: 1, in-progress: 7, blocked: 0, done: 0, archived: 210)
 
 ## Recent tasks
 
@@ -33,5 +33,4 @@ Project: `main`
 | T-995 kickoff-step3-live-run-v4-100-slots | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v4-100-slots |
 | T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 | T-990 kickoff-step3-live-run-v2 | in-progress | F-000 | dev-docs/active/kickoff-step3-live-run-v2 |
-| T-202 agent-biography-book-program | archived | F-020 | dev-docs/archive/agent-biography-book-program |
 <!-- AUTO-GENERATED:END dashboard -->
