@@ -54,4 +54,7 @@ services:
       - .env
     environment:
       RUNTIME_ENABLED: "false"
-    command: ["./node_modules/.bin/prisma", "migrate", "deploy"]
+    # node:20-alpine's docker-entrypoint.sh prefixes `node` when `command -v $1`
+    # returns empty (true for relative paths in busybox ash). Calling node
+    # directly with the prisma entry skips that rewrite and the .bin shim.
+    command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
