@@ -1,26 +1,26 @@
 {
   "schema_version": 1,
   "env": "staging",
-  "image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-16bce54807f6db9c024f5ee75eaaba0ecfcff700",
-  "git_sha": "16bce54807f6db9c024f5ee75eaaba0ecfcff700",
-  "published_at": "2026-04-28T05:17:43.593Z",
-  "approved_at": "2026-04-28T05:17:43.593Z",
+  "image_ref": "talkshow-ai-acr-registry.cn-hangzhou.cr.aliyuncs.com/talkshow-ai/app:sha-37f57621589308f48577e7b982be19efa67971d6",
+  "git_sha": "37f57621589308f48577e7b982be19efa67971d6",
+  "published_at": "2026-04-28T05:53:20.999Z",
+  "approved_at": "2026-04-28T05:53:20.999Z",
   "approved_by": "willyu1007",
-  "recorded_at": "2026-04-28T05:17:43.593Z",
-  "updated_at": "2026-04-28T05:17:43.593Z",
+  "recorded_at": "2026-04-28T05:53:20.999Z",
+  "updated_at": "2026-04-28T05:53:20.999Z",
   "db_compat": "backwards",
   "db_plan": "",
-  "notes": "fix(packaging): build UI package dists inside Docker builder stage",
+  "notes": "fix prisma.config.ts -> .js, migrations work cleanly",
   "targets": {
     "ecs_web": {
       "status": "pending",
       "notes": "",
-      "updated_at": "2026-04-28T05:17:43.593Z"
+      "updated_at": "2026-04-28T05:53:20.999Z"
     },
     "eci_worker": {
       "status": "pending",
       "notes": "",
-      "updated_at": "2026-04-28T05:17:43.593Z"
+      "updated_at": "2026-04-28T05:53:20.999Z"
     }
   },
   "status": "pending"
