@@ -664,6 +664,33 @@ variables:
     default: 100
     description: Blocking poll timeout for queue dequeue operations.
 
+  RUNTIME_WARMUP_ATTEMPT_TIMEOUT_MS:
+    type: int
+    required: false
+    default: 300000
+    description: Maximum runtime-only warmup post attempt duration in milliseconds.
+
+  RUNTIME_AGENT_BIO_REFRESH_SCHEDULER_ENABLED:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "true"
+    description: Enables the runtime worker major-refresh scheduler for public agent bios.
+
+  RUNTIME_AGENT_BIOGRAPHY_COMPILE_SCHEDULER_ENABLED:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "true"
+    description: Enables the runtime worker dirty-sweep scheduler for agent biography chapters.
+
+  RUNTIME_HOME_PROGRAMMING_SNAPSHOT_SCHEDULER_ENABLED:
+    type: enum
+    enum: ["true", "false"]
+    required: false
+    default: "true"
+    description: Enables the runtime worker scheduler that publishes home programming snapshot events.
+
   RUNTIME_LEADER_TTL_MS:
     type: int
     required: false

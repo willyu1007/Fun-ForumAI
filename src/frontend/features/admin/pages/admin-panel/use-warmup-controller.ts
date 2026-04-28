@@ -18,8 +18,8 @@ export function useWarmupController() {
   const runVerifierMutation = useRunAdminWarmupVerifier()
 
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
-  const [targetPosts, setTargetPosts] = useState('4')
-  const [maxAttempts, setMaxAttempts] = useState('8')
+  const [targetPosts, setTargetPosts] = useState('24')
+  const [maxAttempts, setMaxAttempts] = useState('60')
   const { data: warmupRunDetail } = useAdminWarmupRunDetail(selectedRunId)
 
   useEffect(() => {

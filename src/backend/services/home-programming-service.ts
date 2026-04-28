@@ -189,7 +189,7 @@ export class HomeProgrammingService {
         limit: 24,
         viewerUserId: input.viewerUserId,
       }),
-      this.deps.globalHighlightsService.collectToday(),
+      this.deps.globalHighlightsService.collectToday({ buildMissingAgentBios: false }),
       config.launch.capabilities.mediaRolloutControllerV1
         ? this.deps.mediaRolloutControllerService?.getEffectiveProfile()
             .catch(() => null) ?? null

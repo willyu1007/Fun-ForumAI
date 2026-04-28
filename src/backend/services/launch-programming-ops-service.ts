@@ -72,6 +72,8 @@ interface ProgrammingObservedCounts {
   aftershow_candidates: number
 }
 
+const READY_AFTERSHOW_EXPORT_BIAS = 0.6
+
 interface ProgrammingDaypartReadiness {
   daypart_id: LaunchProgrammingDaypartId
   label: string
@@ -325,11 +327,21 @@ function buildObservedCounts(posts: PostWithMeta[], highlightPostIds: Set<string
     root_posts: posts.filter((post) => readContentKind(post) !== 'aftershow_recap').length,
     creator_note_entries: posts.filter((post) => isCreatorNoteEntry(post)).length,
     priority_threads: posts.filter((post) => post.thread_turn_count >= 6).length,
-    highlight_candidates: posts.filter((post) => highlightPostIds.has(post.id)).length,
+    highlight_candidates: posts.filter((post) => isProgrammingHighlightCandidate(post, highlightPostIds)).length,
     continuity_callbacks: posts.filter((post) =>
       readContentKind(post) === 'continuity_callback' || readStorylineState(post) === 'callback').length,
     aftershow_candidates: posts.filter((post) => (readAftershowExportBias(post) ?? 0) > 0).length,
   }
+}
+
+function isProgrammingHighlightCandidate(post: PostWithMeta, highlightPostIds: Set<string>): boolean {
+  if (highlightPostIds.has(post.id) || readHeroEligible(post)) return true
+  if (isCreatorNoteEntry(post) || readContentKind(post) === 'aftershow_recap') return false
+  return post.thread_turn_count >= 6 && post.media.length > 0
+}
+
+function isReadyAftershowCandidate(post: PostWithMeta): boolean {
+  return readStorylineState(post) === 'callback' || (readAftershowExportBias(post) ?? 0) >= READY_AFTERSHOW_EXPORT_BIAS
 }
 
 function getDaypartStartIndex(
@@ -519,9 +531,9 @@ export class LaunchProgrammingOpsService {
     const activeDaypart = dayparts[activeDaypartIndex] ?? null
 
     const [hotFeed, newFeed, highlights, mediaSummary, communitiesPage, proposals] = await Promise.all([
-      this.deps.forumReadService.getFeed({ sort: 'hot', limit: 60 }),
-      this.deps.forumReadService.getFeed({ sort: 'new', limit: 60 }),
-      this.deps.globalHighlightsService.collectToday(),
+      this.deps.forumReadService.getFeed({ sort: 'hot', limit: 500 }),
+      this.deps.forumReadService.getFeed({ sort: 'new', limit: 500 }),
+      this.deps.globalHighlightsService.collectToday({ buildMissingAgentBios: false }),
       this.deps.mediaObservabilityService?.getAdminSummary().catch(() => null) ?? Promise.resolve(null),
       Promise.resolve(this.deps.communityRepo.findAll({ limit: 200 })),
       this.deps.communityProposalRepo.listProposals(),
@@ -621,7 +633,7 @@ export class LaunchProgrammingOpsService {
     })
 
     const aftershowSourcePosts = todayPosts
-      .filter((post) => (readAftershowExportBias(post) ?? 0) > 0 || readStorylineState(post) === 'callback')
+      .filter((post) => isReadyAftershowCandidate(post))
       .slice(0, 8)
     const aftershowArtifacts = await Promise.all(aftershowSourcePosts.map(async (post) => ({
       post,

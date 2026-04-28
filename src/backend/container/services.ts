@@ -437,6 +437,7 @@ export function createCoreServices(deps: {
     aftershowService,
     roleAssignmentService,
     mediaAssetControlService: deps.mediaAssetControlService,
+    warmupAttemptTimeoutMs: config.runtime.warmupAttemptTimeoutMs,
   })
 
   const communityCultureDigestService = new CommunityCultureDigestService({

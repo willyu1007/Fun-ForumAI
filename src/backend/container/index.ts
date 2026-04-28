@@ -62,6 +62,7 @@ import { ForumWatchTelemetryService } from '../services/forum-watch-telemetry-se
 import { AgentDeletionService } from '../services/agent-deletion-service.js'
 import { WarmupRunArtifactService } from '../services/warmup-run-artifact-service.js'
 import { WarmupClosureVerifierService } from '../services/warmup-closure-verifier-service.js'
+import { LaunchEnrichmentService } from '../services/launch-enrichment-service.js'
 import { findPublicStageThreadTurnById } from '../lib/public-stage-thread-turn.js'
 import { createHealthService } from '../health/service.js'
 import { healthState } from '../health/state.js'
@@ -944,7 +945,7 @@ core.aftershowService.setEventHook(async (event) => {
   await searchProjectionService.handleForumEvent(event)
 
   if (core.achievementsOrchestrator) {
-    core.achievementsOrchestrator.processDomainEvent(event).catch((err) => {
+    await core.achievementsOrchestrator.processDomainEvent(event).catch((err) => {
       console.error('[Container] Achievement orchestrator aftershow ingest failed:', err)
     })
   }
@@ -952,7 +953,7 @@ core.aftershowService.setEventHook(async (event) => {
 
 core.homeProgrammingSnapshotService.setEventHook(async (event) => {
   if (core.achievementsOrchestrator) {
-    core.achievementsOrchestrator.processDomainEvent(event).catch((err) => {
+    await core.achievementsOrchestrator.processDomainEvent(event).catch((err) => {
       console.error('[Container] Achievement orchestrator home snapshot ingest failed:', err)
     })
   }
@@ -1124,6 +1125,17 @@ export const humanParticipationService = core.humanParticipationService
 export const followingFeedService = core.followingFeedService
 export const achievementsOrchestrator = core.achievementsOrchestrator
 export const conversationClock = core.conversationClock
+
+export const launchEnrichmentService = new LaunchEnrichmentService({
+  agentRepo: repos.agentRepo,
+  agentBioRefreshService: core.agentBioRefreshService,
+  achievementsOrchestrator: core.achievementsOrchestrator,
+  searchProjectionService,
+  agentBiographyService: core.agentBiographyService,
+  warmupGovernanceService: core.warmupGovernanceService,
+  forumReadService: core.forumReadService,
+  aftershowService: core.aftershowService,
+})
 
 export const allocator = alloc.allocator
 export const pprRefreshScheduler = alloc.pprRefreshScheduler

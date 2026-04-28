@@ -20,6 +20,7 @@ type HarnessOptions = {
   quarantineHidesProbe?: boolean
   restoreShowsProbe?: boolean
   cleanupHidesProbe?: boolean
+  feedLeadCount?: number
   throwOnAdmissionRead?: boolean
   throwOnKickoffDetailRead?: boolean
   throwOnBaselinePostsRead?: boolean
@@ -48,6 +49,7 @@ function createHarness(options: HarnessOptions = {}) {
   const quarantineHidesProbe = options.quarantineHidesProbe ?? true
   const restoreShowsProbe = options.restoreShowsProbe ?? true
   const cleanupHidesProbe = options.cleanupHidesProbe ?? quarantineHidesProbe
+  const feedLeadCount = options.feedLeadCount ?? 0
 
   const admission = hasBaseline
     ? {
@@ -237,6 +239,9 @@ function createHarness(options: HarnessOptions = {}) {
           }
           return {
             items: [
+              ...Array.from({ length: feedLeadCount }, (_unused, index) => ({
+                id: `future-post-${index + 1}`,
+              })),
               ...(initialFeedVisible && shouldExposeProbe() && probePostId
                 ? [
                     {
@@ -387,6 +392,32 @@ describe('WarmupClosureVerifierService', () => {
     })
     expect(result.probe_manifest?.post_id).toBe('probe-post-1')
     expect(harness.inspect.probeVisibility()).toBe('QUARANTINE')
+  })
+
+  it('checks the probe community feed with a deep enough window for scheduled content', async () => {
+    const { WarmupRunArtifactService } = await import('../warmup-run-artifact-service.js')
+    const { WarmupClosureVerifierService } = await import('../warmup-closure-verifier-service.js')
+    const harness = createHarness({ feedLeadCount: 60 })
+    const artifactService = new WarmupRunArtifactService(harness.artifactRoot)
+    const service = new WarmupClosureVerifierService({
+      ...harness.deps,
+      artifactService,
+    } as never)
+
+    const result = await service.run({ triggered_by_user_id: 'admin-1' })
+
+    expect(result.summary.status).toBe('passed')
+    expect(harness.deps.forumReadService.getFeed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        communityId: 'community-1',
+        limit: 500,
+        sort: 'new',
+      }),
+    )
+    if (!result.surface_audit) {
+      expect.fail('expected surface audit to be persisted')
+    }
+    expect(result.surface_audit.initial?.feed.matched_probe).toBe(true)
   })
 
   it('fails closed when no kickoff baseline exists', async () => {

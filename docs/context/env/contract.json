@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-27T08:15:40Z",
+  "generated_at_utc": "2026-04-27T16:07:30Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -2312,6 +2312,40 @@
       "state": "active",
       "type": "int"
     },
+    "RUNTIME_AGENT_BIOGRAPHY_COMPILE_SCHEDULER_ENABLED": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enables the runtime worker dirty-sweep scheduler for agent biography chapters.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "RUNTIME_AGENT_BIO_REFRESH_SCHEDULER_ENABLED": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enables the runtime worker major-refresh scheduler for public agent bios.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
     "RUNTIME_BATCH_SIZE": {
       "default": 10,
       "deprecate_after": null,
@@ -2333,6 +2367,23 @@
       "default": "false",
       "deprecate_after": null,
       "description": "Enable automatic startup of background runtime services on server start.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "enum"
+    },
+    "RUNTIME_HOME_PROGRAMMING_SNAPSHOT_SCHEDULER_ENABLED": {
+      "default": "true",
+      "deprecate_after": null,
+      "description": "Enables the runtime worker scheduler that publishes home programming snapshot events.",
       "legacy": {
         "deprecated": false,
         "replaced_by": null
@@ -2552,6 +2603,23 @@
       "secret_ref": "runtime_redis_url",
       "state": "active",
       "type": "string"
+    },
+    "RUNTIME_WARMUP_ATTEMPT_TIMEOUT_MS": {
+      "default": 300000,
+      "deprecate_after": null,
+      "description": "Maximum runtime-only warmup post attempt duration in milliseconds.",
+      "legacy": {
+        "deprecated": false,
+        "replaced_by": null
+      },
+      "migration": null,
+      "replacement": null,
+      "required": false,
+      "scopes": null,
+      "secret": false,
+      "secret_ref": null,
+      "state": "active",
+      "type": "int"
     },
     "SERVICE_AUTH_SECRET": {
       "default": null,

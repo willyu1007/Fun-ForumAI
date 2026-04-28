@@ -78,9 +78,17 @@ interface LlmGatewayOptions {
   credentialBroker: CredentialBroker
   usageLedger: UsageLedgerWriter
   budgetGuard: BudgetGuard
+  transientFailureCooldownMs?: number
 }
 
 const DEFAULT_PRICING = { prompt: 0.02, completion: 0.05 }
+const TRANSIENT_FAILURE_COOLDOWN_ENV = 'LLM_GATEWAY_TRANSIENT_FAILURE_COOLDOWN_MS'
+const TRANSIENT_FAILURE_CODES = new Set<LLMGatewayErrorCode>([
+  'RateLimitError',
+  'TimeoutError',
+  'TransientError',
+  'UpstreamError',
+])
 const QUALITY_SCORE_BY_TIER: Record<RenderTier, Record<ModelProfileCandidate['quality_class'], number>> = {
   lite: {
     fast: 3,
@@ -107,6 +115,8 @@ export class LLMGateway {
   private readonly routingPoliciesByProfileId: Map<string, RoutingPoliciesRegistryFile['policies'][number]>
   private readonly executionPoliciesById: Map<string, ExecutionPolicyEntry>
   private readonly adapterBindingsById: Map<string, AdapterBinding>
+  private readonly transientFailureCooldownMs: number
+  private readonly transientFailureCooldownUntil = new Map<string, number>()
 
   constructor(private readonly options: LlmGatewayOptions) {
     this.profilesById = new Map(
@@ -140,6 +150,9 @@ export class LLMGateway {
     )
     this.adapterBindingsById = new Map(
       options.bundle.adapterBindings.bindings.map((binding) => [binding.adapterId, binding] as const),
+    )
+    this.transientFailureCooldownMs = normalizeCooldownMs(
+      options.transientFailureCooldownMs ?? process.env[TRANSIENT_FAILURE_COOLDOWN_ENV],
     )
   }
 
@@ -280,8 +293,23 @@ export class LLMGateway {
         credentialPools: this.options.bundle.credentialPools.pools,
         regionHint: this.resolveRegionHint(request, route.executionPolicy),
       })
+      const runnableCandidates = this.filterTransientCooldownCandidates(orderedCandidates)
 
-      for (const candidate of orderedCandidates) {
+      if (runnableCandidates.candidates.length === 0) {
+        lastError = new LLMGatewayContractError(
+          'TransientError',
+          'All route candidates are in transient failure cooldown',
+          {
+            ...requestDetails(request),
+            profile_id: route.profile.profile_id,
+            fallback_level: route.fallbackLevel,
+            cooldown_warnings: runnableCandidates.warnings,
+          },
+        )
+        continue
+      }
+
+      for (const candidate of runnableCandidates.candidates) {
         const adapterId = candidate.adapter_id
         const adapterBinding = this.resolveAdapterBinding(adapterId)
         const provider = this.resolveProvider(candidate.provider_id)
@@ -303,7 +331,12 @@ export class LLMGateway {
           candidate.model_id,
           resolvedParams.maxTokens,
         )
-        const executionWarnings = dedupeWarnings([...routeWarnings, ...mergeWarnings, ...gatewayWarnings])
+        const executionWarnings = dedupeWarnings([
+          ...routeWarnings,
+          ...runnableCandidates.warnings,
+          ...mergeWarnings,
+          ...gatewayWarnings,
+        ])
 
         await this.options.budgetGuard.assertAllowed({
           agentId: request.agentId,
@@ -523,6 +556,8 @@ export class LLMGateway {
               continue
             }
 
+            this.recordTransientFailureCooldown(candidate, code)
+
             if (shouldTryNextRoute(code)) {
               break
             }
@@ -707,6 +742,44 @@ export class LLMGateway {
       supported: warnings.length === 0,
       warnings,
     }
+  }
+
+  private filterTransientCooldownCandidates(
+    candidates: ModelProfileEntry['candidates'],
+  ): { candidates: ModelProfileEntry['candidates']; warnings: string[] } {
+    if (this.transientFailureCooldownMs <= 0 || this.transientFailureCooldownUntil.size === 0) {
+      return { candidates, warnings: [] }
+    }
+
+    const now = Date.now()
+    const available: ModelProfileEntry['candidates'] = []
+    const warnings: string[] = []
+
+    for (const candidate of candidates) {
+      const key = candidateCooldownKey(candidate)
+      const cooldownUntil = this.transientFailureCooldownUntil.get(key)
+      if (!cooldownUntil || cooldownUntil <= now) {
+        if (cooldownUntil !== undefined) {
+          this.transientFailureCooldownUntil.delete(key)
+        }
+        available.push(candidate)
+        continue
+      }
+      warnings.push(`transient_failure_cooldown:${key}`)
+    }
+
+    return { candidates: available, warnings }
+  }
+
+  private recordTransientFailureCooldown(
+    candidate: ModelProfileEntry['candidates'][number],
+    code: LLMGatewayErrorCode,
+  ): void {
+    if (this.transientFailureCooldownMs <= 0 || !TRANSIENT_FAILURE_CODES.has(code)) return
+    this.transientFailureCooldownUntil.set(
+      candidateCooldownKey(candidate),
+      Date.now() + this.transientFailureCooldownMs,
+    )
   }
 
   private resolveInitialProfileId(request: LLMGatewayRequest): string {
@@ -1123,6 +1196,22 @@ function estimateUsage(messages: LlmMessage[], maxTokens = 512): LlmTokenUsage {
     completion_tokens,
     total_tokens: prompt_tokens + completion_tokens,
   }
+}
+
+function normalizeCooldownMs(value: number | string | undefined): number {
+  if (value === undefined) return 0
+  const parsed = typeof value === 'number' ? value : Number.parseInt(value.trim(), 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0
+  return Math.min(parsed, 24 * 60 * 60 * 1000)
+}
+
+function candidateCooldownKey(candidate: ModelProfileEntry['candidates'][number]): string {
+  return [
+    candidate.provider_id,
+    candidate.model_id,
+    candidate.endpoint_id,
+    candidate.adapter_id,
+  ].join('/')
 }
 
 function shouldTryNextRoute(code: string): boolean {

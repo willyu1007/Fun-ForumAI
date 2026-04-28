@@ -119,4 +119,114 @@ describe('config', () => {
 
     expect(config.launch.capabilities.agentStatsV1).toBe(true)
   })
+
+  it('reads launch programming flags from env defaults and overrides', async () => {
+    const defaults = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      FF_HOME_PROGRAMMING_V1: undefined,
+      FF_PROGRAMMING_OPS_V1: undefined,
+      FF_GLOBAL_HIGHLIGHTS_V1: undefined,
+    })
+
+    expect(defaults.config.launch.capabilities.homeProgrammingV1).toBe(false)
+    expect(defaults.config.launch.capabilities.programmingOpsV1).toBe(false)
+    expect(defaults.config.launch.capabilities.globalHighlightsV1).toBe(true)
+
+    const enabled = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      FF_HOME_PROGRAMMING_V1: 'true',
+      FF_PROGRAMMING_OPS_V1: 'true',
+      FF_GLOBAL_HIGHLIGHTS_V1: 'false',
+    })
+
+    expect(enabled.config.launch.capabilities.homeProgrammingV1).toBe(true)
+    expect(enabled.config.launch.capabilities.programmingOpsV1).toBe(true)
+    expect(enabled.config.launch.capabilities.globalHighlightsV1).toBe(false)
+  })
+
+  it('can disable the home programming snapshot scheduler independently', async () => {
+    const { config } = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      RUNTIME_HOME_PROGRAMMING_SNAPSHOT_SCHEDULER_ENABLED: 'false',
+    })
+
+    expect(config.runtime.homeProgrammingSnapshotSchedulerEnabled).toBe(false)
+  })
+
+  it('reads achievement and observation feature flags from env defaults and overrides', async () => {
+    const defaults = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      FF_ACHIEVEMENT_CHRONICLE_V1: undefined,
+      FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS: undefined,
+      FF_PUBLIC_OBSERVATION_MEMORY: undefined,
+    })
+
+    expect(defaults.config.launch.capabilities.achievementChronicleV1).toBe(false)
+    expect(defaults.config.launch.capabilities.achievementPublicHighlights).toBe(false)
+    expect(defaults.config.launch.capabilities.publicObservationMemory).toBe(false)
+
+    const enabled = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      FF_ACHIEVEMENT_CHRONICLE_V1: 'true',
+      FF_ACHIEVEMENT_PUBLIC_HIGHLIGHTS: 'true',
+      FF_PUBLIC_OBSERVATION_MEMORY: 'true',
+    })
+
+    expect(enabled.config.launch.capabilities.achievementChronicleV1).toBe(true)
+    expect(enabled.config.launch.capabilities.achievementPublicHighlights).toBe(true)
+    expect(enabled.config.launch.capabilities.publicObservationMemory).toBe(true)
+  })
+
+  it('reads media feature flags from env defaults and overrides', async () => {
+    const defaults = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      FF_MULTIMODAL_AGENT_MEDIA_V1: undefined,
+      FF_MEDIA_GENERATION_V1: undefined,
+      FF_MEDIA_OBSERVABILITY_V1: undefined,
+      FF_MEDIA_ROLLOUT_CONTROLLER_V1: undefined,
+      FF_MEDIA_LIFECYCLE_V1: undefined,
+    })
+
+    expect(defaults.config.launch.capabilities.multimodalAgentMediaV1).toBe(false)
+    expect(defaults.config.launch.capabilities.mediaGenerationV1).toBe(false)
+    expect(defaults.config.launch.capabilities.mediaObservabilityV1).toBe(false)
+    expect(defaults.config.launch.capabilities.mediaRolloutControllerV1).toBe(false)
+    expect(defaults.config.launch.capabilities.mediaLifecycleV1).toBe(false)
+
+    const enabled = await loadConfig({
+      NODE_ENV: 'development',
+      APP_ENV: 'dev',
+      JWT_SECRET: 'dev-jwt-secret',
+      SERVICE_AUTH_SECRET: 'dev-service-secret',
+      FF_MULTIMODAL_AGENT_MEDIA_V1: 'true',
+      FF_MEDIA_GENERATION_V1: 'true',
+      FF_MEDIA_OBSERVABILITY_V1: 'true',
+      FF_MEDIA_ROLLOUT_CONTROLLER_V1: 'true',
+      FF_MEDIA_LIFECYCLE_V1: 'true',
+    })
+
+    expect(enabled.config.launch.capabilities.multimodalAgentMediaV1).toBe(true)
+    expect(enabled.config.launch.capabilities.mediaGenerationV1).toBe(true)
+    expect(enabled.config.launch.capabilities.mediaObservabilityV1).toBe(true)
+    expect(enabled.config.launch.capabilities.mediaRolloutControllerV1).toBe(true)
+    expect(enabled.config.launch.capabilities.mediaLifecycleV1).toBe(true)
+  })
 })

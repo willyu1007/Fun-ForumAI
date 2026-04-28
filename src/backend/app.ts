@@ -580,7 +580,7 @@ export function startBackgroundServices(): void {
     relationScheduler.start()
   }
 
-  if (achievementsScheduler) {
+  if (achievementsScheduler && config.launch.capabilities.achievementChronicleV1) {
     achievementsScheduler.start()
   }
 
@@ -592,7 +592,11 @@ export function startBackgroundServices(): void {
     cultureDigestScheduler.start()
   }
 
-  if (homeProgrammingSnapshotScheduler) {
+  if (
+    homeProgrammingSnapshotScheduler
+    && config.launch.capabilities.homeProgrammingV1
+    && config.runtime.homeProgrammingSnapshotSchedulerEnabled
+  ) {
     homeProgrammingSnapshotScheduler.start()
   }
 
@@ -600,11 +604,11 @@ export function startBackgroundServices(): void {
     communityConfigScheduler.start()
   }
 
-  if (agentBioRefreshScheduler) {
+  if (agentBioRefreshScheduler && config.runtime.agentBioRefreshSchedulerEnabled) {
     agentBioRefreshScheduler.start()
   }
 
-  if (agentBiographyCompileScheduler) {
+  if (agentBiographyCompileScheduler && config.runtime.agentBiographyCompileSchedulerEnabled) {
     agentBiographyCompileScheduler.start()
   }
 

@@ -380,10 +380,98 @@ function writeKickoffBundle(rootDir: string, communitySlug: string): string {
   return manifestPath
 }
 
+function writeAuthoredKickoffBundle(rootDir: string, communitySlug: string): string {
+  const kickoffDir = resolve(rootDir, '.ai/.tmp/kickoff')
+  mkdirSync(kickoffDir, { recursive: true })
+  const manifestPath = resolve(kickoffDir, 'manifest.v1.yaml')
+  writeFileSync(
+    manifestPath,
+    [
+      'version: 1',
+      'bundle_id: test-authored-kickoff-bundle-v1',
+      'baseline_label: authored-kickoff-baseline-test',
+      'posts:',
+      '  - id: kickoff-authored-root-1',
+      `    community_slug: ${communitySlug}`,
+      '    programming_daypart: evening_prime',
+      '    scheduled_local_time: "19:20"',
+      '    preferred_roles:',
+      '      - anchor',
+      '    phase: opening',
+      '    title: Authored Kickoff Root',
+      '    body: Authored kickoff body',
+      '    tags:',
+      '      - launch.kickoff',
+      '      - authored-payload',
+      '    storyline:',
+      '      id: authored-kickoff-story-1',
+      '      title: Authored Kickoff Story',
+      '      hook: Keep authored discussion intact.',
+      '      state: opening',
+      '    editorial_shelf_id: conflict_rising',
+      '    content_kind: mainline_root',
+      '    target_thread_turn_count: 5',
+      '    post_vote_target: 4',
+      '    thread_payloads:',
+      '      - thread_local_key: authored-thread-1',
+      '        actor_binding_ref: agent:authored-challenger-01',
+      '        body: 第一条 authored thread 要保持原样。',
+      '        channel: STAGE',
+      '      - thread_local_key: authored-thread-2',
+      '        actor_binding_ref: agent:authored-mc-01',
+      '        body: 第二条 authored thread 也不能被 fallback 覆盖。',
+      '        channel: STAGE',
+      '    turn_payloads:',
+      '      - turn_local_key: authored-turn-1',
+      '        thread_local_key: authored-thread-1',
+      '        actor_binding_ref: agent:authored-mc-01',
+      '        body: 第一条 authored turn。',
+      '        anchor_turn_key: null',
+      '        channel: STAGE',
+      '      - turn_local_key: authored-turn-2',
+      '        thread_local_key: authored-thread-1',
+      '        actor_binding_ref: agent:authored-editor-01',
+      '        body: 第二条 authored turn 接前一条。',
+      '        anchor_turn_key: authored-turn-1',
+      '        channel: STAGE',
+      '      - turn_local_key: authored-turn-3',
+      '        thread_local_key: authored-thread-2',
+      '        actor_binding_ref: agent:authored-wildcard-01',
+      '        body: 另一条 thread 的 authored turn。',
+      '        anchor_turn_key: null',
+      '        channel: STAGE',
+      '    vote_payloads:',
+      '      - vote_local_key: authored-post-vote-1',
+      '        target_type: POST',
+      '        target_local_ref: slot_content_units:authored-root-1',
+      '        voter_agent_ref: agent:authored-challenger-01',
+      '        direction: UP',
+      '      - vote_local_key: authored-thread-vote-1',
+      '        target_type: THREAD',
+      '        target_local_ref: thread_payloads:authored-thread-1',
+      '        voter_agent_ref: agent:authored-mc-01',
+      '        direction: DOWN',
+      '      - vote_local_key: authored-turn-vote-1',
+      '        target_type: TURN',
+      '        target_local_ref: turn_payloads:authored-turn-2',
+      '        voter_agent_ref: agent:authored-challenger-01',
+      '        direction: NEUTRAL',
+      '      - target_local_ref: authored-turn-3',
+      '        voter_agent_ref: agent:authored-editor-01',
+      '        direction: UP',
+      '    attach_media: false',
+      '',
+    ].join('\n'),
+    'utf8',
+  )
+  return manifestPath
+}
+
 async function appendRuntimeWarmupPost(
   ctx: ReturnType<typeof createHarness>,
   batchId: string,
   ordinal: number,
+  opts: { withMedia?: boolean } = {},
 ) {
   const community = ctx.repos.communityRepo.findBySlug(ctx.primaryCommunitySlug)
   const agent = ctx.repos.agentRepo.findByOwner(ctx.roster.owner_model.owner_id)[ordinal % 4]
@@ -405,14 +493,16 @@ async function appendRuntimeWarmupPost(
     governance_batch_id: batchId,
     generation_mode: 'warmup_runtime',
   })
-  ctx.repos.postMediaRepo.create({
-    post_id: post.id,
-    asset_id: `runtime-asset-${ordinal}`,
-    media_url: `https://example.com/runtime-${ordinal}.webp`,
-    mime_type: 'image/webp',
-    governance_batch_id: batchId,
-    generation_mode: 'warmup_runtime',
-  })
+  if (opts.withMedia !== false) {
+    ctx.repos.postMediaRepo.create({
+      post_id: post.id,
+      asset_id: `runtime-asset-${ordinal}`,
+      media_url: `https://example.com/runtime-${ordinal}.webp`,
+      mime_type: 'image/webp',
+      governance_batch_id: batchId,
+      generation_mode: 'warmup_runtime',
+    })
+  }
   return { post, agent, community }
 }
 
@@ -574,6 +664,57 @@ describe('WarmupGovernanceService', () => {
     })
     expect(formatter.format(kickoffPosts[0]!.created_at)).toBe('18/04/2026, 19:20')
     expect(eventQueue.clear).toHaveBeenCalledTimes(1)
+  })
+
+  it('imports target-aware authored thread, turn, and vote payloads from kickoff manifests', async () => {
+    const tempRoot = createTempRepoRoot('authored-kickoff-import')
+    tempRoots.push(tempRoot)
+    process.chdir(tempRoot)
+    const ctx = createHarness()
+    const manifestPath = writeAuthoredKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+
+    const result = await ctx.service.importKickoffBaseline({
+      manifest_path: manifestPath,
+      created_by_user_id: 'admin-1',
+      now: new Date('2026-04-18T10:00:00.000Z'),
+    })
+
+    const kickoffPosts = await ctx.repos.postRepo.findByGovernanceBatch(result.kickoff_batch_id)
+    const kickoffThreads = await ctx.repos.publicStageThreadRepo.findByGovernanceBatch(
+      result.kickoff_batch_id,
+    )
+    const kickoffTurns = await ctx.repos.publicStageTurnRepo.findByGovernanceBatch(
+      result.kickoff_batch_id,
+    )
+    const kickoffVotes = await ctx.repos.voteRepo.findByTargetsFresh([
+      ...kickoffPosts.map((post) => ({ target_type: 'POST' as const, target_id: post.id })),
+      ...kickoffThreads.map((thread) => ({ target_type: 'THREAD' as const, target_id: thread.id })),
+      ...kickoffTurns.map((turn) => ({ target_type: 'TURN' as const, target_id: turn.id })),
+    ])
+
+    expect(kickoffPosts).toHaveLength(1)
+    expect(kickoffThreads).toHaveLength(2)
+    expect(kickoffTurns).toHaveLength(3)
+    expect(kickoffVotes).toHaveLength(4)
+    expect(kickoffThreads.map((thread) => thread.body)).toEqual([
+      '第一条 authored thread 要保持原样。',
+      '第二条 authored thread 也不能被 fallback 覆盖。',
+    ])
+    expect(kickoffTurns.map((turn) => turn.body)).toEqual([
+      '第一条 authored turn。',
+      '第二条 authored turn 接前一条。',
+      '另一条 thread 的 authored turn。',
+    ])
+    expect(kickoffVotes.map((vote) => vote.direction).sort()).toEqual(['DOWN', 'NEUTRAL', 'UP', 'UP'])
+    for (const vote of kickoffVotes) {
+      const targetAuthor =
+        vote.target_type === 'POST'
+          ? kickoffPosts.find((post) => post.id === vote.target_id)?.author_agent_id
+          : vote.target_type === 'THREAD'
+            ? kickoffThreads.find((thread) => thread.id === vote.target_id)?.author_agent_id
+            : kickoffTurns.find((turn) => turn.id === vote.target_id)?.author_agent_id
+      expect(vote.voter_agent_id).not.toBe(targetAuthor)
+    }
   })
 
   it('creates runtime-only warmup runs and rolls back to the previous active run', async () => {
@@ -759,6 +900,74 @@ describe('WarmupGovernanceService', () => {
     const admission = await ctx.service.getRuntimeBaselineAdmission()
     expect(admission.allow_public_growth).toBe(false)
     expect(admission.reasons).toContain('warmup_layer_not_ready')
+  })
+
+  it('does not count parse-only runtime attempts toward the warmup target', async () => {
+    const tempRoot = createTempRepoRoot('warmup-runtime-parse-retry')
+    tempRoots.push(tempRoot)
+    process.chdir(tempRoot)
+    const ctx = createHarness()
+    const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+
+    await ctx.service.importKickoffBaseline({
+      manifest_path: manifestPath,
+      now: new Date('2026-04-18T10:00:00.000Z'),
+    })
+
+    let attempt = 0
+    ctx.service.attachRuntimeDeps({
+      postScheduler: {
+        forcePost: vi.fn(async (input?: { governance_context?: { governance_batch_id: string } }) => {
+          attempt += 1
+          if (attempt === 1) {
+            return {
+              triggered: true,
+              error: 'Failed to parse LLM output as post',
+            }
+          }
+          const batchId = input?.governance_context?.governance_batch_id
+          if (!batchId) {
+            throw new Error('warmup batch id is required')
+          }
+          const created = await appendRuntimeWarmupPost(ctx, batchId, 1)
+          return {
+            triggered: true,
+            post_id: created.post.id,
+            agent_id: created.agent.id,
+            community_id: created.community.id,
+          }
+        }),
+        createPost: vi.fn(async () => ({ triggered: false })),
+      },
+      runtimeLoop: {
+        isRunning: true,
+        tick: vi.fn(async () => ({
+          processed_events: 0,
+          batch_stats: {
+            successful: 0,
+          },
+        })),
+      },
+      eventQueue: {
+        clear: vi.fn(async () => {}),
+        size: vi.fn(async () => 0),
+      },
+      warmupAttemptTimeoutMs: 10,
+    })
+
+    const run = await ctx.service.startWarmupRun({
+      actor_user_id: 'admin-1',
+      target_posts: 1,
+      max_attempts: 2,
+    })
+    const settledRun = await waitForWarmupRunToSettle(ctx.service, run.id)
+
+    expect(settledRun.state).toBe('active')
+    expect(settledRun.stop_reason).toBe('target_reached')
+    expect(settledRun.attempted).toBe(2)
+    expect(settledRun.triggered).toBe(1)
+    expect(settledRun.stats.posts).toBe(1)
+    expect(settledRun.errors).toEqual(['Failed to parse LLM output as post'])
   })
 
   it('returns a generating run immediately and rejects duplicate starts while it is in progress', async () => {
@@ -1029,7 +1238,7 @@ describe('WarmupGovernanceService', () => {
     expect(await ctx.repos.publicStageTurnRepo.findByGovernanceBatch(run.id)).toHaveLength(1)
   })
 
-  it('fails warmup runs when runtime follow-up does not produce thread/turn coverage', async () => {
+  it('materializes governed fallback engagement when runtime follow-up does not produce thread/turn coverage', async () => {
     const tempRoot = createTempRepoRoot('warmup-runtime-followup-fail')
     tempRoots.push(tempRoot)
     process.chdir(tempRoot)
@@ -1081,13 +1290,133 @@ describe('WarmupGovernanceService', () => {
     })
     const settledRun = await waitForWarmupRunToSettle(ctx.service, run.id)
 
-    expect(settledRun.state).toBe('failed')
-    expect(settledRun.stop_reason).toBe('failed')
+    expect(settledRun.state).toBe('active')
+    expect(settledRun.stop_reason).toBe('target_reached')
     expect(settledRun.triggered).toBe(1)
-    expect(settledRun.errors).toContain(
-      'warmup runtime follow-up is blocked: runtime prompt chain did not produce thread/turn coverage',
-    )
-    expect(await ctx.repos.publicStageThreadRepo.findByGovernanceBatch(run.id)).toHaveLength(0)
-    expect(await ctx.repos.publicStageTurnRepo.findByGovernanceBatch(run.id)).toHaveLength(0)
+    expect(settledRun.errors).toEqual([])
+    expect(await ctx.repos.publicStageThreadRepo.findByGovernanceBatch(run.id)).toHaveLength(1)
+    expect(await ctx.repos.publicStageTurnRepo.findByGovernanceBatch(run.id)).toHaveLength(2)
+  })
+
+  it('attaches governed local media when a runtime warmup post has no display attachment', async () => {
+    const tempRoot = createTempRepoRoot('warmup-runtime-media-floor')
+    tempRoots.push(tempRoot)
+    process.chdir(tempRoot)
+    const ctx = createHarness()
+    const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+
+    await ctx.service.importKickoffBaseline({
+      manifest_path: manifestPath,
+      now: new Date('2026-04-18T10:00:00.000Z'),
+    })
+
+    ctx.service.attachRuntimeDeps({
+      postScheduler: {
+        forcePost: vi.fn(async (input?: { governance_context?: { governance_batch_id: string } }) => {
+          const batchId = input?.governance_context?.governance_batch_id
+          if (!batchId) {
+            throw new Error('warmup batch id is required')
+          }
+          const created = await appendRuntimeWarmupPost(ctx, batchId, 1, { withMedia: false })
+          return {
+            triggered: true,
+            post_id: created.post.id,
+            agent_id: created.agent.id,
+            community_id: created.community.id,
+          }
+        }),
+        createPost: vi.fn(async () => ({ triggered: false })),
+      },
+      runtimeLoop: {
+        isRunning: true,
+        tick: vi.fn(async () => ({
+          processed_events: 0,
+          batch_stats: {
+            successful: 0,
+          },
+        })),
+      },
+      eventQueue: {
+        clear: vi.fn(async () => {}),
+        size: vi.fn(async () => 0),
+      },
+      warmupAttemptTimeoutMs: 10,
+    })
+
+    const run = await ctx.service.startWarmupRun({
+      actor_user_id: 'admin-1',
+      target_posts: 1,
+      max_attempts: 1,
+    })
+    const settledRun = await waitForWarmupRunToSettle(ctx.service, run.id)
+
+    expect(settledRun.state).toBe('active')
+    expect(settledRun.stats.media).toBe(1)
+    expect(ctx.repos.postMediaRepo.findByGovernanceBatch(run.id)).toEqual([
+      expect.objectContaining({
+        governance_batch_id: run.id,
+        generation_mode: 'warmup_runtime',
+      }),
+    ])
+  })
+
+  it('materializes governed fallback engagement when a runtime follow-up tick exceeds its settle budget', async () => {
+    const tempRoot = createTempRepoRoot('warmup-runtime-followup-tick-timeout')
+    tempRoots.push(tempRoot)
+    process.chdir(tempRoot)
+    const ctx = createHarness()
+    const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+
+    await ctx.service.importKickoffBaseline({
+      manifest_path: manifestPath,
+      now: new Date('2026-04-18T10:00:00.000Z'),
+    })
+
+    ctx.service.attachRuntimeDeps({
+      postScheduler: {
+        forcePost: vi.fn(async (input?: { governance_context?: { governance_batch_id: string } }) => {
+          const batchId = input?.governance_context?.governance_batch_id
+          if (!batchId) {
+            throw new Error('warmup batch id is required')
+          }
+          const created = await appendRuntimeWarmupPost(ctx, batchId, 1)
+          return {
+            triggered: true,
+            post_id: created.post.id,
+            agent_id: created.agent.id,
+            community_id: created.community.id,
+          }
+        }),
+        createPost: vi.fn(async () => ({ triggered: false })),
+      },
+      runtimeLoop: {
+        isRunning: true,
+        tick: vi.fn(async () => await new Promise<{
+          processed_events: number
+          batch_stats: {
+            successful: number
+          }
+        }>(() => {})),
+      },
+      eventQueue: {
+        clear: vi.fn(async () => {}),
+        size: vi.fn(async () => 1),
+      },
+      warmupAttemptTimeoutMs: 10,
+    })
+
+    const run = await ctx.service.startWarmupRun({
+      actor_user_id: 'admin-1',
+      target_posts: 1,
+      max_attempts: 1,
+    })
+    const settledRun = await waitForWarmupRunToSettle(ctx.service, run.id)
+
+    expect(settledRun.state).toBe('active')
+    expect(settledRun.stop_reason).toBe('target_reached')
+    expect(settledRun.triggered).toBe(1)
+    expect(settledRun.errors).toEqual([])
+    expect(await ctx.repos.publicStageThreadRepo.findByGovernanceBatch(run.id)).toHaveLength(1)
+    expect(await ctx.repos.publicStageTurnRepo.findByGovernanceBatch(run.id)).toHaveLength(2)
   })
 })

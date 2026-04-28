@@ -568,6 +568,7 @@ function buildGatewayHarness(input?: {
   }
   resolveSecret?: (ref: string) => string
   budgetGuard?: BudgetGuard
+  transientFailureCooldownMs?: number
 }) {
   const bundle = input?.bundle ?? buildBundle()
   const usageLedger = new UsageLedgerWriter()
@@ -590,6 +591,7 @@ function buildGatewayHarness(input?: {
     }),
     usageLedger,
     budgetGuard: input?.budgetGuard ?? new BudgetGuard(),
+    transientFailureCooldownMs: input?.transientFailureCooldownMs,
   })
 
   return { bundle, usageLedger, llmClient, chatSpy, gateway }
@@ -704,6 +706,48 @@ describe('LLMGateway', () => {
     expect(usageLedger.list()[0]?.success).toBe(false)
     expect(usageLedger.list()[1]?.success).toBe(false)
     expect(usageLedger.list()[2]?.success).toBe(true)
+  })
+
+  it('can skip a recently timed-out candidate for the current gateway process', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools.push({
+      credential_id: 'dashscope-visible-base',
+      provider_id: 'dashscope-openai',
+      region: 'cn-beijing',
+      endpoint_id: 'dashscope-cn-beijing',
+      endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      credential_ref: 'secret-ref:llm_api_default',
+      priority: 10,
+      health: 'healthy',
+      enabled: true,
+      scope_tags: ['visible'],
+      allowed_model_ids: ['qwen-plus-character', 'qwen-flash-character'],
+    })
+    const { gateway, chatSpy } = buildGatewayHarness({
+      bundle,
+      transientFailureCooldownMs: 60_000,
+    })
+    chatSpy.mockImplementation(async (input) => {
+      if (input.model === 'qwen-plus-character') {
+        throw new Error('LLM API timeout after 1000ms')
+      }
+      return {
+        content: 'ok',
+        usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
+        model: input.model,
+        finish_reason: 'stop',
+      }
+    })
+
+    await gateway.chat(buildVisibleTextRequest({ traceId: 'trace-cooldown-first' }))
+    await gateway.chat(buildVisibleTextRequest({ traceId: 'trace-cooldown-second' }))
+
+    const calledModels = chatSpy.mock.calls.map(([input]) => input.model)
+    expect(calledModels).toEqual([
+      'qwen-plus-character',
+      'qwen-flash-character',
+      'qwen-flash-character',
+    ])
   })
 
   it('fails fast when budget guard denies the request', async () => {

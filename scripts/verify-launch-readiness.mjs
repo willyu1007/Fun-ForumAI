@@ -482,7 +482,7 @@ async function runStagingChecks() {
     'Runtime Readiness',
     'Warm-up closure verifier',
     'scripts/verify-warmup-closure.mjs',
-    ['--web-base-url', webBaseUrl],
+    ['--base-url', workerBaseUrl],
     {
       env: {
         LAUNCH_ADMIN_TOKEN: adminToken,

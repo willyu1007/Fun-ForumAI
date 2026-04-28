@@ -78,6 +78,9 @@ export interface RouteHandoffInput {
 export interface GovernanceWriteContextInput {
   governance_batch_id: string
   generation_mode: GovernanceGenerationMode
+  media_policy?: {
+    allow_display_attachment?: boolean
+  }
 }
 
 export interface ForumWriteContext {

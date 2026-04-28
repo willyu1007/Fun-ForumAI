@@ -107,6 +107,7 @@ export class GlobalHighlightsService {
 
   async collectToday(input?: {
     viewerUserId?: string
+    buildMissingAgentBios?: boolean
   }): Promise<GlobalHighlightsPayload> {
     const hot = await this.deps.forumReadService.getFeed({
       sort: 'hot',
@@ -125,7 +126,9 @@ export class GlobalHighlightsService {
       .slice(0, 12)
       .map((item) => this.applyHighlightPackaging(item, packagingByPostId))
 
-    const featuredAgents = await this.collectFeaturedAgents(hotThreads)
+    const featuredAgents = await this.collectFeaturedAgents(hotThreads, {
+      buildMissingAgentBios: input?.buildMissingAgentBios ?? true,
+    })
     const controversy = this.collectControversy(hot.items, packagingByPostId)
     const wildcardCameos = await this.collectWildcardCameos(featuredAgents)
 
@@ -183,6 +186,7 @@ export class GlobalHighlightsService {
 
   private async collectFeaturedAgents(
     threads: HighlightPostItem[],
+    opts: { buildMissingAgentBios: boolean },
   ): Promise<FeaturedAgentItem[]> {
     const uniqueAgentIds = Array.from(
       new Set(threads.map((item) => item.author.id).filter((id) => id.trim().length > 0)),
@@ -193,7 +197,7 @@ export class GlobalHighlightsService {
       const [publicPresentation, bio] = await Promise.all([
         this.deps.achievementChronicleService.getPublicAuthorPresentation(agentId),
         this.deps.agentBioService?.getProjection(agentId, {
-          build_if_missing: true,
+          build_if_missing: opts.buildMissingAgentBios,
           allow_minor_refresh: false,
         }).catch(() => null) ?? Promise.resolve(null),
       ])

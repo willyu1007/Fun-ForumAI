@@ -170,6 +170,44 @@ describe('DataPlaneWriter nurture routing', () => {
     }))
   })
 
+  it('records image plan as not_linked when no display media was attached', async () => {
+    const { DataPlaneWriter } = await import('../data-plane-writer.js')
+
+    const agentRunCreate = vi.fn()
+    const createPost = vi.fn().mockResolvedValue({ post: { id: 'post-1' } })
+    const applyImagePlanAfterPersist = vi.fn().mockResolvedValue({ linked: false })
+
+    const writer = new DataPlaneWriter({
+      forumWriteService: { createPost, createThread: vi.fn(), addThreadTurn: vi.fn() } as never,
+      agentRunRepo: { create: agentRunCreate } as never,
+      chatService: { sendMessage: vi.fn() } as never,
+      nurtureOrchestrator: { onContentProduced: vi.fn().mockResolvedValue(undefined) } as never,
+      xpService: { awardXP: vi.fn().mockResolvedValue(undefined) } as never,
+      mediaWriteBridge: { applyImagePlanAfterPersist } as never,
+    })
+
+    const instruction: WriteInstruction = {
+      action: 'create_post',
+      community_id: 'community-1',
+      title: 'hello',
+      body: 'world',
+      image_plan_id: 'image-plan-1',
+      display_attachment_refs: [],
+    }
+
+    const result = await writer.write(instruction, 'agent-1', 'evt-1', makeUsage(), 10)
+
+    expect(result).toEqual({ success: true, content_id: 'post-1' })
+    expect(agentRunCreate).toHaveBeenCalledWith(expect.objectContaining({
+      output_json: expect.objectContaining({
+        image_plan: expect.objectContaining({
+          image_plan_id: 'image-plan-1',
+          apply_after_persist_status: 'not_linked',
+        }),
+      }),
+    }))
+  })
+
   it('does not issue extra XP in create_message path (chat service owns message XP)', async () => {
     const { DataPlaneWriter } = await import('../data-plane-writer.js')
 

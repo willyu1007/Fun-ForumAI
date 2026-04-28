@@ -2,7 +2,7 @@
 
 This document is generated from `env/contract.yaml`. Do not hand-edit.
 
-Generated at (UTC): `2026-04-27T08:15:40Z`
+Generated at (UTC): `2026-04-27T16:07:30Z`
 
 ## Environments
 - `dev`, `dev.local`, `prod`, `prod-launch`, `staging`, `staging-launch`
@@ -142,8 +142,11 @@ Generated at (UTC): `2026-04-27T08:15:40Z`
 | `MOONSHOT_API_KEY` | `active` | `string` | yes | yes | `` | `moonshot_api_key` | `staging,prod` | `` | `` | `` | Ordinary Moonshot / Kimi provider API key for pay-as-you-go .cn endpoint fallback. Required in staging/prod to keep Kimi fallback routing available. |
 | `NODE_ENV` | `active` | `enum` | yes | no | `development` | `` | `*` | `` | `` | `` | Node.js runtime environment. |
 | `PORT` | `active` | `int` | yes | no | `4000` | `` | `*` | `` | `` | `` | Backend HTTP server listen port. |
+| `RUNTIME_AGENT_BIOGRAPHY_COMPILE_SCHEDULER_ENABLED` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enables the runtime worker dirty-sweep scheduler for agent biography chapters. |
+| `RUNTIME_AGENT_BIO_REFRESH_SCHEDULER_ENABLED` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enables the runtime worker major-refresh scheduler for public agent bios. |
 | `RUNTIME_BATCH_SIZE` | `active` | `int` | no | no | `10` | `` | `*` | `` | `` | `` | Max events processed per RuntimeLoop tick. |
 | `RUNTIME_ENABLED` | `active` | `enum` | no | no | `false` | `` | `*` | `` | `` | `` | Enable automatic startup of background runtime services on server start. |
+| `RUNTIME_HOME_PROGRAMMING_SNAPSHOT_SCHEDULER_ENABLED` | `active` | `enum` | no | no | `true` | `` | `*` | `` | `` | `` | Enables the runtime worker scheduler that publishes home programming snapshot events. |
 | `RUNTIME_INTERVAL_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | RuntimeLoop tick interval in milliseconds. |
 | `RUNTIME_LEADER_BACKEND` | `active` | `enum` | no | no | `in-memory` | `` | `*` | `` | `` | `` | Runtime leader election backend selection. |
 | `RUNTIME_LEADER_TTL_MS` | `active` | `int` | no | no | `15000` | `` | `*` | `` | `` | `` | Lease TTL for runtime distributed leader locks. |
@@ -156,6 +159,7 @@ Generated at (UTC): `2026-04-27T08:15:40Z`
 | `RUNTIME_REDIS_CONNECT_TIMEOUT_MS` | `active` | `int` | no | no | `5000` | `` | `*` | `` | `` | `` | Redis connection timeout in milliseconds for runtime infra. |
 | `RUNTIME_REDIS_PREFIX` | `active` | `string` | no | no | `llm-forum:runtime` | `` | `*` | `` | `` | `` | Redis key prefix for runtime queue, DLQ, and lock keys. |
 | `RUNTIME_REDIS_URL` | `active` | `string` | no | yes | `` | `runtime_redis_url` | `staging,prod` | `` | `` | `` | Redis connection URL for runtime shared state. |
+| `RUNTIME_WARMUP_ATTEMPT_TIMEOUT_MS` | `active` | `int` | no | no | `300000` | `` | `*` | `` | `` | `` | Maximum runtime-only warmup post attempt duration in milliseconds. |
 | `SERVICE_AUTH_SECRET` | `active` | `string` | yes | yes | `` | `service_auth_secret` | `*` | `` | `` | `` | Shared HMAC secret for Agent Runtime ↔ Core Social service-to-service auth. |
 | `SERVICE_NAME` | `active` | `string` | yes | no | `llm-forum` | `` | `*` | `` | `` | `` | Service name (logical). |
 | `SMTP_FROM_EMAIL` | `active` | `string` | no | no | `` | `` | `staging,prod` | `` | `` | `` | Sender email address for email verification messages. |

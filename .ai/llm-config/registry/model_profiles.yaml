@@ -922,18 +922,18 @@ profiles:
     visibility: hidden
     candidates:
       - provider_id: dashscope-openai
-        model_id: qwen3.5-plus
-        region: cn-beijing
-        endpoint_id: dashscope-cn-beijing
-        weight: 100
-        quality_class: balanced
-        adapter_id: openai-chat-completions-v1
-      - provider_id: dashscope-openai
         model_id: qwen3.5-flash
         region: cn-beijing
         endpoint_id: dashscope-cn-beijing
-        weight: 88
+        weight: 100
         quality_class: fast
+        adapter_id: openai-chat-completions-v1
+      - provider_id: dashscope-openai
+        model_id: qwen3.5-plus
+        region: cn-beijing
+        endpoint_id: dashscope-cn-beijing
+        weight: 88
+        quality_class: balanced
         adapter_id: openai-chat-completions-v1
     fallback: []
     policy_id: hidden-vision_summary-base

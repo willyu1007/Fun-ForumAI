@@ -246,6 +246,13 @@ export class MediaReuseGovernanceService {
       status: input.asset.lifecycle_status === 'blocked' ? 'blocked' : 'active',
     })
     if (existing) {
+      // 当调用方未显式传入 allow_quote_original 时，把已有策略视为权威值——
+      // 它由 register*Asset / 显式 ensureAssetPolicy 调用方设定，read-path
+      // (例如 evaluateCandidate) 不应静默把 admin 已批准的 quote_original
+      // reconcile 掉。仅当调用方显式表达注册意图时才参与漂移修正。
+      if (input.allow_quote_original === undefined) {
+        return existing
+      }
       const shouldUpdateModes = !sameModes(existing.allowed_reuse_modes, desiredModes)
       const shouldUpdateCrossAgent = existing.cross_agent_quote_allowed !== desiredCrossAgentQuoteAllowed
       if (shouldUpdateModes || shouldUpdateCrossAgent) {

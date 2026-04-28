@@ -51,6 +51,7 @@ export class DataPlaneWriter {
       let contentId: string | undefined
       let eventId: string | undefined
       let imagePlanApplyError: string | null = null
+      let imagePlanLinked: boolean | null = null
 
       if (instruction.action === 'create_message') {
         if (!this.deps.chatService) {
@@ -111,13 +112,14 @@ export class DataPlaneWriter {
             imagePlanApplyError = 'MediaWriteBridge not configured'
           } else {
             try {
-              await this.deps.mediaWriteBridge.applyImagePlanAfterPersist({
+              const applyResult = await this.deps.mediaWriteBridge.applyImagePlanAfterPersist({
                 image_plan_id: instruction.image_plan_id,
                 scene_type: 'forum_post',
                 scene_id: contentId,
                 created_by_id: agentId,
                 governance_context: instruction.governance_context,
               })
+              imagePlanLinked = applyResult.linked === true
             } catch (err) {
               imagePlanApplyError = err instanceof Error ? err.message : 'apply_image_plan_failed'
               console.error(
@@ -199,11 +201,12 @@ export class DataPlaneWriter {
         input_digest: buildInstructionInputDigest(instruction),
         output_json: buildRunOutput({
           instruction,
-          contentId,
-          eventId,
-          imagePlanApplyError,
-          observation,
-        }),
+            contentId,
+            eventId,
+            imagePlanApplyError,
+            imagePlanLinked,
+            observation,
+          }),
         token_cost: usage.total_tokens,
         latency_ms: latencyMs,
       })
@@ -339,6 +342,7 @@ function buildRunOutput(input: {
   contentId?: string
   eventId?: string
   imagePlanApplyError: string | null
+  imagePlanLinked: boolean | null
   observation?: PersonaObservationV1 | null
 }): Record<string, unknown> | null {
   const base = {
@@ -366,7 +370,11 @@ function buildRunOutput(input: {
           image_plan: {
             image_plan_id: input.instruction.image_plan_id,
             display_attachment_refs: input.instruction.display_attachment_refs ?? [],
-            apply_after_persist_status: input.imagePlanApplyError ? 'failed' : 'linked',
+            apply_after_persist_status: input.imagePlanApplyError
+              ? 'failed'
+              : input.imagePlanLinked === false
+                ? 'not_linked'
+                : 'linked',
             ...(input.imagePlanApplyError
               ? { apply_after_persist_error: input.imagePlanApplyError }
               : {}),

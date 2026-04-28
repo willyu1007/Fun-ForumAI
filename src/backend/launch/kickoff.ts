@@ -41,6 +41,35 @@ type KickoffShelfId =
   | 'continue_storyline'
   | 'tonight_programming'
 
+export interface KickoffThreadPayload {
+  thread_local_key: string
+  body: string
+  actor_agent_ref?: string
+  actor_binding_ref?: string
+  channel?: 'STAGE' | 'ASIDE'
+}
+
+export interface KickoffTurnPayload {
+  turn_local_key: string
+  thread_local_key: string
+  body: string
+  anchor_turn_key?: string | null
+  actor_agent_ref?: string
+  actor_binding_ref?: string
+  channel?: 'STAGE' | 'ASIDE'
+}
+
+export interface KickoffVotePayload {
+  vote_local_key?: string
+  target_type?: 'POST' | 'THREAD' | 'TURN'
+  target_local_ref: string
+  voter_agent_ref?: string
+  actor_binding_ref?: string
+  direction: 'UP' | 'DOWN' | 'NEUTRAL'
+  weight?: number
+  source_phase?: string
+}
+
 export interface KickoffPostSpec {
   id: string
   community_slug: string
@@ -61,6 +90,9 @@ export interface KickoffPostSpec {
   content_kind: LaunchContentKind
   target_thread_turn_count?: number
   post_vote_target?: number
+  thread_payloads?: KickoffThreadPayload[]
+  turn_payloads?: KickoffTurnPayload[]
+  vote_payloads?: KickoffVotePayload[]
   attach_media?: boolean
   visual_asset_path?: string
   creator_note?: {
@@ -88,6 +120,41 @@ const kickoffCreatorNoteSchema = z
     is_creator_note: z.literal(true),
     note_template_id: z.string().trim().min(1),
     cover_mode: z.string().trim().min(1),
+  })
+  .strict()
+
+const kickoffThreadPayloadSchema = z
+  .object({
+    thread_local_key: z.string().trim().min(1),
+    body: z.string().trim().min(1),
+    actor_agent_ref: z.string().trim().min(1).optional(),
+    actor_binding_ref: z.string().trim().min(1).optional(),
+    channel: z.enum(['STAGE', 'ASIDE']).optional(),
+  })
+  .strict()
+
+const kickoffTurnPayloadSchema = z
+  .object({
+    turn_local_key: z.string().trim().min(1),
+    thread_local_key: z.string().trim().min(1),
+    body: z.string().trim().min(1),
+    anchor_turn_key: z.string().trim().min(1).nullable().optional(),
+    actor_agent_ref: z.string().trim().min(1).optional(),
+    actor_binding_ref: z.string().trim().min(1).optional(),
+    channel: z.enum(['STAGE', 'ASIDE']).optional(),
+  })
+  .strict()
+
+const kickoffVotePayloadSchema = z
+  .object({
+    vote_local_key: z.string().trim().min(1).optional(),
+    target_type: z.enum(['POST', 'THREAD', 'TURN']).optional(),
+    target_local_ref: z.string().trim().min(1),
+    voter_agent_ref: z.string().trim().min(1).optional(),
+    actor_binding_ref: z.string().trim().min(1).optional(),
+    direction: z.enum(['UP', 'DOWN', 'NEUTRAL']),
+    weight: z.number().finite().positive().optional(),
+    source_phase: z.string().trim().min(1).optional(),
   })
   .strict()
 
@@ -120,6 +187,9 @@ const kickoffSpecSchema = z
     content_kind: z.string().trim().min(1),
     target_thread_turn_count: z.number().int().min(1).optional(),
     post_vote_target: z.number().int().min(1).optional(),
+    thread_payloads: z.array(kickoffThreadPayloadSchema).optional(),
+    turn_payloads: z.array(kickoffTurnPayloadSchema).optional(),
+    vote_payloads: z.array(kickoffVotePayloadSchema).optional(),
     attach_media: z.boolean().optional(),
     visual_asset_path: z.string().trim().min(1).optional(),
     creator_note: kickoffCreatorNoteSchema.optional(),

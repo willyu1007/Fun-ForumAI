@@ -26,6 +26,14 @@ function readRequiredUrl(value) {
   return value.replace(/\/+$/, '')
 }
 
+async function waitForAnyText(page, labels, timeout) {
+  const pattern = new RegExp(labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'))
+  await page.getByText(pattern).first().waitFor({
+    state: 'visible',
+    timeout,
+  })
+}
+
 async function main() {
   const args = parseArgs(process.argv)
   const url = readRequiredUrl(args.url)
@@ -42,16 +50,18 @@ async function main() {
       timeout: 15_000,
     }).catch(() => {})
 
-    for (const text of ['今日必看', '创作者笔记', '全部社区']) {
-      await page.getByText(text, { exact: false }).first().waitFor({
-        state: 'visible',
-        timeout: 45_000,
-      })
+    const markerGroups = [
+      ['今日必看'],
+      ['创作者笔记'],
+      ['精选社区', '全部社区'],
+    ]
+    for (const labels of markerGroups) {
+      await waitForAnyText(page, labels, 45_000)
     }
 
     console.log(JSON.stringify({
       url: targetUrl,
-      markers: ['今日必看', '创作者笔记', '全部社区'],
+      markers: markerGroups,
     }, null, 2))
   } finally {
     await browser.close()

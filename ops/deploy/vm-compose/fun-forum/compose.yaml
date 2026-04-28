@@ -54,4 +54,4 @@ services:
       - .env
     environment:
       RUNTIME_ENABLED: "false"
-    command: ["pnpm", "db:migrate:deploy"]
+    command: ["./node_modules/.bin/prisma", "migrate", "deploy"]

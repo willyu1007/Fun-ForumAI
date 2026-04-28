@@ -477,6 +477,24 @@ describe('MediaWriteBridge', () => {
       },
     })
 
+    const suppressed = await bridge.applyImagePlanAfterPersist({
+      image_plan_id: plan.id,
+      scene_type: 'forum_post',
+      scene_id: 'post-generated-private-suppressed',
+      created_by_id: 'agent-1',
+      governance_context: {
+        governance_batch_id: 'warmup-batch-1',
+        generation_mode: 'warmup_runtime',
+        media_policy: {
+          allow_display_attachment: false,
+        },
+      },
+    })
+
+    expect(suppressed.linked).toBe(false)
+    expect(await sceneMediaBindingRepo.findByScene('forum_post', 'post-generated-private-suppressed')).toEqual([])
+    expect(postMediaRepo.findByPostId('post-generated-private-suppressed')).toEqual([])
+
     const result = await bridge.applyImagePlanAfterPersist({
       image_plan_id: plan.id,
       scene_type: 'forum_post',

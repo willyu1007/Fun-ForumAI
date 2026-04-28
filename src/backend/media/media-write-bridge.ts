@@ -130,6 +130,29 @@ export class MediaWriteBridge {
     if (!plan) {
       return { linked: false }
     }
+    if (input.governance_context?.media_policy?.allow_display_attachment === false) {
+      if (plan.display.attachments.length > 0) {
+        const surface = input.scene_type === 'forum_post'
+          ? 'root_post'
+          : input.scene_type === 'forum_thread'
+            ? 'forum_thread'
+            : input.scene_type === 'forum_turn'
+              ? 'forum_turn'
+              : 'chat_room_message'
+        await this.deps.mediaObservabilityService?.record({
+          event_type: 'display_attach_suppressed',
+          surface,
+          severity: 'info',
+          image_plan_id: input.image_plan_id,
+          payload_json: {
+            scene_id: input.scene_id,
+            reason: 'governance_media_policy',
+            attempted_attachment_count: plan.display.attachments.length,
+          },
+        })
+      }
+      return { linked: false }
+    }
 
     const selectedSources = plan.selected_sources
       .filter((item) => !item.rejection_reason && item.asset_id)

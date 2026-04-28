@@ -61,6 +61,7 @@ export interface WarmupClosureVerifierServiceDeps {
 
 interface SurfaceAuditContext {
   probe_post_id: string
+  probe_community_id: string | null
   probe_token: string
   baseline_post_ids: Set<string>
   feed_expectation: 'probe_visible' | 'probe_hidden'
@@ -341,6 +342,7 @@ export class WarmupClosureVerifierService {
       )
       surfaceAudit.initial = await this.auditSurfaces({
         probe_post_id: probePost.id,
+        probe_community_id: probePost.community_id,
         probe_token: probeToken,
         baseline_post_ids: baselinePostIds,
         feed_expectation: 'probe_visible',
@@ -375,6 +377,7 @@ export class WarmupClosureVerifierService {
         stage: 'after_quarantine',
         surfaceContext: {
           probe_post_id: probePost.id,
+          probe_community_id: probePost.community_id,
           probe_token: probeToken,
           baseline_post_ids: baselinePostIds,
           feed_expectation: 'probe_hidden',
@@ -401,6 +404,7 @@ export class WarmupClosureVerifierService {
         stage: 'after_restore',
         surfaceContext: {
           probe_post_id: probePost.id,
+          probe_community_id: probePost.community_id,
           probe_token: probeToken,
           baseline_post_ids: baselinePostIds,
           feed_expectation: 'probe_visible',
@@ -413,6 +417,7 @@ export class WarmupClosureVerifierService {
 
       governanceDrill.cleanup = await this.cleanupProbeVisibility({
         probePostId: probePost.id,
+        probeCommunityId: probePost.community_id,
         probeToken,
         baselinePostIds,
         surfaceAudit,
@@ -671,7 +676,12 @@ export class WarmupClosureVerifierService {
       this.readSurfaceCheckpoint({
         surface: 'feed',
         input,
-        operation: () => this.deps.forumReadService.getFeed({ sort: 'new', limit: 100 }),
+        operation: () =>
+          this.deps.forumReadService.getFeed({
+            sort: 'new',
+            limit: 500,
+            ...(input.probe_community_id ? { communityId: input.probe_community_id } : {}),
+          }),
         evaluate: (payload) => this.evaluateFeed(payload, input),
       }),
       this.readSurfaceCheckpoint({
@@ -709,6 +719,7 @@ export class WarmupClosureVerifierService {
 
   private async cleanupProbeVisibility(input: {
     probePostId: string
+    probeCommunityId: string | null
     probeToken: string
     baselinePostIds: Set<string>
     surfaceAudit: WarmupVerifierSurfaceAudit
@@ -721,6 +732,7 @@ export class WarmupClosureVerifierService {
       await this.deps.searchProjectionService?.refreshPost(input.probePostId)
       const cleanupAudit = await this.auditSurfaces({
         probe_post_id: input.probePostId,
+        probe_community_id: input.probeCommunityId,
         probe_token: input.probeToken,
         baseline_post_ids: input.baselinePostIds,
         feed_expectation: 'probe_hidden',
@@ -822,8 +834,12 @@ export class WarmupClosureVerifierService {
     payload: FeedPayload,
     input: SurfaceAuditContext,
   ): WarmupVerifierSurfaceCheckpoint {
-    const observedPostIds = payload.items.slice(0, 30).map((item) => item.id)
-    const matchedProbe = observedPostIds.includes(input.probe_post_id)
+    const allObservedPostIds = payload.items.map((item) => item.id)
+    const matchedProbe = allObservedPostIds.includes(input.probe_post_id)
+    const observedPostIds = allObservedPostIds.slice(0, 50)
+    if (matchedProbe && !observedPostIds.includes(input.probe_post_id)) {
+      observedPostIds.push(input.probe_post_id)
+    }
     const ok = input.feed_expectation === 'probe_visible' ? matchedProbe : !matchedProbe
     return {
       surface: 'feed',

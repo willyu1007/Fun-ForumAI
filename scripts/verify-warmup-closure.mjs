@@ -16,15 +16,22 @@ function normalizeBaseUrl(value) {
 }
 
 async function main() {
-  const webBaseUrl = normalizeBaseUrl(
-    readArg('web-base-url') || process.env.LAUNCH_WEB_BASE_URL || '',
+  const verifierBaseUrl = normalizeBaseUrl(
+    readArg('base-url') ||
+      readArg('worker-base-url') ||
+      readArg('web-base-url') ||
+      process.env.LAUNCH_WARMUP_VERIFIER_BASE_URL ||
+      process.env.LAUNCH_WORKER_BASE_URL ||
+      process.env.LAUNCH_WEB_BASE_URL ||
+      '',
   )
   const adminToken = readArg('admin-token') || process.env.LAUNCH_ADMIN_TOKEN || ''
 
-  if (!webBaseUrl || !adminToken) {
+  if (!verifierBaseUrl || !adminToken) {
     const payload = {
       ok: false,
-      message: 'require --web-base-url and --admin-token (or LAUNCH_WEB_BASE_URL / LAUNCH_ADMIN_TOKEN)',
+      message:
+        'require --base-url and --admin-token (or LAUNCH_WARMUP_VERIFIER_BASE_URL / LAUNCH_ADMIN_TOKEN)',
     }
     if (jsonMode) {
       console.log(JSON.stringify(payload, null, 2))
@@ -34,7 +41,7 @@ async function main() {
     process.exit(1)
   }
 
-  const response = await fetch(`${webBaseUrl}/v1/admin/warmup/verifier/runs`, {
+  const response = await fetch(`${verifierBaseUrl}/v1/admin/warmup/verifier/runs`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${adminToken}`,

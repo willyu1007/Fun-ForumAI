@@ -725,7 +725,7 @@ describe('LLM registry contract', () => {
 
     expect(visionProfile?.candidates[0]).toMatchObject({
       provider_id: 'dashscope-openai',
-      model_id: 'qwen3.5-plus',
+      model_id: 'qwen3.5-flash',
     })
     expect(
       visionProfile?.candidates.some((candidate) =>

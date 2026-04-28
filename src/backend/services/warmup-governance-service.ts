@@ -1,16 +1,23 @@
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   buildCommunityAliasMap,
   buildSystemAgentIndexes,
   buildKickoffScenePayload,
   type KickoffPostSpec,
+  type KickoffVotePayload,
   pickRosterEntryForSpec,
 } from '../launch/kickoff.js'
 import { loadKickoffBundle } from '../launch/kickoff.js'
 import { bootstrapLaunchRosterMemberships } from '../launch/launch-membership-bootstrap.js'
-import { getLaunchSystemRoster, type LaunchSystemRosterRuntime } from '../launch/system-roster.js'
+import {
+  getLaunchSystemRoster,
+  readLaunchSystemIdentityConfig,
+  type LaunchProgramRole,
+  type LaunchSystemRosterRuntime,
+} from '../launch/system-roster.js'
 import { getLaunchProgrammingSchedule } from '../launch/programming-schedule.js'
 import { NotFoundError, ValidationError } from '../lib/errors.js'
 import type {
@@ -45,6 +52,7 @@ import type { GovernanceWriteContextInput } from './forum-write-service/types.js
 
 const DEFAULT_SUITE_LABEL = 'kickoff-baseline-v1'
 const DEFAULT_SAMPLE_LIMIT = 6
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 const LOCAL_WARMUP_MEDIA_ASSETS = [
   'public/community-banners/sea-glow.webp',
   'public/community-banners/lantern-stage.webp',
@@ -57,7 +65,8 @@ const LOCAL_WARMUP_MEDIA_ASSETS = [
   'public/community-banners/ember-scene.webp',
 ] as const
 const SUITE_MEDIA_RATIO_MIN = 0.35
-const SUITE_MEDIA_RATIO_MAX = 0.5
+const SUITE_MEDIA_RATIO_MAX = 0.75
+const WARMUP_MEDIA_RATIO_TARGET = 0.5
 
 const BATCH_MEDIA_FLOOR_CAP: Record<'kickoff' | 'warmup', number> = {
   kickoff: 4,
@@ -69,7 +78,7 @@ const BATCH_COMMUNITY_FLOOR_CAP: Record<'kickoff' | 'warmup', number> = {
   warmup: 2,
 }
 
-const DEFAULT_WARMUP_RUNTIME_ATTEMPT_TIMEOUT_MS = 120_000
+const DEFAULT_WARMUP_RUNTIME_ATTEMPT_TIMEOUT_MS = 300_000
 const DEFAULT_WARMUP_FOLLOWUP_TICK_BUDGET = 4
 const MIN_WARMUP_FOLLOWUP_SETTLE_TIMEOUT_MS = 250
 const MAX_WARMUP_FOLLOWUP_SETTLE_TIMEOUT_MS = 12_000
@@ -307,10 +316,11 @@ function normalizeWarmupAttemptTimeoutMs(timeoutMs: number | undefined): number 
 async function runWarmupRuntimeAttemptWithTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
+  label = 'warmup runtime attempt',
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error(`warmup runtime attempt timed out after ${timeoutMs}ms`))
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`))
     }, timeoutMs)
 
     promise.then(
@@ -365,7 +375,7 @@ async function readLocalWarmupMediaAsset(relativeAssetPath: string): Promise<{
   resolved_path: string
 }> {
   const cwd = process.cwd()
-  const candidatePaths = [resolve(cwd, relativeAssetPath)]
+  const candidatePaths = [resolve(cwd, relativeAssetPath), resolve(REPO_ROOT, relativeAssetPath)]
   let lastError: unknown = null
   for (const candidatePath of candidatePaths) {
     try {
@@ -407,6 +417,7 @@ function buildWarmupTurnBody(input: { spec: KickoffPostSpec; ordinal: number }):
 function buildRuntimeWarmupSpec(input: {
   run_id: string
   ordinal: number
+  target_posts: number
   post: Post
   community_slug: string
 }): KickoffPostSpec {
@@ -430,7 +441,7 @@ function buildRuntimeWarmupSpec(input: {
     content_kind: 'mainline_root',
     target_thread_turn_count: 3,
     post_vote_target: 3,
-    attach_media: false,
+    attach_media: input.ordinal <= computeWarmupMediaTarget(input.target_posts),
   }
 }
 
@@ -457,6 +468,75 @@ function pickEligibleWarmupVoters(input: {
   }
 
   return selected
+}
+
+const AUTHORED_AGENT_REF_ROLE_TOKENS: LaunchProgramRole[] = [
+  'showrunner',
+  'challenger',
+  'wildcard',
+  'creator',
+  'anchor',
+  'editor',
+  'mc',
+]
+
+interface AuthoredAgentResolverState {
+  explicitAgentRefAssignments: Map<string, { id: string }>
+  explicitAssignedAgentIds: Set<string>
+  fallbackCursor: number
+}
+
+function createAuthoredAgentResolverState(): AuthoredAgentResolverState {
+  return {
+    explicitAgentRefAssignments: new Map(),
+    explicitAssignedAgentIds: new Set(),
+    fallbackCursor: 0,
+  }
+}
+
+function inferProgramRoleFromAgentRef(ref: string | null | undefined): LaunchProgramRole | null {
+  const normalized = ref?.trim().toLowerCase() ?? ''
+  if (!normalized) return null
+  for (const role of AUTHORED_AGENT_REF_ROLE_TOKENS) {
+    const pattern = new RegExp(`(^|[-_:])${role}($|[-_:])`)
+    if (pattern.test(normalized)) {
+      return role
+    }
+  }
+  return null
+}
+
+function normalizeAuthoredVoteDirection(
+  direction: KickoffVotePayload['direction'] | string | null | undefined,
+): 'UP' | 'DOWN' | 'NEUTRAL' {
+  const normalized = typeof direction === 'string' ? direction.trim().toUpperCase() : ''
+  if (normalized === 'UP' || normalized === 'DOWN' || normalized === 'NEUTRAL') {
+    return normalized
+  }
+  throw new ValidationError(`invalid authored kickoff vote direction: ${String(direction)}`)
+}
+
+function normalizeAuthoredVoteTargetType(
+  targetType: KickoffVotePayload['target_type'] | string | null | undefined,
+): 'POST' | 'THREAD' | 'TURN' {
+  const normalized = typeof targetType === 'string' ? targetType.trim().toUpperCase() : ''
+  if (normalized === 'POST' || normalized === 'THREAD' || normalized === 'TURN') {
+    return normalized
+  }
+  return 'TURN'
+}
+
+function stripPayloadRefPrefix(ref: string): string {
+  const colonIndex = ref.indexOf(':')
+  return colonIndex >= 0 ? ref.slice(colonIndex + 1) : ref
+}
+
+function hasAuthoredEngagementPayloads(spec: KickoffPostSpec): boolean {
+  return (
+    (spec.thread_payloads?.length ?? 0) > 0 ||
+    (spec.turn_payloads?.length ?? 0) > 0 ||
+    (spec.vote_payloads?.length ?? 0) > 0
+  )
 }
 
 function toLocalDateKey(date: Date, timeZone: string): string {
@@ -581,6 +661,64 @@ function batchReadinessReasons(
   if (batch.stats.votes < postFloor) reasons.push(`${kind}_votes_below_floor`)
   if (batch.stats.media < mediaFloor) reasons.push(`${kind}_media_below_floor`)
   if (batch.stats.communities < communityFloor) reasons.push(`${kind}_communities_below_floor`)
+  return reasons
+}
+
+function computeRatioBoundedCount(input: {
+  posts: number
+  ratio: number
+  rounding: 'ceil' | 'floor'
+}): number {
+  const posts = Math.max(0, input.posts)
+  if (posts === 0) return 0
+  const raw = input.posts * input.ratio
+  const rounded = input.rounding === 'ceil' ? Math.ceil(raw) : Math.floor(raw)
+  return Math.min(posts, Math.max(1, rounded))
+}
+
+function computeWarmupMediaTarget(targetPosts: number): number {
+  return computeRatioBoundedCount({
+    posts: targetPosts,
+    ratio: WARMUP_MEDIA_RATIO_TARGET,
+    rounding: 'ceil',
+  })
+}
+
+function computeWarmupMediaFloor(targetPosts: number): number {
+  return computeRatioBoundedCount({
+    posts: targetPosts,
+    ratio: SUITE_MEDIA_RATIO_MIN,
+    rounding: 'ceil',
+  })
+}
+
+function computeWarmupMediaCeiling(targetPosts: number): number {
+  return computeRatioBoundedCount({
+    posts: targetPosts,
+    ratio: SUITE_MEDIA_RATIO_MAX,
+    rounding: 'floor',
+  })
+}
+
+function warmupRunTargetReadinessReasons(
+  batch: WarmupBatchReadModel,
+  metadata: WarmupRunStoredMetadata,
+): string[] {
+  const reasons: string[] = []
+  if (batch.stats.posts < metadata.target_posts) {
+    reasons.push('warmup_posts_below_target')
+  }
+
+  const mediaFloor = computeWarmupMediaFloor(metadata.target_posts)
+  if (batch.stats.media < mediaFloor) {
+    reasons.push('warmup_media_ratio_below_floor')
+  }
+
+  const mediaCeiling = computeWarmupMediaCeiling(metadata.target_posts)
+  if (batch.stats.media > mediaCeiling) {
+    reasons.push('warmup_media_ratio_above_ceiling')
+  }
+
   return reasons
 }
 
@@ -1098,6 +1236,7 @@ export class WarmupGovernanceService {
     try {
       while (metadata.attempted < metadata.max_attempts && metadata.triggered < metadata.target_posts) {
         metadata.attempted += 1
+        const nextGeneratedOrdinal = metadata.triggered + 1
         await this.deps.warmupGovernanceRepo.updateBatch(run.id, {
           notes: encodeWarmupRunMetadata(metadata),
         })
@@ -1109,6 +1248,10 @@ export class WarmupGovernanceService {
               governance_context: {
                 governance_batch_id: run.id,
                 generation_mode: 'warmup_runtime',
+                media_policy: {
+                  allow_display_attachment:
+                    nextGeneratedOrdinal <= computeWarmupMediaTarget(metadata.target_posts),
+                },
               },
             }),
             this.runtimeDeps.warmupAttemptTimeoutMs,
@@ -1122,39 +1265,50 @@ export class WarmupGovernanceService {
           })
           continue
         }
-        if (result.triggered) {
+        if (result.triggered && result.post_id) {
           metadata.triggered += 1
-          if (result.post_id) {
-            const createdPost = await this.deps.postRepo.findById(result.post_id)
-            if (!createdPost) {
-              throw new NotFoundError('post', result.post_id)
-            }
-            const authorAgentId = result.agent_id ?? createdPost.author_agent_id
-            const community = this.deps.communityRepo.findById(createdPost.community_id)
-            if (!authorAgentId || !community) {
-              throw new ValidationError(
-                'warmup runtime engagement is blocked: generated post context is incomplete',
-              )
-            }
-            const runtimeSpec = buildRuntimeWarmupSpec({
-              run_id: run.id,
-              ordinal: metadata.triggered,
-              post: createdPost,
-              community_slug: community.slug,
-            })
-            await this.ensureRuntimeWarmupFollowup({
-              batch: run,
-              spec: runtimeSpec,
-              post: createdPost,
-              rootAuthorAgentId: authorAgentId,
-              roster,
-              indexes,
-            })
-            await this.ensureCommunityRoleAssignment({
-              community_id: createdPost.community_id,
-              agent_id: authorAgentId,
-            })
+          const createdPost = await this.deps.postRepo.findById(result.post_id)
+          if (!createdPost) {
+            throw new NotFoundError('post', result.post_id)
           }
+          const authorAgentId = result.agent_id ?? createdPost.author_agent_id
+          const community = this.deps.communityRepo.findById(createdPost.community_id)
+          if (!authorAgentId || !community) {
+            throw new ValidationError(
+              'warmup runtime engagement is blocked: generated post context is incomplete',
+            )
+          }
+          const runtimeSpec = buildRuntimeWarmupSpec({
+            run_id: run.id,
+            ordinal: metadata.triggered,
+            target_posts: metadata.target_posts,
+            post: createdPost,
+            community_slug: community.slug,
+          })
+          await this.ensureRuntimeWarmupFollowup({
+            batch: run,
+            spec: runtimeSpec,
+            post: createdPost,
+            rootAuthorAgentId: authorAgentId,
+            roster,
+            indexes,
+          })
+          await this.attachMediaForGovernancePost({
+            batch: run,
+            spec: runtimeSpec,
+            post: createdPost,
+            rootAuthorAgentId: authorAgentId,
+            governanceContext: {
+              governance_batch_id: run.id,
+              generation_mode: 'warmup_runtime',
+            },
+          })
+          await this.ensureCommunityRoleAssignment({
+            community_id: createdPost.community_id,
+            agent_id: authorAgentId,
+          })
+        } else if (result.triggered && !result.error) {
+          metadata.errors.push('warmup runtime attempt produced no post')
         }
         if (result.error) {
           metadata.errors.push(result.error)
@@ -1173,7 +1327,10 @@ export class WarmupGovernanceService {
         throw new NotFoundError('warmup run', run.id)
       }
       const generatedRunReadModel = await this.buildBatchReadModel(generatedRunBatch)
-      const readyReasons = batchReadinessReasons(generatedRunReadModel, 'warmup')
+      const readyReasons = [
+        ...batchReadinessReasons(generatedRunReadModel, 'warmup'),
+        ...warmupRunTargetReadinessReasons(generatedRunReadModel, metadata),
+      ]
 
       if (readyReasons.length === 0) {
         if (run.source_batch_id) {
@@ -1514,6 +1671,10 @@ export class WarmupGovernanceService {
     thread_id: string
     turn_ids: string[]
   }> {
+    if (hasAuthoredEngagementPayloads(input.spec)) {
+      return this.createAuthoredEngagementForPost(input)
+    }
+
     const targetThreadTurnCount = Math.max(3, input.spec.target_thread_turn_count ?? 3)
     const targetPostVoteCount = Math.max(3, input.spec.post_vote_target ?? 3)
     const supportAgents = this.pickSupportAgents({
@@ -1625,11 +1786,242 @@ export class WarmupGovernanceService {
       }
     }
 
-    if (!shouldAttachMedia(input.spec) || !this.deps.mediaAssetControlService) {
-      return {
-        thread_id: threadId,
-        turn_ids: turnIds,
+    await this.attachMediaForGovernancePost({
+      batch: input.batch,
+      spec: input.spec,
+      post: input.post,
+      rootAuthorAgentId: input.rootAuthorAgentId,
+      governanceContext,
+    })
+
+    return {
+      thread_id: threadId,
+      turn_ids: turnIds,
+    }
+  }
+
+  private async createAuthoredEngagementForPost(input: {
+    batch: GovernanceBatch
+    spec: KickoffPostSpec
+    post: Post
+    rootAuthorAgentId: string
+    roster: LaunchSystemRosterRuntime
+    indexes: ReturnType<typeof buildSystemAgentIndexes>
+    generation_mode: GovernanceGenerationMode
+  }): Promise<{
+    thread_id: string
+    turn_ids: string[]
+  }> {
+    const governanceContext = {
+      governance_batch_id: input.batch.id,
+      generation_mode: input.generation_mode,
+    }
+    const resolverState = createAuthoredAgentResolverState()
+    const supportAgents = this.pickSupportAgents({
+      roster: input.roster,
+      indexes: input.indexes,
+      spec: input.spec,
+      excludeAgentIds: [input.rootAuthorAgentId],
+      limit: Math.max(
+        8,
+        (input.spec.thread_payloads?.length ?? 0) +
+          (input.spec.turn_payloads?.length ?? 0) +
+          (input.spec.vote_payloads?.length ?? 0) +
+          2,
+      ),
+    })
+    const threadIdsByLocalKey = new Map<string, string>()
+    const threadAuthorIdsByLocalKey = new Map<string, string | null>()
+    const turnIdsByLocalKey = new Map<string, string>()
+    const turnAuthorIdsByLocalKey = new Map<string, string | null>()
+
+    for (const [index, thread] of (input.spec.thread_payloads ?? []).entries()) {
+      const author = this.resolveAuthoredPayloadAgent({
+        agentRef: thread.actor_agent_ref ?? thread.actor_binding_ref,
+        state: resolverState,
+        supportAgents,
+        rootAuthorAgentId: input.rootAuthorAgentId,
+        spec: input.spec,
+        roster: input.roster,
+        indexes: input.indexes,
+      })
+      const result = await this.deps.forumWriteService.createThread({
+        actor_agent_id: author.id,
+        run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:authored-thread:${index}:${Date.now()}`,
+        post_id: input.post.id,
+        body: thread.body,
+        channel: thread.channel ?? 'STAGE',
+        governance_context: governanceContext,
+      })
+      threadIdsByLocalKey.set(thread.thread_local_key, result.entry.thread_id)
+      threadAuthorIdsByLocalKey.set(thread.thread_local_key, author.id)
+    }
+
+    const turnIds: string[] = []
+    for (const [index, turn] of (input.spec.turn_payloads ?? []).entries()) {
+      const threadId = threadIdsByLocalKey.get(turn.thread_local_key)
+      if (!threadId) {
+        throw new ValidationError(
+          `authored kickoff turn ${turn.turn_local_key} references missing thread ${turn.thread_local_key}`,
+        )
       }
+      const anchorTurnId = turn.anchor_turn_key
+        ? turnIdsByLocalKey.get(turn.anchor_turn_key) ?? null
+        : null
+      if (turn.anchor_turn_key && !anchorTurnId) {
+        throw new ValidationError(
+          `authored kickoff turn ${turn.turn_local_key} references missing anchor ${turn.anchor_turn_key}`,
+        )
+      }
+      const author = this.resolveAuthoredPayloadAgent({
+        agentRef: turn.actor_agent_ref ?? turn.actor_binding_ref,
+        state: resolverState,
+        supportAgents,
+        rootAuthorAgentId: input.rootAuthorAgentId,
+        spec: input.spec,
+        roster: input.roster,
+        indexes: input.indexes,
+      })
+      const result = await this.deps.forumWriteService.addThreadTurn({
+        actor_agent_id: author.id,
+        run_id: `warmup-suite:${input.batch.id}:${input.spec.id}:authored-turn:${index}:${Date.now()}`,
+        thread_id: threadId,
+        ...(anchorTurnId ? { anchor_turn_id: anchorTurnId } : {}),
+        body: turn.body,
+        channel: turn.channel ?? 'STAGE',
+        governance_context: governanceContext,
+      })
+      turnIdsByLocalKey.set(turn.turn_local_key, result.entry.id)
+      turnAuthorIdsByLocalKey.set(turn.turn_local_key, author.id)
+      turnIds.push(result.entry.id)
+    }
+
+    const firstThreadId = Array.from(threadIdsByLocalKey.values())[0]
+    if (!firstThreadId) {
+      throw new ValidationError(`authored kickoff engagement is missing thread_payloads for ${input.spec.id}`)
+    }
+
+    await this.materializeAuthoredVotesForPost({
+      spec: input.spec,
+      post: input.post,
+      resolverState,
+      supportAgents,
+      rootAuthorAgentId: input.rootAuthorAgentId,
+      roster: input.roster,
+      indexes: input.indexes,
+      threadIdsByLocalKey,
+      threadAuthorIdsByLocalKey,
+      turnIdsByLocalKey,
+      turnAuthorIdsByLocalKey,
+    })
+    await this.attachMediaForGovernancePost({
+      batch: input.batch,
+      spec: input.spec,
+      post: input.post,
+      rootAuthorAgentId: input.rootAuthorAgentId,
+      governanceContext,
+    })
+
+    return {
+      thread_id: firstThreadId,
+      turn_ids: turnIds,
+    }
+  }
+
+  private async materializeAuthoredVotesForPost(input: {
+    spec: KickoffPostSpec
+    post: Post
+    resolverState: AuthoredAgentResolverState
+    supportAgents: Array<{ id: string }>
+    rootAuthorAgentId: string
+    roster: LaunchSystemRosterRuntime
+    indexes: ReturnType<typeof buildSystemAgentIndexes>
+    threadIdsByLocalKey: Map<string, string>
+    threadAuthorIdsByLocalKey: Map<string, string | null>
+    turnIdsByLocalKey: Map<string, string>
+    turnAuthorIdsByLocalKey: Map<string, string | null>
+  }): Promise<void> {
+    const usedVoterIdsByTarget = new Map<string, Set<string>>()
+
+    for (const vote of input.spec.vote_payloads ?? []) {
+      const targetType = normalizeAuthoredVoteTargetType(vote.target_type)
+      const targetKey = stripPayloadRefPrefix(vote.target_local_ref)
+      const target =
+        targetType === 'POST'
+          ? {
+              target_id: input.post.id,
+              target_author_agent_id: input.post.author_agent_id,
+            }
+          : targetType === 'THREAD'
+            ? {
+                target_id: input.threadIdsByLocalKey.get(targetKey) ?? null,
+                target_author_agent_id: input.threadAuthorIdsByLocalKey.get(targetKey) ?? null,
+              }
+            : {
+                target_id: input.turnIdsByLocalKey.get(targetKey) ?? null,
+                target_author_agent_id: input.turnAuthorIdsByLocalKey.get(targetKey) ?? null,
+              }
+
+      if (!target.target_id) {
+        throw new ValidationError(
+          `authored kickoff vote ${vote.vote_local_key ?? vote.target_local_ref} references missing ${targetType} target ${targetKey}`,
+        )
+      }
+
+      const voteTargetKey = `${targetType}:${target.target_id}`
+      const usedVoterIds = usedVoterIdsByTarget.get(voteTargetKey) ?? new Set<string>()
+      usedVoterIdsByTarget.set(voteTargetKey, usedVoterIds)
+      const explicitVoter = this.resolveAuthoredPayloadAgent({
+        agentRef: vote.voter_agent_ref ?? vote.actor_binding_ref,
+        state: input.resolverState,
+        supportAgents: input.supportAgents,
+        rootAuthorAgentId: input.rootAuthorAgentId,
+        spec: input.spec,
+        roster: input.roster,
+        indexes: input.indexes,
+      })
+      const voter =
+        explicitVoter.id === target.target_author_agent_id || usedVoterIds.has(explicitVoter.id)
+          ? this.pickFallbackAuthoredAgent({
+              state: input.resolverState,
+              supportAgents: input.supportAgents,
+              rootAuthorAgentId: input.rootAuthorAgentId,
+              excludeAgentIds: [target.target_author_agent_id, ...usedVoterIds],
+              spec: input.spec,
+              roster: input.roster,
+              indexes: input.indexes,
+            })
+          : explicitVoter
+
+      if (voter.id === target.target_author_agent_id || usedVoterIds.has(voter.id)) {
+        throw new ValidationError(
+          `authored kickoff vote ${vote.vote_local_key ?? vote.target_local_ref} has no unique eligible voter for ${voteTargetKey}`,
+        )
+      }
+      usedVoterIds.add(voter.id)
+
+      await this.deps.voteRepo.upsert({
+        voter_agent_id: voter.id,
+        target_type: targetType,
+        target_id: target.target_id,
+        direction: normalizeAuthoredVoteDirection(vote.direction),
+        weight: vote.weight,
+      })
+    }
+  }
+
+  private async attachMediaForGovernancePost(input: {
+    batch: GovernanceBatch
+    spec: KickoffPostSpec
+    post: Post
+    rootAuthorAgentId: string
+    governanceContext: GovernanceWriteContextInput
+  }): Promise<void> {
+    if (!shouldAttachMedia(input.spec) || !this.deps.mediaAssetControlService) {
+      return
+    }
+    if (this.deps.postMediaRepo.findByPostId(input.post.id).length > 0) {
+      return
     }
 
     const relativeAssetPath = pickLocalWarmupMediaAsset(input.spec)
@@ -1655,16 +2047,141 @@ export class WarmupGovernanceService {
     const attachment = await this.deps.mediaAssetControlService.attachPostMediaAndConsume({
       asset_id: promoted.asset_id,
       post_id: input.post.id,
-      governance_context: governanceContext,
+      governance_context: input.governanceContext,
     })
     if (!attachment.linked) {
       throw new ValidationError(`failed to attach warmup media for ${input.spec.id}`)
     }
+  }
 
-    return {
-      thread_id: threadId,
-      turn_ids: turnIds,
+  private resolveAuthoredPayloadAgent(input: {
+    agentRef?: string | null
+    state: AuthoredAgentResolverState
+    supportAgents: Array<{ id: string }>
+    rootAuthorAgentId: string
+    spec: KickoffPostSpec
+    roster: LaunchSystemRosterRuntime
+    indexes: ReturnType<typeof buildSystemAgentIndexes>
+  }): { id: string } {
+    const normalizedRef = input.agentRef?.trim()
+    if (!normalizedRef) {
+      return this.pickFallbackAuthoredAgent({
+        state: input.state,
+        supportAgents: input.supportAgents,
+        rootAuthorAgentId: input.rootAuthorAgentId,
+        excludeAgentIds: [],
+        spec: input.spec,
+        roster: input.roster,
+        indexes: input.indexes,
+      })
     }
+
+    const existing = input.state.explicitAgentRefAssignments.get(normalizedRef)
+    if (existing) {
+      return existing
+    }
+
+    const role = inferProgramRoleFromAgentRef(normalizedRef)
+    if (role) {
+      const usedAgentIds = new Set(input.state.explicitAssignedAgentIds)
+      usedAgentIds.add(input.rootAuthorAgentId)
+      const seenAgentIds = new Set<string>()
+      for (let attempt = 0; attempt < input.roster.roster.length; attempt += 1) {
+        const candidate = pickRosterEntryForSpec({
+          roster: input.roster,
+          spec: {
+            ...input.spec,
+            preferred_roles: [role],
+          },
+          usedAgentIds,
+          indexes: input.indexes,
+        })
+        if (seenAgentIds.has(candidate.id)) {
+          break
+        }
+        seenAgentIds.add(candidate.id)
+        usedAgentIds.add(candidate.id)
+        const identity = readLaunchSystemIdentityConfig(
+          this.deps.agentConfigRepo.findLatest(candidate.id)?.config_json,
+        )
+        if (identity?.program_role !== role) {
+          continue
+        }
+        const resolved = { id: candidate.id }
+        input.state.explicitAgentRefAssignments.set(normalizedRef, resolved)
+        input.state.explicitAssignedAgentIds.add(candidate.id)
+        return resolved
+      }
+    }
+
+    const fallback = this.pickFallbackAuthoredAgent({
+      state: input.state,
+      supportAgents: input.supportAgents,
+      rootAuthorAgentId: input.rootAuthorAgentId,
+      excludeAgentIds: [],
+      spec: input.spec,
+      roster: input.roster,
+      indexes: input.indexes,
+    })
+    input.state.explicitAgentRefAssignments.set(normalizedRef, fallback)
+    input.state.explicitAssignedAgentIds.add(fallback.id)
+    return fallback
+  }
+
+  private pickFallbackAuthoredAgent(input: {
+    state: AuthoredAgentResolverState
+    supportAgents: Array<{ id: string }>
+    rootAuthorAgentId: string
+    excludeAgentIds: Array<string | null | undefined>
+    spec: KickoffPostSpec
+    roster: LaunchSystemRosterRuntime
+    indexes: ReturnType<typeof buildSystemAgentIndexes>
+  }): { id: string } {
+    const excluded = new Set(
+      [input.rootAuthorAgentId, ...input.excludeAgentIds]
+        .filter((agentId): agentId is string => typeof agentId === 'string' && agentId.length > 0),
+    )
+
+    for (let offset = 0; offset < input.supportAgents.length; offset += 1) {
+      const index = (input.state.fallbackCursor + offset) % input.supportAgents.length
+      const candidate = input.supportAgents[index]
+      if (!candidate || excluded.has(candidate.id)) {
+        continue
+      }
+      input.state.fallbackCursor = index + 1
+      return candidate
+    }
+
+    const expanded = this.pickSupportAgents({
+      roster: input.roster,
+      indexes: input.indexes,
+      spec: input.spec,
+      excludeAgentIds: Array.from(excluded),
+      limit: 1,
+    })[0]
+    if (expanded) {
+      return expanded
+    }
+
+    const globalCandidate = this.deps.agentRepo
+      .findByOwner(input.roster.owner_model.owner_id)
+      .slice()
+      .sort((left, right) => left.display_name.localeCompare(right.display_name, 'zh-CN'))
+      .find((agent) => {
+        if (excluded.has(agent.id)) {
+          return false
+        }
+        return readLaunchSystemIdentityConfig(
+          this.deps.agentConfigRepo.findLatest(agent.id)?.config_json,
+        ) !== null
+      })
+    if (globalCandidate) {
+      return { id: globalCandidate.id }
+    }
+
+    throw new ValidationError(
+      `authored kickoff engagement is blocked: no eligible support agent for ${input.spec.id}`,
+    )
   }
 
   private async ensureRuntimeWarmupFollowup(input: {
@@ -1686,15 +2203,36 @@ export class WarmupGovernanceService {
     )
     const settleDelayMs = deriveWarmupFollowupSettleDelayMs(settleTimeoutMs)
 
-    const threadTurnCoverage = await this.driveRuntimeWarmupPromptChain({
-      batch_id: input.batch.id,
-      post_id: input.post.id,
-      tick,
-      get_queue_size: getQueueSize,
-      is_processing: () => runtimeLoop?.isProcessing === true,
-      settle_timeout_ms: settleTimeoutMs,
-      settle_delay_ms: settleDelayMs,
-    })
+    let threadTurnCoverage: {
+      thread_id: string
+      turn_id: string
+    }
+    try {
+      threadTurnCoverage = await this.driveRuntimeWarmupPromptChain({
+        batch_id: input.batch.id,
+        post_id: input.post.id,
+        tick,
+        get_queue_size: getQueueSize,
+        is_processing: () => runtimeLoop?.isProcessing === true,
+        settle_timeout_ms: settleTimeoutMs,
+        settle_delay_ms: settleDelayMs,
+      })
+    } catch (error) {
+      console.warn(
+        `[WarmupGovernanceService] Runtime prompt chain did not produce thread/turn coverage; materializing governed fallback for post=${input.post.id}:`,
+        error,
+      )
+      await this.createEngagementForPost({
+        batch: input.batch,
+        spec: input.spec,
+        post: input.post,
+        rootAuthorAgentId: input.rootAuthorAgentId,
+        roster: input.roster,
+        indexes: input.indexes,
+        generation_mode: 'warmup_runtime',
+      })
+      return
+    }
 
     await this.seedRuntimeWarmupVotes({
       batch: input.batch,
@@ -1753,7 +2291,12 @@ export class WarmupGovernanceService {
         || queueSizeBeforeTick > 0
         || tickAttempts < DEFAULT_WARMUP_FOLLOWUP_TICK_BUDGET
       ) {
-        tickResult = await input.tick()
+        const remainingMs = Math.max(1, deadlineAt - Date.now())
+        tickResult = await runWarmupRuntimeAttemptWithTimeout(
+          input.tick(),
+          remainingMs,
+          'warmup runtime follow-up tick',
+        )
         tickAttempts += 1
       }
 
@@ -1931,6 +2474,10 @@ export class WarmupGovernanceService {
         }),
       ),
     )
+    await this.refreshSearchDocs({
+      postIds: [input.generated.post_id],
+      threadIds: [input.generated.thread_id],
+    })
 
     await this.ensureCommunityRoleAssignment({
       community_id: input.generated.community_id,

@@ -1252,6 +1252,7 @@ export type MediaObservabilityEventType =
   | 'generation_output_rewritten'
   | 'scene_pack_quality_audited'
   | 'display_attach_failed'
+  | 'display_attach_suppressed'
   | 'projection_recompiled'
   | 'public_prompt_audit_blocked'
   | 'policy_candidate_blocked'

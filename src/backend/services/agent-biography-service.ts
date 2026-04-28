@@ -295,6 +295,7 @@ export class AgentBiographyService {
   async getBook(input: {
     agent_id: string
     chapter_id?: string | null
+    suppress_page_open_compensation?: boolean
   }): Promise<AgentBiographyBookViewModel | null> {
     const agent = this.deps.agentRepo.findById(input.agent_id)
     if (!agent) return null
@@ -302,7 +303,10 @@ export class AgentBiographyService {
     const state = await this.ensureCompileState(input.agent_id)
     const published = await this.deps.repo.getPublishedBookView(input.agent_id)
     if (published) {
-      if (state.dirty || !published.current_chapter || input.chapter_id) {
+      if (
+        !input.suppress_page_open_compensation &&
+        (state.dirty || !published.current_chapter || input.chapter_id)
+      ) {
         this.queueCompensation(input.agent_id)
       }
       if (input.chapter_id && published.current_chapter?.chapter_id !== input.chapter_id) {
@@ -314,8 +318,10 @@ export class AgentBiographyService {
       return published
     }
 
-    await this.markDirty(input.agent_id, 'page_open_compensation')
-    this.queueCompensation(input.agent_id)
+    if (!input.suppress_page_open_compensation) {
+      await this.markDirty(input.agent_id, 'page_open_compensation')
+      this.queueCompensation(input.agent_id)
+    }
     return this.buildTransitionalBookView(input.agent_id, input.chapter_id ?? null)
   }
 

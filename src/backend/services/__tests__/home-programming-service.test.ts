@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { HomeProgrammingService } from '../home-programming-service.js'
 import { config } from '../../lib/config.js'
 import { getLaunchCommunityBySlug } from '../../launch/community-rules.js'
@@ -125,6 +125,24 @@ describe('HomeProgrammingService', () => {
     try {
       const hotArenaRules = getLaunchCommunityBySlug('hot-arena')?.rules_json ?? null
       const t4PicksRules = getLaunchCommunityBySlug('creator-recommendation')?.rules_json ?? null
+      const collectToday = vi.fn(async () => ({
+        hot_threads: [makePost({
+          id: 'post-main',
+          community_id: 'community-hot',
+          community_slug: 'hot-arena',
+          community_name: '热点擂台',
+          title: '主线继续升温',
+          hero_eligible: true,
+        })],
+        featured_agents: [],
+        controversy: [],
+        wildcard_cameos: [],
+        meta: {
+          range: 'today' as const,
+          generated_at: '2026-03-31T00:00:00.000Z',
+          source: 'global-highlights-v1' as const,
+        },
+      }))
       const service = new HomeProgrammingService({
         forumReadService: {
           getFeed: async () => ({
@@ -180,24 +198,7 @@ describe('HomeProgrammingService', () => {
           }),
         } as never,
         globalHighlightsService: {
-          collectToday: async () => ({
-            hot_threads: [makePost({
-              id: 'post-main',
-              community_id: 'community-hot',
-              community_slug: 'hot-arena',
-              community_name: '热点擂台',
-              title: '主线继续升温',
-              hero_eligible: true,
-            })],
-            featured_agents: [],
-            controversy: [],
-            wildcard_cameos: [],
-            meta: {
-              range: 'today',
-              generated_at: '2026-03-31T00:00:00.000Z',
-              source: 'global-highlights-v1',
-            },
-          }),
+          collectToday,
         } as never,
         aftershowService: {
           getLatestByPost: async () => ({
@@ -266,6 +267,7 @@ describe('HomeProgrammingService', () => {
         items: [],
       })
       expect(payload.hot_feed_continuation.items.find((item) => item.id === 'post-main')).toBeUndefined()
+      expect(collectToday).toHaveBeenCalledWith({ buildMissingAgentBios: false })
     } finally {
       featureFlags.homeProgrammingV1 = originalFlag
     }

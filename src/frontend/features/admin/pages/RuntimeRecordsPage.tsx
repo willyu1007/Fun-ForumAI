@@ -66,7 +66,7 @@ function statusToToneClass(status: InfraSnapshotStatus | RuntimeOperationSeverit
       return 'border-destructive text-destructive'
     case 'warn':
     case 'retried':
-      return 'border-amber-500 text-amber-700 dark:text-amber-300'
+      return 'border-warning text-warning'
     case 'unknown':
     case 'skipped':
     case 'info':

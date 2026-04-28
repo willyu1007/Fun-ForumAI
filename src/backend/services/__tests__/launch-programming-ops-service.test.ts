@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { config } from '../../lib/config.js'
 import type { LaunchProgramRole, LaunchSystemRosterEntry } from '../../launch/system-roster.js'
 import { getLaunchSystemRoster } from '../../launch/system-roster.js'
@@ -7,6 +7,7 @@ import {
   type LaunchProgrammingOpsServiceDeps,
   recommendProgrammingSlotAssignments,
 } from '../launch-programming-ops-service.js'
+import type { PostWithMeta } from '../forum-read-service.js'
 
 const featureFlags = config.launch.capabilities as unknown as Record<string, boolean>
 const originalProgrammingOps = featureFlags.programmingOpsV1
@@ -107,6 +108,80 @@ function createLaunchProgrammingOpsService(
   }
 
   return new LaunchProgrammingOpsService(deps)
+}
+
+function makeOpsPost(input: {
+  id: string
+  community_slug?: string
+  community_name?: string
+  created_at?: Date
+  content_kind?: string
+  storyline_state?: string
+  aftershow_export_bias?: number
+  media_count?: number
+  thread_turn_count?: number
+}): PostWithMeta {
+  const createdAt = input.created_at ?? new Date('2026-04-28T15:30:00.000+08:00')
+  return {
+    id: input.id,
+    community_id: `community-${input.community_slug ?? 'hot-arena'}`,
+    author_agent_id: 'agent-1',
+    title: `title ${input.id}`,
+    body: `body ${input.id}`,
+    tags: [],
+    visibility: 'PUBLIC',
+    state: 'APPROVED',
+    moderation_metadata: null,
+    created_at: createdAt,
+    updated_at: createdAt,
+    thread_turn_count: input.thread_turn_count ?? 1,
+    vote_score: 0,
+    vote_up: 0,
+    vote_down: 0,
+    agent_vote_score: 0,
+    agent_vote_up: 0,
+    agent_vote_down: 0,
+    human_vote_score: 0,
+    human_vote_up: 0,
+    human_vote_down: 0,
+    weighted_vote_score: 0,
+    viewer_human_vote_direction: null,
+    participant_count: 1,
+    last_reply_at: null,
+    heat_score: 1,
+    author: {
+      id: 'agent-1',
+      actor_type: 'agent',
+      display_name: 'Agent 1',
+      avatar_url: null,
+    },
+    community_slug: input.community_slug ?? 'hot-arena',
+    community_name: input.community_name ?? '热点擂台',
+    media: Array.from({ length: input.media_count ?? 0 }, (_, index) => ({
+      asset_id: `media-${input.id}-${index}`,
+      media_url: `https://example.test/${input.id}-${index}.png`,
+      mime_type: 'image/png',
+      alt_text: null,
+    })),
+    ai_label: 'AI',
+    effective_moderation_label: 'normal',
+    topic_signals: null,
+    distribution_state: 'NORMAL',
+    content_semantics: {
+      scene_runtime: {},
+      narrative: {
+        ...(input.storyline_state ? { storyline_state: input.storyline_state } : {}),
+      },
+      distribution: {
+        ...(input.content_kind ? { content_kind: input.content_kind } : {}),
+        ...(typeof input.aftershow_export_bias === 'number'
+          ? { aftershow_export_bias: input.aftershow_export_bias }
+          : {}),
+      },
+      format: {},
+      visual: {},
+    },
+  } as PostWithMeta
 }
 
 describe('recommendProgrammingSlotAssignments', () => {
@@ -247,7 +322,22 @@ describe('LaunchProgrammingOpsService public methods', () => {
 
   it('getAdminPayload returns an enabled read model through the public service method', async () => {
     featureFlags.programmingOpsV1 = true
-    const service = createLaunchProgrammingOpsService()
+    const collectToday = vi.fn(async () => ({
+      hot_threads: [],
+      controversy: [],
+      featured_agents: [],
+      wildcard_cameos: [],
+      meta: {
+        range: 'today' as const,
+        generated_at: new Date('2026-04-11T00:00:00.000Z').toISOString(),
+        source: 'global-highlights-v1' as const,
+      },
+    }))
+    const service = createLaunchProgrammingOpsService({
+      globalHighlightsService: {
+        collectToday,
+      } as unknown as LaunchProgrammingOpsServiceDeps['globalHighlightsService'],
+    })
 
     const payload = await service.getAdminPayload({
       now: new Date('2026-04-11T12:00:00.000Z'),
@@ -260,5 +350,105 @@ describe('LaunchProgrammingOpsService public methods', () => {
     expect(payload.governance_references).toHaveProperty('communities')
     expect(payload.rollback_order.length).toBeGreaterThan(0)
     expect(payload.meta.source).toBe('launch-programming-ops-v1')
+    expect(collectToday).toHaveBeenCalledWith({ buildMissingAgentBios: false })
+  })
+
+  it('does not require aftershow publishing for watch-only candidates', async () => {
+    featureFlags.programmingOpsV1 = true
+    const getLatestByPost = vi.fn(async () => ({
+      artifact: null,
+      callouts: [],
+    }))
+    const service = createLaunchProgrammingOpsService({
+      forumReadService: {
+        getFeed: async () => ({
+          items: [
+            makeOpsPost({
+              id: 'watch-only',
+              community_slug: 'late-night-radio',
+              community_name: '深夜电台',
+              aftershow_export_bias: 0.35,
+            }),
+          ],
+          next_cursor: null,
+        }),
+      } as LaunchProgrammingOpsServiceDeps['forumReadService'],
+      aftershowService: {
+        getLatestByPost,
+      } as unknown as LaunchProgrammingOpsServiceDeps['aftershowService'],
+    })
+
+    const payload = await service.getAdminPayload({
+      now: new Date('2026-04-28T15:30:00.000+08:00'),
+    })
+
+    expect(payload.observations.aftershow).toHaveLength(0)
+    expect(payload.health.aftershow_pipeline_ok).toBe(true)
+    expect(getLatestByPost).not.toHaveBeenCalled()
+  })
+
+  it('requires published aftershow artifacts for ready candidates', async () => {
+    featureFlags.programmingOpsV1 = true
+    const readyPost = makeOpsPost({
+      id: 'ready-callback',
+      community_slug: 'late-night-radio',
+      community_name: '深夜电台',
+      content_kind: 'continuity_callback',
+      storyline_state: 'callback',
+      aftershow_export_bias: 0.6,
+    })
+    const createService = (hasArtifact: boolean) => createLaunchProgrammingOpsService({
+      forumReadService: {
+        getFeed: async () => ({
+          items: [readyPost],
+          next_cursor: null,
+        }),
+      } as LaunchProgrammingOpsServiceDeps['forumReadService'],
+      aftershowService: {
+        getLatestByPost: async () => ({
+          artifact: hasArtifact ? { id: 'aftershow-1' } : null,
+          callouts: [],
+        }),
+      } as unknown as LaunchProgrammingOpsServiceDeps['aftershowService'],
+    })
+
+    const withoutArtifact = await createService(false).getAdminPayload({
+      now: new Date('2026-04-28T15:30:00.000+08:00'),
+    })
+    const withArtifact = await createService(true).getAdminPayload({
+      now: new Date('2026-04-28T15:30:00.000+08:00'),
+    })
+
+    expect(withoutArtifact.observations.aftershow).toHaveLength(1)
+    expect(withoutArtifact.health.aftershow_pipeline_ok).toBe(false)
+    expect(withArtifact.health.aftershow_pipeline_ok).toBe(true)
+  })
+
+  it('counts visual priority threads as programming highlight candidates', async () => {
+    featureFlags.programmingOpsV1 = true
+    const service = createLaunchProgrammingOpsService({
+      forumReadService: {
+        getFeed: async () => ({
+          items: [
+            makeOpsPost({
+              id: 'visual-priority',
+              community_slug: 'values-stage',
+              community_name: '价值观辩台',
+              created_at: new Date('2026-04-28T20:30:00.000+08:00'),
+              thread_turn_count: 6,
+              media_count: 1,
+            }),
+          ],
+          next_cursor: null,
+        }),
+      } as LaunchProgrammingOpsServiceDeps['forumReadService'],
+    })
+
+    const payload = await service.getAdminPayload({
+      now: new Date('2026-04-28T21:00:00.000+08:00'),
+    })
+
+    const evening = payload.health.daypart_readiness.find((item) => item.daypart_id === 'evening_prime')
+    expect(evening?.observed.highlight_candidates).toBe(1)
   })
 })

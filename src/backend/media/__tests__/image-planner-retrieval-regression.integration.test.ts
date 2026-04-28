@@ -147,6 +147,7 @@ async function seedCanonicalAsset(input: {
   mediaAssetRepo: InMemoryMediaAssetRepository
   mediaSemanticSnapshotRepo: InMemoryMediaSemanticSnapshotRepository
   sceneMediaBindingRepo: InMemorySceneMediaBindingRepository
+  mediaReuseGovernanceService: MediaReuseGovernanceService
   id: string
   storage_key: string
   sha256: string
@@ -199,6 +200,13 @@ async function seedCanonicalAsset(input: {
     display_policy: 'original_allowed',
     created_by_type: 'system',
     created_by_id: 'system',
+  })
+  // T-302 翻转后 platform_canonical 默认禁用 quote_original，
+  // 这里显式注册 admin 已批准 direct-original 复用的策略以还原测试意图。
+  await input.mediaReuseGovernanceService.ensureAssetPolicy({
+    source_kind: 'platform_canonical',
+    asset,
+    allow_quote_original: true,
   })
   return { asset, snapshot }
 }
@@ -284,6 +292,7 @@ describe('image planner retrieval quality regression', () => {
         mediaAssetRepo,
         mediaSemanticSnapshotRepo,
         sceneMediaBindingRepo,
+        mediaReuseGovernanceService,
         id: `asset-distractor-${index}`,
         storage_key: `platform/distractor-${index}.png`,
         sha256: `sha-distractor-${index}`,
@@ -301,6 +310,7 @@ describe('image planner retrieval quality regression', () => {
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
       sceneMediaBindingRepo,
+      mediaReuseGovernanceService,
       id: 'asset-legacy-strong',
       storage_key: 'platform/legacy-strong.png',
       sha256: 'sha-legacy-strong',
@@ -315,6 +325,7 @@ describe('image planner retrieval quality regression', () => {
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
       sceneMediaBindingRepo,
+      mediaReuseGovernanceService,
       id: 'asset-target-canonical',
       storage_key: 'platform/target-canonical.png',
       sha256: 'sha-target-canonical',
@@ -329,6 +340,7 @@ describe('image planner retrieval quality regression', () => {
       mediaAssetRepo,
       mediaSemanticSnapshotRepo,
       sceneMediaBindingRepo,
+      mediaReuseGovernanceService,
       id: 'asset-target-duplicate',
       storage_key: 'platform/target-duplicate.png',
       sha256: 'sha-target-duplicate',
@@ -476,6 +488,7 @@ describe('image planner retrieval quality regression', () => {
         mediaAssetRepo,
         mediaSemanticSnapshotRepo,
         sceneMediaBindingRepo,
+        mediaReuseGovernanceService,
         id: `asset-fallback-${index}`,
         storage_key: `platform/fallback-${index}.png`,
         sha256: `sha-fallback-${index}`,

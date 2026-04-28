@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 import { parse as parseYaml } from 'yaml'
 import { loadFrontendBuildProfile } from '../../ops/packaging/scripts/frontend-build-profile.mjs'
 
@@ -114,6 +115,213 @@ function readText(relativePath) {
 
 function readYaml(relativePath) {
   return parseYaml(readText(relativePath))
+}
+
+function readSourceFile(relativePath) {
+  const scriptKind = relativePath.endsWith('.tsx')
+    ? ts.ScriptKind.TSX
+    : relativePath.endsWith('.ts')
+      ? ts.ScriptKind.TS
+      : ts.ScriptKind.JS
+  return ts.createSourceFile(
+    relativePath,
+    readText(relativePath),
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind,
+  )
+}
+
+function literalText(node) {
+  return ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
+    ? node.text
+    : null
+}
+
+function unwrapExpression(node) {
+  let current = ts.skipParentheses(node)
+  while (
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isTypeAssertionExpression(current)
+  ) {
+    current = ts.skipParentheses(current.expression)
+  }
+  return current
+}
+
+function propertyNameText(node) {
+  if (ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node)) {
+    return node.text
+  }
+  return null
+}
+
+function findAstNode(root, predicate) {
+  let result = null
+  function visit(node) {
+    if (result) return
+    if (predicate(node)) {
+      result = node
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return result
+}
+
+function hasAstNode(root, predicate) {
+  return Boolean(findAstNode(root, predicate))
+}
+
+function hasStaticImport(sourceFile, moduleSpecifier) {
+  return hasAstNode(sourceFile, (node) =>
+    ts.isImportDeclaration(node) &&
+    literalText(node.moduleSpecifier) === moduleSpecifier,
+  )
+}
+
+function isDynamicImportCall(node, moduleSpecifier) {
+  return (
+    ts.isCallExpression(node) &&
+    node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+    node.arguments.length > 0 &&
+    literalText(node.arguments[0]) === moduleSpecifier
+  )
+}
+
+function hasDynamicImport(root, moduleSpecifier) {
+  return hasAstNode(root, (node) => isDynamicImportCall(node, moduleSpecifier))
+}
+
+function findFunctionDeclaration(sourceFile, name) {
+  return findAstNode(sourceFile, (node) =>
+    ts.isFunctionDeclaration(node) &&
+    node.name?.text === name,
+  )
+}
+
+function callExpressionName(node) {
+  if (!ts.isCallExpression(node)) return null
+  const expression = ts.skipParentheses(node.expression)
+  if (ts.isIdentifier(expression)) return expression.text
+  if (ts.isPropertyAccessExpression(expression)) return expression.name.text
+  return null
+}
+
+function hasIdentifierCall(root, identifierName) {
+  return hasAstNode(root, (node) =>
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(ts.skipParentheses(node.expression)) &&
+    ts.skipParentheses(node.expression).text === identifierName,
+  )
+}
+
+function hasPropertyCall(root, receiverName, methodName, sourceFile) {
+  return hasAstNode(root, (node) => {
+    if (!ts.isCallExpression(node)) return false
+    const expression = ts.skipParentheses(node.expression)
+    return (
+      ts.isPropertyAccessExpression(expression) &&
+      expression.expression.getText(sourceFile) === receiverName &&
+      expression.name.text === methodName
+    )
+  })
+}
+
+function functionHasIdentifierCall(sourceFile, functionName, identifierName) {
+  const fn = findFunctionDeclaration(sourceFile, functionName)
+  return Boolean(fn && hasIdentifierCall(fn, identifierName))
+}
+
+function functionHasDefaultCall(sourceFile, functionName, callName) {
+  const fn = findFunctionDeclaration(sourceFile, functionName)
+  return Boolean(fn?.parameters.some((parameter) => {
+    if (!parameter.initializer || !ts.isCallExpression(parameter.initializer)) return false
+    return callExpressionName(parameter.initializer) === callName
+  }))
+}
+
+function functionReturnsResolveWithString(sourceFile, functionName, value) {
+  const fn = findFunctionDeclaration(sourceFile, functionName)
+  return Boolean(fn && hasAstNode(fn, (node) => {
+    if (!ts.isReturnStatement(node) || !node.expression) return false
+    const expression = ts.skipParentheses(node.expression)
+    return (
+      ts.isCallExpression(expression) &&
+      callExpressionName(expression) === 'resolve' &&
+      expression.arguments.some((argument) => literalText(argument) === value)
+    )
+  }))
+}
+
+function hasPropertyAssignmentString(sourceFile, propertyName, value) {
+  return hasAstNode(sourceFile, (node) =>
+    ts.isPropertyAssignment(node) &&
+    propertyNameText(node.name) === propertyName &&
+    literalText(node.initializer) === value,
+  )
+}
+
+function hasCallWithFirstStringArg(sourceFile, value) {
+  return hasAstNode(sourceFile, (node) =>
+    ts.isCallExpression(node) &&
+    node.arguments.length > 0 &&
+    literalText(node.arguments[0]) === value,
+  )
+}
+
+function exportedConstArrayIncludes(sourceFile, constName, value) {
+  return hasAstNode(sourceFile, (node) => {
+    if (!ts.isVariableDeclaration(node)) return false
+    if (!ts.isIdentifier(node.name) || node.name.text !== constName) return false
+    if (!node.initializer) return false
+    const initializer = unwrapExpression(node.initializer)
+    if (!ts.isArrayLiteralExpression(initializer)) return false
+    return initializer.elements.some((element) => literalText(element) === value)
+  })
+}
+
+function hasPropertyAccessName(sourceFile, propertyName) {
+  return hasAstNode(sourceFile, (node) =>
+    ts.isPropertyAccessExpression(node) &&
+    node.name.text === propertyName,
+  )
+}
+
+function hasCallInFinally(sourceFile, identifierName) {
+  return hasAstNode(sourceFile, (node) =>
+    ts.isTryStatement(node) &&
+    Boolean(node.finallyBlock && hasIdentifierCall(node.finallyBlock, identifierName)),
+  )
+}
+
+function hasGatedDevRouteModules(sourceFile, moduleSpecifiers) {
+  const declaration = findAstNode(sourceFile, (node) =>
+    ts.isVariableDeclaration(node) &&
+    ts.isIdentifier(node.name) &&
+    node.name.text === 'devRouteModules',
+  )
+  if (!declaration?.initializer) return false
+  const initializer = unwrapExpression(declaration.initializer)
+  if (!ts.isConditionalExpression(initializer)) return false
+  const conditionIsDevToolsGate = initializer.condition.getText(sourceFile) === 'config.allowDevTools'
+  const disabledBranchEmpty =
+    initializer.whenFalse.kind === ts.SyntaxKind.NullKeyword ||
+    (
+      ts.isArrayLiteralExpression(initializer.whenFalse) &&
+      initializer.whenFalse.elements.length === 0
+    )
+  const enabledBranchImportsAll = moduleSpecifiers.every((moduleSpecifier) =>
+    hasDynamicImport(initializer.whenTrue, moduleSpecifier),
+  )
+  return conditionIsDevToolsGate && disabledBranchEmpty && enabledBranchImportsAll
+}
+
+function normalizedDockerfileHas(dockerfile, snippet) {
+  const normalize = (value) => value.replace(/\s+/g, ' ').trim()
+  return normalize(dockerfile).includes(normalize(snippet))
 }
 
 function listRelativeFiles(target) {
@@ -491,12 +699,18 @@ export function validateKickoffAssets() {
     }
   }
 
-  const kickoffModule = readText('src/backend/launch/kickoff.ts')
-  const kickoffCli = readText('src/backend/dev/launch-kickoff.ts')
-  const warmStartService = readText('src/backend/services/warmup-governance-service.ts')
-  const adminKickoffRoutes = readText('src/backend/routes/admin/admin-kickoff-routes.ts')
-  const warmupVerifierShared = readText('src/shared/warmup-verifier.ts')
-  const launchVerifyScript = readText('scripts/verify-launch-readiness.mjs')
+  const kickoffModule = readSourceFile('src/backend/launch/kickoff.ts')
+  const kickoffCli = readSourceFile('src/backend/dev/launch-kickoff.ts')
+  const warmStartService = readSourceFile('src/backend/services/warmup-governance-service.ts')
+  const adminKickoffRoutes = readSourceFile('src/backend/routes/admin/admin-kickoff-routes.ts')
+  const warmupVerifierShared = readSourceFile('src/shared/warmup-verifier.ts')
+  const launchVerifyScript = readSourceFile('scripts/verify-launch-readiness.mjs')
+  const driftScanSources = [
+    readText('src/backend/services/warmup-governance-service.ts'),
+    readText('src/backend/routes/admin/admin-kickoff-routes.ts'),
+    readText('src/shared/warmup-verifier.ts'),
+    readText('scripts/verify-launch-readiness.mjs'),
+  ]
   const driftTokens = [
     'foundation_candidate',
     'warmup_candidate',
@@ -508,31 +722,77 @@ export function validateKickoffAssets() {
     'last_review_decision_ok',
   ]
   const driftFree = !driftTokens.some((token) =>
-    [
-      warmStartService,
-      adminKickoffRoutes,
-      warmupVerifierShared,
-      launchVerifyScript,
-    ].some((text) => text.includes(token)),
+    driftScanSources.some((text) => text.includes(token)),
   )
-  const ok =
-    kickoffModule.includes('.ai/.tmp/kickoff/manifest.v1.yaml') &&
-    kickoffModule.includes('kickoff bundle paths must stay under') &&
-    kickoffCli.includes('warmupGovernanceService.importKickoffBaseline') &&
-    warmStartService.includes("generation_mode: 'kickoff_import'") &&
-    warmStartService.includes("generation_mode: 'warmup_runtime'") &&
-    adminKickoffRoutes.includes('/admin/kickoff') &&
-    adminKickoffRoutes.includes('/admin/warmup/runs') &&
-    warmupVerifierShared.includes('kickoff_resolution') &&
-    launchVerifyScript.includes('has_kickoff_baseline') &&
-    launchVerifyScript.includes('kickoff_layer_ready') &&
-    driftFree
+  const checks = [
+    {
+      ok: functionReturnsResolveWithString(
+        kickoffModule,
+        'defaultKickoffManifestPath',
+        'kickoff/manifest.v1.yaml',
+      ),
+      label: 'default kickoff manifest path helper',
+    },
+    {
+      ok:
+        functionHasIdentifierCall(kickoffModule, 'resolveKickoffAssetPath', 'ensurePathInsideKickoffTmp') &&
+        functionHasIdentifierCall(kickoffModule, 'resolveKickoffAssetPath', 'ensureKickoffPathExists'),
+      label: 'kickoff asset path guard',
+    },
+    {
+      ok: functionHasDefaultCall(kickoffModule, 'loadKickoffBundle', 'defaultKickoffManifestPath'),
+      label: 'kickoff bundle loader default manifest',
+    },
+    {
+      ok: hasPropertyCall(
+        kickoffCli,
+        'warmupGovernanceService',
+        'importKickoffBaseline',
+        kickoffCli,
+      ),
+      label: 'launch.kickoff import call',
+    },
+    {
+      ok: hasPropertyAssignmentString(warmStartService, 'generation_mode', 'kickoff_import'),
+      label: 'kickoff import generation mode',
+    },
+    {
+      ok: hasPropertyAssignmentString(warmStartService, 'generation_mode', 'warmup_runtime'),
+      label: 'warmup runtime generation mode',
+    },
+    {
+      ok:
+        hasCallWithFirstStringArg(adminKickoffRoutes, '/admin/kickoff') &&
+        hasCallWithFirstStringArg(adminKickoffRoutes, '/admin/warmup/runs'),
+      label: 'admin kickoff and warmup run routes',
+    },
+    {
+      ok: exportedConstArrayIncludes(
+        warmupVerifierShared,
+        'WARMUP_VERIFIER_PHASES',
+        'kickoff_resolution',
+      ),
+      label: 'warmup verifier kickoff phase',
+    },
+    {
+      ok:
+        hasPropertyAccessName(launchVerifyScript, 'has_kickoff_baseline') &&
+        hasPropertyAccessName(launchVerifyScript, 'kickoff_layer_ready'),
+      label: 'launch verifier kickoff admission fields',
+    },
+    {
+      ok: driftFree,
+      label: 'legacy warm-start drift tokens absent',
+    },
+  ]
+  const failed = checks.filter((check) => !check.ok).map((check) => check.label)
+  const ok = failed.length === 0
 
   return {
     ok,
     detail: ok
       ? 'launch.kickoff wiring and runtime-only warmup guardrails are in place'
-      : 'launch kickoff wiring, runtime-only warmup guardrails, or drift checks are incomplete',
+      : `launch kickoff assets incomplete: ${failed.join(', ')}`,
   }
 }
 
@@ -579,24 +839,51 @@ export function validateLaunchRuntimeContracts() {
 }
 
 export function validateDevOnlyStartupHardening() {
-  const appModule = readText('src/backend/app.ts')
+  const appModule = readSourceFile('src/backend/app.ts')
   const dockerfile = readText('ops/packaging/services/llm-forum.Dockerfile')
-  const kickoffCli = readText('src/backend/dev/launch-kickoff.ts')
-  const ok =
-    !appModule.includes("await import('./routes/dev-seed.js')") &&
-    !appModule.includes("await import('./routes/dev-badge-debug.js')") &&
-    !appModule.includes("await import('./routes/dev-guidance.js')") &&
-    dockerfile.includes('COPY package.json ./package.json') &&
-    dockerfile.includes('COPY --from=builder /app/public ./public') &&
-    dockerfile.includes('mkdir -p /app/.ai/.tmp') &&
-    kickoffCli.includes('closeRuntimeInfrastructure') &&
-    kickoffCli.includes('disconnectPrisma')
+  const kickoffCli = readSourceFile('src/backend/dev/launch-kickoff.ts')
+  const devRouteModules = [
+    './routes/dev-seed.js',
+    './routes/dev-kickoff.js',
+    './routes/dev-badge-debug.js',
+    './routes/dev-guidance.js',
+  ]
+  const checks = [
+    {
+      ok: devRouteModules.every((moduleSpecifier) => !hasStaticImport(appModule, moduleSpecifier)),
+      label: 'dev routes are not statically imported',
+    },
+    {
+      ok: hasGatedDevRouteModules(appModule, devRouteModules),
+      label: 'dev route dynamic imports are gated by config.allowDevTools',
+    },
+    {
+      ok: normalizedDockerfileHas(dockerfile, 'COPY package.json ./package.json'),
+      label: 'runtime image copies package manifest',
+    },
+    {
+      ok: normalizedDockerfileHas(dockerfile, 'COPY --from=builder /app/public ./public'),
+      label: 'runtime image copies public assets',
+    },
+    {
+      ok: normalizedDockerfileHas(dockerfile, 'mkdir -p /app/.ai/.tmp'),
+      label: 'runtime image creates writable .ai tmp root',
+    },
+    {
+      ok:
+        hasCallInFinally(kickoffCli, 'closeRuntimeInfrastructure') &&
+        hasCallInFinally(kickoffCli, 'disconnectPrisma'),
+      label: 'launch.kickoff closes runtime infrastructure and Prisma',
+    },
+  ]
+  const failed = checks.filter((check) => !check.ok).map((check) => check.label)
+  const ok = failed.length === 0
 
   return {
     ok,
     detail: ok
       ? 'startup preserves ESM semantics, bundled public assets, writable .ai/.tmp, and clean kickoff CLI shutdown'
-      : 'dev-only startup hardening is incomplete',
+      : `dev-only startup hardening is incomplete: ${failed.join(', ')}`,
   }
 }
 
