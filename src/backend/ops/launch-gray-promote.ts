@@ -19,6 +19,11 @@ function readBoolFlag(name: string): boolean {
   return process.argv.includes(`--${name}`)
 }
 
+function canRunCommand(command: string): boolean {
+  const probe = spawnSync(command, ['--version'], { stdio: 'ignore' })
+  return probe.status === 0
+}
+
 interface RequiredArgs {
   env: string
   webBaseUrl: string
@@ -127,21 +132,24 @@ async function main() {
           : `${missing.length}/${probes.length} probed agents missing enrichment artifacts: ${JSON.stringify(missing)}`
       if (!allowMissingEnrichment) {
         throw new Error(
-          `enrichment artifact check failed: ${detail}. Run \`pnpm launch.enrichment\` first, or pass --allow-missing-enrichment to override.`,
+          `enrichment artifact check failed: ${detail}. Run launch.enrichment first, or pass --allow-missing-enrichment to override.`,
         )
       }
       console.warn(`[launch.gray.promote] enrichment artifact check skipped: ${detail}`)
     }
 
-    // 3. spawn pnpm verify:launch:staging
-    const verifyArgs = [
-      'verify:launch:staging',
-      '--',
+    // 3. run verify:launch:staging through the available package runner.
+    const verifyTailArgs = [
       `--web-base-url=${args.webBaseUrl}`,
       `--worker-base-url=${args.workerBaseUrl}`,
     ]
-    console.log(`[launch.gray.promote] running: pnpm ${verifyArgs.join(' ')}`)
-    const verify = spawnSync('pnpm', verifyArgs, {
+    const verifyCommand = canRunCommand('pnpm') ? 'pnpm' : 'npm'
+    const verifyArgs =
+      verifyCommand === 'pnpm'
+        ? ['verify:launch:staging', '--', ...verifyTailArgs]
+        : ['run', 'verify:launch:staging', '--', ...verifyTailArgs]
+    console.log(`[launch.gray.promote] running: ${verifyCommand} ${verifyArgs.join(' ')}`)
+    const verify = spawnSync(verifyCommand, verifyArgs, {
       stdio: 'inherit',
       cwd: resolvePath(process.cwd()),
       env: {

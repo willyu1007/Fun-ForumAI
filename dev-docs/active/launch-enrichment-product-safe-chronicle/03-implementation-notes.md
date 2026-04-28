@@ -8,4 +8,6 @@
 - Rewired public author presentation, public proof seed, global highlights, search projection counts, biography materials, worldview summaries, and typed memory retrieval through the product-safe policy.
 - Changed public biography-book reads to build a public-only view from product-safe public chronicle instead of reusing cached owner/private books.
 - Hardened `launch.enrichment` and `launch.gray.promote` so readiness is based on product-safe public chronicle count, not raw chronicle rows.
+- Moved `launch.enrichment` and `launch.gray.promote` entrypoints to `src/backend/ops` because the production/ECS runtime image removes `src/backend/dev`.
+- Made `launch.gray.promote` choose `pnpm` when available and fall back to `npm run verify:launch:staging` inside slim runtime images where pnpm may not be installed.
 - Fixed a pre-existing `PreviewPanel` type issue surfaced by full typecheck by making the status badge accept an explicit display label.

@@ -7,6 +7,10 @@
   - Result: passed.
 - `node .ai/scripts/ctl-project-governance.mjs lint --check --project main`
   - Result: passed.
+- `pnpm typecheck`
+  - Result: passed after moving `launch.enrichment` and `launch.gray.promote` to `src/backend/ops`.
+- `pnpm typecheck`
+  - Result: passed after adding the `launch.gray.promote` `pnpm`/`npm run` fallback for slim runtime images.
 
 ## Notes
 - Full typecheck runs `pnpm db:generate` and `pnpm ui:build` first; both completed successfully during verification.

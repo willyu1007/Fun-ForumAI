@@ -1,7 +1,11 @@
 # 02 Architecture — T-997
 
 ## CLI
-`src/backend/dev/cleanup-invalid-launch-content.ts`
+`src/backend/ops/cleanup-invalid-launch-content.ts`
+
+The production Docker runtime copies `src/backend` and removes `src/backend/dev`, `src/backend/test-support`, and `src/backend/test-utils`. Launch-time operational scripts that must run on ECS belong under `src/backend/ops`.
+
+Inside the slim runtime image, use `npm run launch.cleanup.invalid -- ...` or `node_modules/.bin/tsx src/backend/ops/cleanup-invalid-launch-content.ts ...` if `pnpm` is not available in the container.
 
 ## Cutoff Resolution
 Use latest active `warmup_suites.activated_at`; allow `--since <iso>` for an explicit cutoff.

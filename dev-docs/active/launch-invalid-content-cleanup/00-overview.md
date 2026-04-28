@@ -2,7 +2,7 @@
 
 ## Status
 - State: done
-- Current status: Dry-run-first cleanup CLI is implemented and verified. Real dry-run found 98 chronicle rows, 11 achievement rows, and 90 signal-log rows after active kickoff; no keyword-only suspects.
+- Current status: Dry-run-first cleanup CLI is implemented under the runtime-included backend ops path for ECS execution. Real dry-run found 98 chronicle rows, 11 achievement rows, and 90 signal-log rows after active kickoff; no keyword-only suspects.
 - Next step: Run `pnpm launch.cleanup.invalid:apply` only after human confirmation to delete candidates and invalidate derived projections.
 
 ## Goal
@@ -19,4 +19,4 @@ Provide an auditable database cleanup path for post-kickoff mock/fixed/lazy/plac
 - [x] Cleanup cutoff defaults to active kickoff `activated_at`, with explicit `--since` override.
 - [x] Deletion criteria are provenance-based, not plain keyword matching.
 - [x] Script reports keyword suspects for manual review without deleting them.
-- [x] Tests cover CLI parsing and protected SQL boundaries.
+- [x] CLI is available from the production/ECS runtime image; cleanup test files are not retained.

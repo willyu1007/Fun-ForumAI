@@ -19,7 +19,7 @@ Excluded categories:
 - `AgentBioWorldviewService`: source summaries and public last-activity fallback.
 - `GlobalHighlightsService`: wildcard cameo chronicle selection.
 - `MemoryService` typed retrieval: public scenes use product-safe public chronicle; private chat uses non-synthetic eligible chronicle.
-- `LaunchEnrichmentService` / `launch-gray-promote`: readiness proof.
+- `LaunchEnrichmentService` / `launch-gray-promote`: readiness proof; package script entrypoints live under `src/backend/ops` so ECS runtime images retain them. Inside the slim runtime image, use `npm run launch.enrichment -- ...` or direct `node_modules/.bin/tsx` if `pnpm` is not installed.
 - `dev-seed-runner` / `AchievementsOrchestrator`: provenance stamping.
 
 ## Degraded Public Biography Contract

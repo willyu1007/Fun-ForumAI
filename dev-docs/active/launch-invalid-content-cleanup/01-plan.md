@@ -2,7 +2,7 @@
 
 ## Phases
 1. **[COMPLETED]** Implement dry-run/apply cleanup CLI.
-2. **[COMPLETED]** Add focused tests for parsing and SQL safety boundaries.
+2. **[COMPLETED]** Verify parsing and SQL safety boundaries, then remove the cleanup test file from the retained repo state per deployment packaging direction.
 3. **[COMPLETED]** Run verification and sync project governance.
 
 ## Cleanup Scope
