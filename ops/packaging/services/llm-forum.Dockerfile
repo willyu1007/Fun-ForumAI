@@ -91,7 +91,8 @@ RUN set -eu; \
     src/backend/routes/dev-kickoff.ts \
     src/backend/routes/dev-badge-debug.ts \
     src/backend/routes/dev-guidance.ts \
-    dist/frontend/bundle-report.json; \
+    dist/frontend/bundle-report.json \
+    prisma.config.ts; \
   find public dist/frontend -name '.DS_Store' -delete; \
   check_no_repo_tests() { \
     found="$({ \
