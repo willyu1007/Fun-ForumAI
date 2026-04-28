@@ -692,11 +692,17 @@ describe('LLM registry contract', () => {
     expect(executionPoliciesById.get('visible-forum_reply-thread-base')?.defaults).toMatchObject({
       timeout_ms: 30000,
       max_retries: 0,
-      max_tokens: 720,
+      temperature: 0.72,
+      max_tokens: 520,
     })
     expect(executionPoliciesById.get('visible-forum_reply-post-base')?.defaults).toMatchObject({
       timeout_ms: 30000,
       max_retries: 0,
+      temperature: 0.72,
+      max_tokens: 520,
+    })
+    expect(executionPoliciesById.get('visible-scheduled_post-base')?.defaults).toMatchObject({
+      temperature: 0.72,
       max_tokens: 720,
     })
   })

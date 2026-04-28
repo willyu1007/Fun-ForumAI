@@ -143,6 +143,21 @@ interface RunnableScheduledPostCandidate {
   }
 }
 
+type ScheduledPostParseFailureCategory =
+  | 'empty_output'
+  | 'finish_reason_length'
+  | 'completion_near_max_tokens'
+  | 'invalid_structured_output'
+  | 'unrecognized_scheduled_post_contract'
+
+interface ScheduledPostParseFailureSummary {
+  category: ScheduledPostParseFailureCategory
+  finish_reason: string | null
+  completion_tokens: number
+  max_tokens: number | null
+  content_length: number
+}
+
 type ScheduledPostCandidateAttempt =
   | { kind: 'completed'; result: PostSchedulerResult }
   | { kind: 'retry_next'; error: string }
@@ -221,8 +236,8 @@ export class PostScheduler {
       return {
         triggered: false,
         error: lastRouteUnavailableError
-          ? `All runnable scheduled-post candidates failed route execution: ${lastRouteUnavailableError}`
-          : 'All runnable scheduled-post candidates failed route execution',
+          ? `All runnable scheduled-post candidates failed route/output execution: ${lastRouteUnavailableError}`
+          : 'All runnable scheduled-post candidates failed route/output execution',
         latency_ms: Date.now() - start,
       }
     } catch (err) {
@@ -588,15 +603,25 @@ export class PostScheduler {
     })
 
     if (!instruction) {
+      const parseFailure = this.classifyScheduledPostParseFailure(llmResponse)
+      const recordOutputContractFailure = this.deps.llmGateway.recordOutputContractFailure
+      const candidateCooldownRecorded = typeof recordOutputContractFailure === 'function'
+        ? recordOutputContractFailure.call(this.deps.llmGateway, {
+            providerId: llmResponse.renderDecision.providerId,
+            modelId: llmResponse.renderDecision.modelId,
+            endpointId: llmResponse.renderDecision.endpointId,
+            adapterId: llmResponse.renderDecision.adapterId,
+          })
+        : false
       const failedObservation = {
         ...observation,
         parse_success: false,
-        error: 'Failed to parse LLM output as scheduled post',
+        error: `Failed to parse LLM output as scheduled post (${parseFailure.category})`,
       }
       this.deps.agentRunRepo.create({
         agent_id: selected.id,
         trigger_event_id: triggerEvent.id,
-        input_digest: `scheduled_post_parse_failed|len:${llmResponse.content.length}`,
+        input_digest: `scheduled_post_parse_failed|${parseFailure.category}|len:${llmResponse.content.length}`,
         output_json: attachPersonaObservation(
           {
             fallback_community_id: fallbackCommunity.id,
@@ -610,6 +635,14 @@ export class PostScheduler {
                 }
               : {}),
             error: 'Failed to parse LLM output as post',
+            parse_failure: {
+              ...parseFailure,
+              provider_id: llmResponse.renderDecision.providerId,
+              model_id: llmResponse.renderDecision.modelId,
+              profile_id: llmResponse.renderDecision.profileId,
+              policy_id: llmResponse.renderDecision.policyId ?? null,
+              candidate_cooldown_recorded: candidateCooldownRecorded,
+            },
           },
           failedObservation,
         ),
@@ -617,17 +650,12 @@ export class PostScheduler {
         latency_ms: latencyMs,
       })
       recordPersonaObservation(failedObservation)
-      console.warn('[PostScheduler] LLM output could not be parsed as scheduled post')
+      console.warn(
+        `[PostScheduler] LLM output could not be parsed as scheduled post (${parseFailure.category})`,
+      )
       return {
-        kind: 'completed',
-        result: {
-          triggered: true,
-          agent_id: selected.id,
-          community_id: targetCommunity.id,
-          error: 'Failed to parse LLM output as post',
-          usage: llmResponse.usage,
-          latency_ms: latencyMs,
-        },
+        kind: 'retry_next',
+        error: `scheduled_post_output_contract_failed:${parseFailure.category}`,
       }
     }
 
@@ -842,6 +870,39 @@ export class PostScheduler {
       ...candidates.slice(startIndex),
       ...candidates.slice(0, startIndex),
     ]
+  }
+
+  private classifyScheduledPostParseFailure(
+    llmResponse: Awaited<ReturnType<LLMGateway['generateVisibleText']>>,
+  ): ScheduledPostParseFailureSummary {
+    const content = llmResponse.content.trim()
+    const finishReason = llmResponse.finishReason ?? null
+    const maxTokens = llmResponse.executionPlan?.resolvedParams.maxTokens ?? null
+    let category: ScheduledPostParseFailureCategory
+
+    if (!content) {
+      category = 'empty_output'
+    } else if (typeof finishReason === 'string' && finishReason.toLowerCase().includes('length')) {
+      category = 'finish_reason_length'
+    } else if (
+      typeof maxTokens === 'number'
+      && maxTokens > 0
+      && llmResponse.usage.completion_tokens >= Math.floor(maxTokens * 0.95)
+    ) {
+      category = 'completion_near_max_tokens'
+    } else if (/^[\s`]*[{[]/.test(content)) {
+      category = 'invalid_structured_output'
+    } else {
+      category = 'unrecognized_scheduled_post_contract'
+    }
+
+    return {
+      category,
+      finish_reason: finishReason,
+      completion_tokens: llmResponse.usage.completion_tokens,
+      max_tokens: maxTokens,
+      content_length: llmResponse.content.length,
+    }
   }
 
   private isRouteUnavailableLlmError(error: unknown): boolean {

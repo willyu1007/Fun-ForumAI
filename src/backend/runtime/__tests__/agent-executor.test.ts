@@ -549,6 +549,174 @@ describe('AgentExecutor', () => {
     expect(firstWriteInstruction).not.toHaveProperty('anchor_turn_id')
   })
 
+  it('uses a lite body route for warmup forum follow-up text when that route is serviceable', async () => {
+    const context = {
+      event: {
+        event_id: 'evt-warmup-thread-root-1',
+        event_type: 'ThreadOpened' as const,
+        idempotency_key: 'idem-warmup-thread-root-1',
+        chain_depth: 0,
+        community_id: 'community-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        author_agent_id: 'agent-2',
+        governance_batch_id: 'warmup-batch-1',
+        generation_mode: 'warmup_runtime' as const,
+        created_at: new Date().toISOString(),
+      },
+      agent: {
+        agent_id: 'agent-1',
+        score: 1,
+        priority: 1,
+      },
+      persona: {
+        name: 'Thread Bot',
+        style: 'precise',
+        interests: ['forums'],
+        language: 'zh-CN',
+      },
+      community: {
+        id: 'community-1',
+        name: '测试社区',
+        description: 'warmup follow-up',
+        rules: '',
+      },
+      post: {
+        id: 'post-1',
+        title: '帖子标题',
+        body: '帖子正文',
+        author_agent_id: 'agent-2',
+        author_name: 'Other Bot',
+      },
+      focusThreadTurn: {
+        id: 'thread-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        entry_kind: 'THREAD' as const,
+        anchor_turn_id: null,
+        body: '这是分支根节点。',
+        author_agent_id: 'agent-3',
+        author_name: 'Root Bot',
+      },
+      threadTurns: [{
+        id: 'thread-1',
+        post_id: 'post-1',
+        thread_id: 'thread-1',
+        entry_kind: 'THREAD' as const,
+        anchor_turn_id: null,
+        body: '这是分支根节点。',
+        author_agent_id: 'agent-3',
+        author_name: 'Root Bot',
+      }],
+      forum_targeting: {
+        event_target_entry_id: 'thread-1',
+        event_target_thread_id: 'thread-1',
+        focus_turn_id: 'thread-1',
+        selected_anchor_turn_id: null,
+        actual_anchor_turn_id: null,
+        final_write_anchor_turn_id: null,
+        reply_thread_id: 'thread-1',
+        browse_reason: 'DIRECT_REPLY' as const,
+        allowed_actions: ['REPLY'] as const,
+      },
+      blocks: {
+        hard_control_block: 'hard',
+        compact_control_block: 'compact',
+        current_context_block: 'context',
+        memory_block: 'memory',
+        soft_expression_block: 'soft',
+      },
+      prompt_audit: null,
+    }
+    const build = vi.fn(async () => context)
+    const enrichWithLayers = vi.fn(async (ctx) => ctx)
+    const canServeRoute = vi.fn(() => true)
+    const generateVisibleText = vi
+      .fn()
+      .mockResolvedValueOnce({
+        content: JSON.stringify({
+          version: 'v1',
+          actions: [{ kind: 'add_thread_turn', target_ref: 'focus_turn' }],
+        }),
+        usage: { prompt_tokens: 12, completion_tokens: 4, total_tokens: 16 },
+        latencyMs: 10,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'lite',
+          profileId: 'qwen-social-forum-reply-lite',
+          providerId: 'ark-openai',
+          modelId: 'doubao-seed-2-0-lite-260215',
+          region: 'cn',
+          endpointId: 'ark-cn-beijing',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-plan-forum-actions',
+          promptVersion: 1,
+        },
+        promptRef: PROMPT_TEMPLATE_REFS.agentPlanForumActions,
+      })
+      .mockResolvedValueOnce({
+        content: '那我先接住这条 warmup 分支。',
+        usage: { prompt_tokens: 12, completion_tokens: 7, total_tokens: 19 },
+        latencyMs: 10,
+        platformRetryCount: 0,
+        renderDecision: {
+          voiceLineId: 'qwen-social-v1',
+          tier: 'lite',
+          profileId: 'qwen-social-forum-reply-lite',
+          providerId: 'ark-openai',
+          modelId: 'doubao-seed-2-0-lite-260215',
+          region: 'cn',
+          endpointId: 'ark-cn-beijing',
+          credentialId: 'cred-1',
+          fallbackLevel: 'none',
+          reasons: ['test'],
+          promptTemplateId: 'agent-reply-to-thread-turn',
+          promptVersion: 4,
+        },
+        promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn,
+      })
+    const write = vi.fn(async () => ({ success: true, content_id: 'turn-2' }))
+    const resolveVisibleRoute = vi.fn(async ({ requestedTier }) => ({
+      homeVoiceLineId: 'qwen-social-v1',
+      requestedTier,
+    }))
+    const executor = new AgentExecutor({
+      llmGateway: { generateVisibleText, canServeRoute } as never,
+      contextBuilder: { build, enrichWithLayers } as never,
+      responseParser: { parse: vi.fn() } as never,
+      dataplaneWriter: { write } as never,
+      agentRunRepo: { create: vi.fn() } as never,
+      agentService: {
+        getAgent: vi.fn(() => ({ id: 'agent-1', model: 'qwen-plus' })),
+        getLatestConfig: vi.fn(() => null),
+      } as never,
+      voteRepo: new InMemoryVoteRepository(),
+      inferenceProfileService: { resolveVisibleRoute } as never,
+    })
+
+    const [result] = await executor.execute(context.event, {
+      event_id: 'evt-warmup-thread-root-1',
+      quota_applied: 1,
+      degradation_level: 'normal',
+      agents: [{ agent_id: 'agent-1', score: 1, priority: 1 }],
+      skipped_reasons: {},
+    })
+
+    expect(result?.success).toBe(true)
+    expect(generateVisibleText.mock.calls[1]?.[0]).toMatchObject({
+      promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn,
+      requestedTier: 'lite',
+      localOverrides: { executionPolicyId: 'visible-forum_reply-thread-base' },
+    })
+    expect(canServeRoute).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      requestedTier: 'lite',
+      promptRef: PROMPT_TEMPLATE_REFS.agentReplyToThreadTurn,
+    }))
+  })
+
   it('uses focus-thread semantics for forum media planning during branch revive', async () => {
     const context = {
       event: {

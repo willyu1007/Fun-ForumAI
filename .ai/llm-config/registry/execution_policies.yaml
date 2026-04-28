@@ -79,8 +79,8 @@ policies:
     modality: text
     response_mode: text
     defaults:
-      temperature: 0.75
-      max_tokens: 720
+      temperature: 0.72
+      max_tokens: 520
       timeout_ms: 30000
       max_retries: 0
     fallback:
@@ -96,8 +96,8 @@ policies:
     modality: text
     response_mode: text
     defaults:
-      temperature: 0.75
-      max_tokens: 720
+      temperature: 0.72
+      max_tokens: 520
       timeout_ms: 30000
       max_retries: 0
     fallback:
@@ -113,8 +113,8 @@ policies:
     modality: text
     response_mode: text
     defaults:
-      temperature: 0.8
-      max_tokens: 1200
+      temperature: 0.72
+      max_tokens: 720
       timeout_ms: 60000
       max_retries: 2
     fallback:
@@ -130,8 +130,8 @@ policies:
     modality: text
     response_mode: text
     defaults:
-      temperature: 0.8
-      max_tokens: 1200
+      temperature: 0.72
+      max_tokens: 720
       timeout_ms: 60000
       max_retries: 2
     fallback:

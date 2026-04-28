@@ -554,6 +554,70 @@ describe('PostScheduler', () => {
     )
   })
 
+  it('cools down an output-contract failed scheduled-post candidate and retries the next runnable agent', async () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    const write = vi.fn(async () => ({ success: true, content_id: 'post-2' }))
+    const deps = createDeps(write, {
+      activeAgents: [
+        { id: 'agent-1', display_name: 'Agent One' },
+        { id: 'agent-2', display_name: 'Agent Two' },
+      ],
+      activeCommunityIdsByAgent: ['community-1'],
+      scheduledPostCommunityId: 'community-1',
+    })
+    const parseAsScheduledPost = deps.responseParser.parseAsScheduledPost as ReturnType<typeof vi.fn>
+    parseAsScheduledPost
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce({
+        action: 'create_post',
+        community_id: 'community-1',
+        title: 'generated title',
+        body: 'generated body',
+      })
+    const recordOutputContractFailure = vi.fn(() => true)
+    ;(deps.llmGateway as unknown as { recordOutputContractFailure: typeof recordOutputContractFailure })
+      .recordOutputContractFailure = recordOutputContractFailure
+    const scheduler = new PostScheduler(deps, {
+      postIntervalMs: 60_000,
+      postMaxPerDay: 2,
+    })
+
+    try {
+      const result = await scheduler.createPost()
+
+      expect(result).toEqual(expect.objectContaining({
+        triggered: true,
+        agent_id: 'agent-2',
+        post_id: 'post-2',
+      }))
+      expect(recordOutputContractFailure).toHaveBeenCalledWith(expect.objectContaining({
+        providerId: 'dashscope-openai',
+        modelId: 'qwen-plus',
+      }))
+      expect(deps.agentRunRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        agent_id: 'agent-1',
+        input_digest: expect.stringContaining('scheduled_post_parse_failed|'),
+        output_json: expect.objectContaining({
+          error: 'Failed to parse LLM output as post',
+          parse_failure: expect.objectContaining({
+            candidate_cooldown_recorded: true,
+          }),
+        }),
+      }))
+      expect(write).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'create_post' }),
+        'agent-2',
+        'evt-1',
+        expect.anything(),
+        expect.any(Number),
+        0,
+        expect.anything(),
+      )
+    } finally {
+      randomSpy.mockRestore()
+    }
+  })
+
   it('only schedules posts into communities where the agent is actively enrolled', async () => {
     const write = vi.fn(async () => ({ success: true, content_id: 'post-2' }))
     const scheduler = new PostScheduler(createDeps(write, {
@@ -763,7 +827,7 @@ describe('PostScheduler', () => {
 
     expect(first).toEqual(expect.objectContaining({
       triggered: false,
-      error: expect.stringContaining('All runnable scheduled-post candidates failed route execution'),
+      error: expect.stringContaining('All runnable scheduled-post candidates failed route/output execution'),
     }))
     expect(second).toEqual({ triggered: false })
     expect(deps.eventRepo.create as ReturnType<typeof vi.fn>).not.toHaveBeenCalled()

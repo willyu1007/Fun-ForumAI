@@ -14,7 +14,7 @@ export const PROMPT_SCENE_BUDGET_CONFIGS: Record<PromptScene, PromptSceneBudgetC
       reference_input: 12_000,
       soft_total_ratio: 1.30,
       hard_total_ratio: 1.55,
-      output_reserve: 1_200,
+      output_reserve: 520,
     },
     buckets: {
       hard_control: { guaranteed: 8, preferred: 10, max: 13 },
@@ -34,7 +34,7 @@ export const PROMPT_SCENE_BUDGET_CONFIGS: Record<PromptScene, PromptSceneBudgetC
       reference_input: 8_000,
       soft_total_ratio: 1.25,
       hard_total_ratio: 1.45,
-      output_reserve: 800,
+      output_reserve: 520,
     },
     buckets: {
       hard_control: { guaranteed: 9, preferred: 11, max: 14 },
@@ -54,7 +54,7 @@ export const PROMPT_SCENE_BUDGET_CONFIGS: Record<PromptScene, PromptSceneBudgetC
       reference_input: 8_000,
       soft_total_ratio: 1.25,
       hard_total_ratio: 1.45,
-      output_reserve: 800,
+      output_reserve: 520,
     },
     buckets: {
       hard_control: { guaranteed: 9, preferred: 11, max: 14 },
@@ -74,7 +74,7 @@ export const PROMPT_SCENE_BUDGET_CONFIGS: Record<PromptScene, PromptSceneBudgetC
       reference_input: 12_000,
       soft_total_ratio: 1.30,
       hard_total_ratio: 1.55,
-      output_reserve: 1_200,
+      output_reserve: 720,
     },
     buckets: {
       hard_control: { guaranteed: 8, preferred: 10, max: 13 },

@@ -83,6 +83,7 @@ interface LlmGatewayOptions {
 
 const DEFAULT_PRICING = { prompt: 0.02, completion: 0.05 }
 const TRANSIENT_FAILURE_COOLDOWN_ENV = 'LLM_GATEWAY_TRANSIENT_FAILURE_COOLDOWN_MS'
+const DEFAULT_TRANSIENT_FAILURE_COOLDOWN_MS = 120_000
 const TRANSIENT_FAILURE_CODES = new Set<LLMGatewayErrorCode>([
   'RateLimitError',
   'TimeoutError',
@@ -152,7 +153,9 @@ export class LLMGateway {
       options.bundle.adapterBindings.bindings.map((binding) => [binding.adapterId, binding] as const),
     )
     this.transientFailureCooldownMs = normalizeCooldownMs(
-      options.transientFailureCooldownMs ?? process.env[TRANSIENT_FAILURE_COOLDOWN_ENV],
+      options.transientFailureCooldownMs
+        ?? process.env[TRANSIENT_FAILURE_COOLDOWN_ENV]
+        ?? DEFAULT_TRANSIENT_FAILURE_COOLDOWN_MS,
     )
   }
 
@@ -205,7 +208,8 @@ export class LLMGateway {
           regionHint: this.resolveRegionHint(request, route.executionPolicy),
         })
 
-        const hasUsableCandidate = orderedCandidates.some((candidate) =>
+        const runnableCandidates = this.filterTransientCooldownCandidates(orderedCandidates)
+        const hasUsableCandidate = runnableCandidates.candidates.some((candidate) =>
           this.options.credentialBroker.hasUsableCredentialForCandidate({
             candidate,
             visibility: request.visibility,
@@ -221,6 +225,26 @@ export class LLMGateway {
     }
 
     return false
+  }
+
+  recordOutputContractFailure(input: {
+    providerId: string
+    modelId: string
+    endpointId?: string
+    adapterId?: string
+  }): boolean {
+    if (this.transientFailureCooldownMs <= 0) return false
+    if (!input.endpointId || !input.adapterId) return false
+    this.transientFailureCooldownUntil.set(
+      [
+        input.providerId,
+        input.modelId,
+        input.endpointId,
+        input.adapterId,
+      ].join('/'),
+      Date.now() + this.transientFailureCooldownMs,
+    )
+    return true
   }
 
   setBudgetChecker(checker: ConstructorParameters<typeof BudgetGuard>[0]): void {

@@ -945,22 +945,25 @@ export class AgentExecutor {
 
     let textUsage: LlmTokenUsage | null = null
     let observation: PersonaObservationV1 | null = null
+    let bodyRoute: {
+      routing: VisibleRoutingDecision
+      requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+      localOverrides: { executionPolicyId: string }
+      routeAvailable: boolean
+    } | null = null
 
     if (survivingText) {
       const templateId = this.pickTemplate(input.event, input.ctx)
-      const bodyRequestedTier = 'base'
       const bodyRouteOverrides = this.getForumBodyExecutionPolicyOverrides(promptScene)
-      const canServeBodyRoute = this.canServeVisibleForumRoute({
-            agentId: input.agent.agent_id,
-            traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body:capability`,
-            scene: promptScene,
-            promptRef: templateId,
-            homeVoiceLineId: routing.homeVoiceLineId,
-            requestedTier: bodyRequestedTier,
-            responseMode: 'text',
-            localOverrides: bodyRouteOverrides,
-          })
-      if (!canServeBodyRoute) {
+      bodyRoute = this.resolveForumBodyRoute({
+        event: input.event,
+        agentId: input.agent.agent_id,
+        promptScene,
+        promptRef: templateId,
+        currentRouting: routing,
+        localOverrides: bodyRouteOverrides,
+      })
+      if (!bodyRoute.routeAvailable) {
         if (!survivingVote) {
           return this.recordNoWriteDecision({
             agentId: input.agent.agent_id,
@@ -982,6 +985,14 @@ export class AgentExecutor {
 
     if (survivingText) {
       const templateId = this.pickTemplate(input.event, input.ctx)
+      const activeBodyRoute = bodyRoute ?? this.resolveForumBodyRoute({
+        event: input.event,
+        agentId: input.agent.agent_id,
+        promptScene,
+        promptRef: templateId,
+        currentRouting: routing,
+        localOverrides: this.getForumBodyExecutionPolicyOverrides(promptScene),
+      })
       let bodyResponse: Awaited<ReturnType<LLMGateway['generateVisibleText']> | null> = null
       try {
         if (promptScene === 'forum_thread') {
@@ -991,18 +1002,16 @@ export class AgentExecutor {
             modality: 'text',
             responseMode: 'text',
             agentId: input.agent.agent_id,
-            homeVoiceLineId: routing.homeVoiceLineId,
+            homeVoiceLineId: activeBodyRoute.routing.homeVoiceLineId,
             promptRef: templateId,
             variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
             budgetClass: 'visible_standard',
             traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body`,
             promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
-            requestedTier: 'base',
+            requestedTier: activeBodyRoute.requestedTier,
             allowFallbackWithinLine: true,
             allowCrossFamily: false,
-            localOverrides: {
-              executionPolicyId: 'visible-forum_reply-thread-base',
-            },
+            localOverrides: activeBodyRoute.localOverrides,
           })
         } else {
           bodyResponse = await this.deps.llmGateway.generateVisibleText({
@@ -1011,18 +1020,16 @@ export class AgentExecutor {
             modality: 'text',
             responseMode: 'text',
             agentId: input.agent.agent_id,
-            homeVoiceLineId: routing.homeVoiceLineId,
+            homeVoiceLineId: activeBodyRoute.routing.homeVoiceLineId,
             promptRef: templateId,
             variables: this.buildVariables(input.ctx, identity?.persona_seed_code ?? 'scholar', promptScene),
             budgetClass: 'visible_standard',
             traceId: `runtime:${input.event.event_id}:${input.agent.agent_id}:body`,
             promptBudgetSummary: buildPromptBudgetSummary(promptScene, templateId, input.ctx.prompt_audit),
-            requestedTier: 'base',
+            requestedTier: activeBodyRoute.requestedTier,
             allowFallbackWithinLine: true,
             allowCrossFamily: false,
-            localOverrides: {
-              executionPolicyId: 'visible-forum_reply-post-base',
-            },
+            localOverrides: activeBodyRoute.localOverrides,
           })
         }
       } catch (error) {
@@ -1183,6 +1190,84 @@ export class AgentExecutor {
         : {}),
       reply_budget_consumed: Boolean(survivingText),
     }
+  }
+
+  private resolveForumBodyRoute(input: {
+    event: ForumRuntimeEventPayload
+    agentId: string
+    promptScene: ForumPromptScene
+    promptRef: PromptTemplateRef
+    currentRouting: VisibleRoutingDecision
+    localOverrides: { executionPolicyId: string }
+  }): {
+    routing: VisibleRoutingDecision
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier
+    localOverrides: { executionPolicyId: string }
+    routeAvailable: boolean
+  } {
+    const preferredTier: import('../../shared/agent-persona-catalog.js').RenderTier =
+      this.isWarmupRuntimeEvent(input.event) ? 'lite' : 'base'
+    const preferredRouting: VisibleRoutingDecision = {
+      ...input.currentRouting,
+      requestedTier: preferredTier,
+    }
+    if (this.canServeForumBodyRoute(input, preferredRouting, preferredTier)) {
+      return {
+        routing: preferredRouting,
+        requestedTier: preferredTier,
+        localOverrides: input.localOverrides,
+        routeAvailable: true,
+      }
+    }
+
+    if (preferredTier !== 'base') {
+      const baseRouting: VisibleRoutingDecision = {
+        ...input.currentRouting,
+        requestedTier: 'base',
+      }
+      if (this.canServeForumBodyRoute(input, baseRouting, 'base')) {
+        return {
+          routing: baseRouting,
+          requestedTier: 'base',
+          localOverrides: input.localOverrides,
+          routeAvailable: true,
+        }
+      }
+    }
+
+    return {
+      routing: preferredRouting,
+      requestedTier: preferredTier,
+      localOverrides: input.localOverrides,
+      routeAvailable: false,
+    }
+  }
+
+  private canServeForumBodyRoute(
+    input: {
+      event: ForumRuntimeEventPayload
+      agentId: string
+      promptScene: ForumPromptScene
+      promptRef: PromptTemplateRef
+      localOverrides: { executionPolicyId: string }
+    },
+    routing: VisibleRoutingDecision,
+    requestedTier: import('../../shared/agent-persona-catalog.js').RenderTier,
+  ): boolean {
+    return this.canServeVisibleForumRoute({
+      agentId: input.agentId,
+      traceId: `runtime:${input.event.event_id}:${input.agentId}:body:${requestedTier}:capability`,
+      scene: input.promptScene,
+      promptRef: input.promptRef,
+      homeVoiceLineId: routing.homeVoiceLineId,
+      requestedTier,
+      responseMode: 'text',
+      localOverrides: input.localOverrides,
+    })
+  }
+
+  private isWarmupRuntimeEvent(event: EventPayload): boolean {
+    return event.generation_mode === 'warmup_runtime'
   }
 
   private getForumBodyExecutionPolicyOverrides(scene: ForumPromptScene): { executionPolicyId: string } {

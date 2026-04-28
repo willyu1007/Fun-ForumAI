@@ -750,6 +750,39 @@ describe('LLMGateway', () => {
     ])
   })
 
+  it('lets a callsite cool down a candidate after output-contract failure', async () => {
+    const bundle = buildBundle()
+    bundle.credentialPools.pools.push({
+      credential_id: 'dashscope-visible-base',
+      provider_id: 'dashscope-openai',
+      region: 'cn-beijing',
+      endpoint_id: 'dashscope-cn-beijing',
+      endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      credential_ref: 'secret-ref:llm_api_default',
+      priority: 10,
+      health: 'healthy',
+      enabled: true,
+      scope_tags: ['visible'],
+      allowed_model_ids: ['qwen-plus-character', 'qwen-flash-character'],
+    })
+    const { gateway, chatSpy } = buildGatewayHarness({
+      bundle,
+      transientFailureCooldownMs: 60_000,
+    })
+
+    expect(gateway.recordOutputContractFailure({
+      providerId: 'dashscope-openai',
+      modelId: 'qwen-plus-character',
+      endpointId: 'dashscope-cn-beijing',
+      adapterId: 'openai-chat-completions-v1',
+    })).toBe(true)
+
+    await gateway.chat(buildVisibleTextRequest({ traceId: 'trace-output-contract-cooldown' }))
+
+    expect(chatSpy).toHaveBeenCalledTimes(1)
+    expect(chatSpy.mock.calls[0]?.[0]?.model).toBe('qwen-flash-character')
+  })
+
   it('fails fast when budget guard denies the request', async () => {
     const bundle = buildBundle()
     bundle.credentialPools.pools[0]!.allowed_model_ids = ['qwen-plus-character']
