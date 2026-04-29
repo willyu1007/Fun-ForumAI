@@ -54,7 +54,7 @@ export const FRONTEND_FLAG_DEFINITIONS: readonly FrontendFlagDefinition[] = [
     surfaces: ['Guidance Inbox', 'ShellRightRail', 'Agent modal', 'Private chat'],
     effect: '开启后会加载 guidance 相关入口、查询和回执 UI。',
     recommendation: '保留为总开关，不建议继续拆更多前端子开关。',
-    defaultValue: 'false',
+    defaultValue: 'true',
     contractStatus: 'declared',
   },
   {

@@ -84,7 +84,22 @@ function makeCueInput(scheduleId: string): CreateCueInput {
 function alwaysAllowGate() {
   return {
     getRuntimeBaselineAdmission: async () => ({
+      kickoff_baseline_id: 'kickoff-1',
+      kickoff_batch_id: 'kickoff-batch-1',
+      warmup_batch_id: 'warmup-batch-1',
+      has_kickoff_baseline: true,
+      runtime_mode: 'autonomous' as const,
+      kickoff_layer_ready: true,
+      warmup_layer_ready: true,
+      key_communities_ready: true,
+      key_shelves_ready: true,
+      media_access_ok: true,
+      aftershow_pipeline_ok: true,
+      natural_allow_public_growth: true,
+      growth_admission: 'allowed_naturally' as const,
+      active_override: null,
       allow_public_growth: true,
+      natural_reasons: [],
       reasons: [],
     }),
   }
@@ -93,7 +108,22 @@ function alwaysAllowGate() {
 function deniedGate() {
   return {
     getRuntimeBaselineAdmission: async () => ({
+      kickoff_baseline_id: 'kickoff-1',
+      kickoff_batch_id: 'kickoff-batch-1',
+      warmup_batch_id: 'warmup-batch-1',
+      has_kickoff_baseline: true,
+      runtime_mode: 'warmup_only' as const,
+      kickoff_layer_ready: true,
+      warmup_layer_ready: false,
+      key_communities_ready: true,
+      key_shelves_ready: true,
+      media_access_ok: true,
+      aftershow_pipeline_ok: true,
+      natural_allow_public_growth: false,
+      growth_admission: 'blocked' as const,
+      active_override: null,
       allow_public_growth: false,
+      natural_reasons: ['kickoff_layer_not_ready'],
       reasons: ['kickoff_layer_not_ready'],
     }),
   }

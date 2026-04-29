@@ -1,4 +1,5 @@
 export type KickoffBaselineState = 'draft' | 'active' | 'archived'
+export type RuntimeMode = 'blocked' | 'warmup_only' | 'autonomous'
 
 export type GovernanceBatchKind = 'kickoff' | 'warmup'
 
@@ -32,6 +33,11 @@ export interface KickoffBaseline {
   kickoff_batch_id: string | null
   warmup_batch_id: string | null
   created_by_user_id: string | null
+  runtime_mode: RuntimeMode
+  runtime_force_override_reason: string | null
+  runtime_force_override_set_by: string | null
+  runtime_force_override_set_at: Date | null
+  runtime_force_override_expires_at: Date | null
   activated_at: Date | null
   archived_at: Date | null
   created_at: Date
@@ -59,6 +65,11 @@ export interface CreateKickoffBaselineInput {
   kickoff_batch_id?: string | null
   warmup_batch_id?: string | null
   created_by_user_id?: string | null
+  runtime_mode?: RuntimeMode
+  runtime_force_override_reason?: string | null
+  runtime_force_override_set_by?: string | null
+  runtime_force_override_set_at?: Date | null
+  runtime_force_override_expires_at?: Date | null
   activated_at?: Date | null
   archived_at?: Date | null
 }
@@ -68,6 +79,11 @@ export interface UpdateKickoffBaselineInput {
   baseline_label?: string | null
   kickoff_batch_id?: string | null
   warmup_batch_id?: string | null
+  runtime_mode?: RuntimeMode
+  runtime_force_override_reason?: string | null
+  runtime_force_override_set_by?: string | null
+  runtime_force_override_set_at?: Date | null
+  runtime_force_override_expires_at?: Date | null
   activated_at?: Date | null
   archived_at?: Date | null
 }

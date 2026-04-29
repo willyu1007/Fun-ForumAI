@@ -4,6 +4,7 @@
   "target": "llm-forum",
   "description": "Canonical immutable frontend launch build for gray-release delivery.",
   "frontend_capabilities": {
+    "guidance": true,
     "global_highlights": true,
     "audience_aftershow_web": true,
     "audience_zone": true,

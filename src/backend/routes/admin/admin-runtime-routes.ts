@@ -264,6 +264,7 @@ export function registerAdminRuntimeRoutes(router: IRouter): void {
           identity_gate: identityGate,
           baseline_admission: {
             ...baselineAdmission,
+            baseline_allow_public_growth: baselineAdmission.allow_public_growth,
             worker_health_ok: runtimeLoop.isRunning,
             llm_credentials_ok: llmGateway.isConfigured,
             allow_public_growth:

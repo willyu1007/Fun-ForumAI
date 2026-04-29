@@ -285,7 +285,15 @@ sudo -E docker compose --profile staging-same-host-worker ps worker
 sudo -E docker compose --profile staging-same-host-worker logs --tail=120 worker
 ```
 
-Then mark worker applied:
+After the worker is healthy:
+
+1. Run `pnpm launch.kickoff` from the operator shell against the target DB.
+2. Start warmup from admin `Warm-up`.
+3. If synthetic lazy/mock derived content exists, run `pnpm launch.cleanup.invalid:apply`.
+4. Run `pnpm launch.enrichment`.
+5. Run `pnpm launch.gray.promote --env staging --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
+
+Only then mark worker applied:
 
 ```bash
 IMAGE_REF="$(node ops/deploy/scripts/release-intent.mjs resolve --env staging)"

@@ -1,0 +1,7 @@
+# 03 Implementation Notes — T-998
+
+- 2026-04-30: Task created to implement runtime mode persistence, promote cutover semantics, kickoff truth sync, and cleanup/enrichment rollout clarification as a single governed change set.
+- 2026-04-30: Added persisted kickoff-baseline runtime control state in Prisma/domain/repository: `runtime_mode` plus force-override reason/set-by/set-at/expires-at fields. Migration initializes historical active rows to `warmup_only` or `autonomous` based on existing kickoff/warmup linkage.
+- 2026-04-30: Refactored `WarmupGovernanceService` admission output to separate natural readiness from effective autonomous admission. Imported kickoff baselines now enter `warmup_only`; standard promote clears override metadata and switches to natural `autonomous`; force promote writes an expiring override while leaving cleanup/enrichment separate.
+- 2026-04-30: Updated runtime/autonomous callers and ops surfaces: `RuntimeLoop` now requires `runtime_mode=autonomous` plus `allow_public_growth`; admin runtime stats expose the new runtime-mode/admission fields; `launch.gray.promote` now performs the actual cutover and adds `--force --reason [--ttl-hours]`.
+- 2026-04-30: Synced rollout and kickoff docs to the operator-local kickoff import model and explicit cleanup-before-enrichment ordering. Mirrored T-995 Step 4–6 completion from operator-confirmed out-of-band truth because the corresponding `.ai/.tmp/kickoff*` artifacts are absent in this workspace.

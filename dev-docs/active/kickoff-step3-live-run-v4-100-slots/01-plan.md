@@ -4,8 +4,9 @@
 1. **[DONE]** Startup corrections and truth lock.
 2. **[DONE]** Step 3 v4 run initialization.
 3. **[DONE]** Wave-by-wave Step 3 generation, 10 canonical waves plus `wave-11-bonus` package extension.
-4. **[NEXT]** Step 4 editorial review.
-5. **[PENDING]** Step 5 freeze and export.
+4. **[DONE]** Step 4 editorial review.
+5. **[DONE]** Step 5 freeze and export.
+6. **[DONE]** Step 6 operator-local kickoff import (mirrored from operator-confirmed out-of-band execution).
 
 ## Detailed Steps
 1. Startup corrections:
@@ -54,7 +55,7 @@
 - Package: `.ai/.tmp/kickoff-step3/kickoff-step3-v4-20260425-01/package/00-content-package.yaml`.
 - Review snapshot: `.ai/.tmp/kickoff-step3/kickoff-step3-v4-20260425-01/package/01-review-snapshot.yaml`.
 - Coverage: 112 root-post slots total: 100/100 canonical v4 seed slots plus 12 `wave-11-bonus` extension slots. Final media remains 75/75, with 11 waves closed through checkpoint and package refresh.
-- Current gate: Step 4 editorial review.
+- Current gate: completed.
 
 ## Final-Wave Watch Items
 - Wave-10 `public_debate=4` is accepted only as the documented final remaining-seed distribution exception, not a reusable planning cap.

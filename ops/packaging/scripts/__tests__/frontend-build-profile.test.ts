@@ -33,6 +33,7 @@ describe('frontend build profile', () => {
       const dockerBuildArgs = toDockerBuildArgs(loadFrontendBuildProfile('launch'))
 
       expect(written).toEqual(proof)
+      expect(written.frontend_capabilities.guidance).toBe(true)
       expect(written.frontend_capabilities.home_programming).toBe(true)
       expect(written.build_env_flags.chatroom_staging_hold).toBe(true)
       expect(dockerBuildArgs).toEqual([['FRONTEND_BUILD_PROFILE', 'launch']])

@@ -621,6 +621,8 @@ describe('WarmupGovernanceService', () => {
 
     expect(result.created_posts).toHaveLength(1)
     expect(result.verification.ok).toBe(true)
+    expect(result.verification.active_baseline.runtime_mode).toBe('warmup_only')
+    expect(result.verification.active_baseline.growth_admission).toBe('blocked')
     expect(result.verification.active_baseline.allow_public_growth).toBe(false)
     expect(result.verification.active_baseline.reasons).toContain('warmup_layer_not_ready')
 
@@ -630,6 +632,7 @@ describe('WarmupGovernanceService', () => {
     }
     expect(kickoff?.baseline_label).toBe('kickoff-baseline-test')
     expect(kickoff?.verification.ok).toBe(true)
+    expect(kickoff.runtime_mode).toBe('warmup_only')
     expect(kickoff?.current_warmup_run).toBeNull()
 
     const kickoffPosts = await ctx.repos.postRepo.findByGovernanceBatch(result.kickoff_batch_id)
@@ -852,9 +855,151 @@ describe('WarmupGovernanceService', () => {
 
     const admission = await ctx.service.getRuntimeBaselineAdmission()
     expect(admission.warmup_layer_ready).toBe(true)
-    expect(admission.allow_public_growth).toBe(true)
-    expect(admission.reasons).toEqual([])
+    expect(admission.runtime_mode).toBe('warmup_only')
+    expect(admission.natural_allow_public_growth).toBe(true)
+    expect(admission.growth_admission).toBe('blocked')
+    expect(admission.allow_public_growth).toBe(false)
+    expect(admission.reasons).toEqual(['runtime_mode_not_autonomous'])
     expect(eventQueue.clear).toHaveBeenCalledTimes(1)
+  })
+
+  it('promotes naturally ready baselines into autonomous mode', async () => {
+    const tempRoot = createTempRepoRoot('warmup-runtime-promote')
+    tempRoots.push(tempRoot)
+    process.chdir(tempRoot)
+    const ctx = createHarness()
+    const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+
+    await ctx.service.importKickoffBaseline({
+      manifest_path: manifestPath,
+      now: new Date('2026-04-18T10:00:00.000Z'),
+    })
+
+    let currentBatchId: string | null = null
+    ctx.service.attachRuntimeDeps({
+      postScheduler: {
+        forcePost: vi.fn(async (input?: { governance_context?: { governance_batch_id: string } }) => {
+          const batchId = input?.governance_context?.governance_batch_id
+          if (!batchId) {
+            throw new Error('warmup batch id is required')
+          }
+          currentBatchId = batchId
+          const created = await appendRuntimeWarmupPost(ctx, batchId, 1)
+          return {
+            triggered: true,
+            post_id: created.post.id,
+            agent_id: created.agent.id,
+            community_id: created.community.id,
+          }
+        }),
+        createPost: vi.fn(async () => ({ triggered: false })),
+      },
+      runtimeLoop: {
+        isRunning: true,
+        tick: vi.fn(async () => {
+          if (currentBatchId) {
+            await appendRuntimeWarmupPromptCoverage(ctx, currentBatchId)
+          }
+          return {
+            processed_events: 1,
+            batch_stats: {
+              successful: 1,
+            },
+          }
+        }),
+      },
+      eventQueue: {
+        clear: vi.fn(async () => {}),
+        size: vi.fn(async () => 0),
+      },
+    })
+
+    const run = await ctx.service.startWarmupRun({
+      actor_user_id: 'admin-1',
+      target_posts: 1,
+      max_attempts: 1,
+    })
+    await waitForWarmupRunToSettle(ctx.service, run.id)
+
+    const beforePromote = await ctx.service.getRuntimeBaselineAdmission()
+    expect(beforePromote.runtime_mode).toBe('warmup_only')
+    expect(beforePromote.natural_allow_public_growth).toBe(true)
+    expect(beforePromote.allow_public_growth).toBe(false)
+
+    const promoted = await ctx.service.promoteRuntimeToAutonomous({
+      actor_user_id: 'admin-1',
+    })
+    expect(promoted.runtime_mode).toBe('autonomous')
+    expect(promoted.natural_allow_public_growth).toBe(true)
+    expect(promoted.growth_admission).toBe('allowed_naturally')
+    expect(promoted.allow_public_growth).toBe(true)
+    expect(promoted.active_override).toBeNull()
+    expect(promoted.reasons).toEqual([])
+  })
+
+  it('rejects standard promote before natural readiness is satisfied', async () => {
+    const tempRoot = createTempRepoRoot('warmup-runtime-promote-blocked')
+    tempRoots.push(tempRoot)
+    process.chdir(tempRoot)
+    const ctx = createHarness()
+    const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+
+    await ctx.service.importKickoffBaseline({
+      manifest_path: manifestPath,
+      now: new Date('2026-04-18T10:00:00.000Z'),
+    })
+
+    await expect(
+      ctx.service.promoteRuntimeToAutonomous({
+        actor_user_id: 'admin-1',
+      }),
+    ).rejects.toMatchObject({
+      message: 'runtime baseline is not ready for autonomous mode',
+    })
+  })
+
+  it('force promote writes an expiring override and falls back to warmup_only after expiry', async () => {
+    vi.useFakeTimers()
+    try {
+      const tempRoot = createTempRepoRoot('warmup-runtime-force-promote')
+      tempRoots.push(tempRoot)
+      process.chdir(tempRoot)
+      const ctx = createHarness()
+      const manifestPath = writeKickoffBundle(tempRoot, ctx.primaryCommunitySlug)
+      const importedAt = new Date('2026-04-18T10:00:00.000Z')
+      vi.setSystemTime(importedAt)
+
+      await ctx.service.importKickoffBaseline({
+        manifest_path: manifestPath,
+        now: importedAt,
+      })
+
+      const forced = await ctx.service.forcePromoteRuntimeToAutonomous({
+        reason: 'operator cutover for staging smoke',
+        actor_user_id: 'admin-1',
+        now: importedAt,
+        expires_at: new Date(importedAt.getTime() + 60_000),
+      })
+      expect(forced.runtime_mode).toBe('autonomous')
+      expect(forced.growth_admission).toBe('allowed_by_force_override')
+      expect(forced.allow_public_growth).toBe(true)
+      expect(forced.active_override).toEqual(
+        expect.objectContaining({
+          reason: 'operator cutover for staging smoke',
+          set_by: 'admin-1',
+        }),
+      )
+
+      vi.setSystemTime(new Date(importedAt.getTime() + 61_000))
+      const expired = await ctx.service.getRuntimeBaselineAdmission()
+      expect(expired.runtime_mode).toBe('warmup_only')
+      expect(expired.growth_admission).toBe('blocked')
+      expect(expired.allow_public_growth).toBe(false)
+      expect(expired.active_override).toBeNull()
+      expect(expired.reasons).toContain('force_override_expired')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('fails warmup runs when max_attempts is exhausted before target_posts is reached', async () => {

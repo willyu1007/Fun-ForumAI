@@ -36,6 +36,11 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
         kickoffBatchId: input.kickoff_batch_id ?? null,
         warmupBatchId: input.warmup_batch_id ?? null,
         createdByUserId: input.created_by_user_id ?? null,
+        runtimeMode: input.runtime_mode ?? 'blocked',
+        runtimeForceOverrideReason: input.runtime_force_override_reason ?? null,
+        runtimeForceOverrideSetBy: input.runtime_force_override_set_by ?? null,
+        runtimeForceOverrideSetAt: input.runtime_force_override_set_at ?? null,
+        runtimeForceOverrideExpiresAt: input.runtime_force_override_expires_at ?? null,
         activatedAt: input.activated_at ?? null,
         archivedAt: input.archived_at ?? null,
       },
@@ -66,6 +71,19 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
             ? { kickoffBatchId: patch.kickoff_batch_id }
             : {}),
           ...(patch.warmup_batch_id !== undefined ? { warmupBatchId: patch.warmup_batch_id } : {}),
+          ...(patch.runtime_mode !== undefined ? { runtimeMode: patch.runtime_mode } : {}),
+          ...(patch.runtime_force_override_reason !== undefined
+            ? { runtimeForceOverrideReason: patch.runtime_force_override_reason }
+            : {}),
+          ...(patch.runtime_force_override_set_by !== undefined
+            ? { runtimeForceOverrideSetBy: patch.runtime_force_override_set_by }
+            : {}),
+          ...(patch.runtime_force_override_set_at !== undefined
+            ? { runtimeForceOverrideSetAt: patch.runtime_force_override_set_at }
+            : {}),
+          ...(patch.runtime_force_override_expires_at !== undefined
+            ? { runtimeForceOverrideExpiresAt: patch.runtime_force_override_expires_at }
+            : {}),
           ...(patch.activated_at !== undefined ? { activatedAt: patch.activated_at } : {}),
           ...(patch.archived_at !== undefined ? { archivedAt: patch.archived_at } : {}),
           updatedAt: new Date(),
@@ -160,6 +178,11 @@ export class PgWarmupGovernanceRepository implements WarmupGovernanceRepository 
       kickoff_batch_id: row.kickoffBatchId,
       warmup_batch_id: row.warmupBatchId,
       created_by_user_id: row.createdByUserId,
+      runtime_mode: row.runtimeMode,
+      runtime_force_override_reason: row.runtimeForceOverrideReason,
+      runtime_force_override_set_by: row.runtimeForceOverrideSetBy,
+      runtime_force_override_set_at: row.runtimeForceOverrideSetAt,
+      runtime_force_override_expires_at: row.runtimeForceOverrideExpiresAt,
       activated_at: row.activatedAt,
       archived_at: row.archivedAt,
       created_at: row.createdAt,

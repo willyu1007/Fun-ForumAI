@@ -1998,11 +1998,11 @@ tasks:
     updated: 2026-04-25
   - id: T-995
     slug: kickoff-step3-live-run-v4-100-slots
-    status: in-progress
+    status: done
     milestone_id: M-000
     feature_id: F-000
     dev_docs_path: dev-docs/active/kickoff-step3-live-run-v4-100-slots
-    updated: 2026-04-25
+    updated: 2026-04-30
   - id: T-996
     slug: launch-enrichment-product-safe-chronicle
     status: done
@@ -2017,3 +2017,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/launch-invalid-content-cleanup
     updated: 2026-04-28
+  - id: T-998
+    slug: launch-runtime-mode-and-kickoff-alignment
+    status: done
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/active/launch-runtime-mode-and-kickoff-alignment
+    updated: 2026-04-30

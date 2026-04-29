@@ -1,5 +1,6 @@
 # 03 Implementation Notes — T-995
 
+- 2026-04-30: Operator confirmed that the downstream Step 4 editorial approval, Step 5 freeze/export, and Step 6 operator-local kickoff import were all completed out-of-band after the last in-repo note. This workspace no longer contains the corresponding `.ai/.tmp/kickoff*` execution artifacts, so the task docs were synchronized to the operator-confirmed completion state instead of replaying or reconstructing those runs locally.
 - 2026-04-25: Confirmed scope with operator: endpoint is Step 5 exported kickoff bundle; raw model drafts are not retained; audit focuses on final canonical artifacts and final user-visible effect.
 - 2026-04-25: Startup inspection found current canonical seed at `seed_version=4` with 100 slots, 75 media-required slots, 25 text/low-media slots, and 10 planned waves. Existing active v3 run pointer and docs are historical context only and must not be resumed for v4.
 - 2026-04-25: Startup blockers identified before Step 3 init: planning-review checklist notes still referenced old 42-slot/30-media counts, and seed service parsing failed on v4 alias volume before reaching strategy validation.

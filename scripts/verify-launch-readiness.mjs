@@ -384,10 +384,12 @@ async function runStagingChecks() {
   )
   pushResult(
     'Runtime Readiness',
-    'Worker public growth admitted',
-    runtimeStats.status === 200 && baselineAdmission?.allow_public_growth === true,
+    'Worker runtime promotable',
     runtimeStats.status === 200
-      ? `allow_public_growth=${String(baselineAdmission?.allow_public_growth)} reasons=${JSON.stringify(baselineAdmission?.reasons ?? [])}`
+      && (baselineAdmission?.natural_allow_public_growth === true
+        || baselineAdmission?.allow_public_growth === true),
+    runtimeStats.status === 200
+      ? `natural_allow_public_growth=${String(baselineAdmission?.natural_allow_public_growth)} allow_public_growth=${String(baselineAdmission?.allow_public_growth)} reasons=${JSON.stringify(baselineAdmission?.reasons ?? [])}`
       : `status=${runtimeStats.status}`,
   )
   pushResult(

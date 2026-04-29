@@ -27,6 +27,17 @@ describe('E2E: Governance Control Plane', () => {
       .set('Authorization', `Bearer ${adminToken}`)
 
     expect(kickoffRes.status).toBe(200)
+    if (kickoffRes.body.data !== null) {
+      expect(kickoffRes.body.data).toEqual(
+        expect.objectContaining({
+          runtime_mode: expect.stringMatching(/^(blocked|warmup_only|autonomous)$/),
+          verification: expect.objectContaining({
+            ok: expect.any(Boolean),
+            missing: expect.any(Array),
+          }),
+        }),
+      )
+    }
 
     const runsRes = await request(app)
       .get('/v1/admin/warmup/runs')
@@ -69,11 +80,14 @@ describe('E2E: Governance Control Plane', () => {
     expect(res.body.data.runtime.baseline_admission).toEqual(
       expect.objectContaining({
         has_kickoff_baseline: expect.any(Boolean),
+        runtime_mode: expect.stringMatching(/^(blocked|warmup_only|autonomous)$/),
         kickoff_layer_ready: expect.any(Boolean),
         warmup_layer_ready: expect.any(Boolean),
         key_communities_ready: expect.any(Boolean),
         key_shelves_ready: expect.any(Boolean),
         media_access_ok: expect.any(Boolean),
+        natural_allow_public_growth: expect.any(Boolean),
+        growth_admission: expect.stringMatching(/^(blocked|allowed_naturally|allowed_by_force_override)$/),
         worker_health_ok: expect.any(Boolean),
         llm_credentials_ok: expect.any(Boolean),
         allow_public_growth: expect.any(Boolean),

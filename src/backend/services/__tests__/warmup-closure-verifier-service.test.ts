@@ -57,13 +57,20 @@ function createHarness(options: HarnessOptions = {}) {
         kickoff_batch_id: 'kickoff-batch-1',
         warmup_batch_id: 'warmup-batch-1',
         has_kickoff_baseline: true,
+        runtime_mode: (options.baselineReasons ?? []).length === 0 ? ('autonomous' as const) : ('warmup_only' as const),
         kickoff_layer_ready: true,
         warmup_layer_ready: true,
         key_communities_ready: true,
         key_shelves_ready: true,
         media_access_ok: true,
         aftershow_pipeline_ok: true,
+        natural_allow_public_growth: (options.baselineReasons ?? []).length === 0,
+        growth_admission: ((options.baselineReasons ?? []).length === 0
+          ? 'allowed_naturally'
+          : 'blocked') as const,
+        active_override: null,
         allow_public_growth: (options.baselineReasons ?? []).length === 0,
+        natural_reasons: options.baselineReasons ?? [],
         reasons: options.baselineReasons ?? [],
       }
     : {
@@ -71,13 +78,18 @@ function createHarness(options: HarnessOptions = {}) {
         kickoff_batch_id: null,
         warmup_batch_id: null,
         has_kickoff_baseline: false,
+        runtime_mode: 'blocked' as const,
         kickoff_layer_ready: false,
         warmup_layer_ready: false,
         key_communities_ready: false,
         key_shelves_ready: false,
         media_access_ok: false,
         aftershow_pipeline_ok: false,
+        natural_allow_public_growth: false,
+        growth_admission: 'blocked' as const,
+        active_override: null,
         allow_public_growth: false,
+        natural_reasons: ['no_kickoff_baseline'],
         reasons: ['no_kickoff_baseline'],
       }
 
@@ -89,6 +101,7 @@ function createHarness(options: HarnessOptions = {}) {
     created_at: '2026-04-15T08:00:00.000Z',
     updated_at: '2026-04-15T08:00:00.000Z',
     activated_at: '2026-04-15T08:00:00.000Z',
+    runtime_mode: 'autonomous' as const,
     kickoff_batch_id: 'kickoff-batch-1',
     current_warmup_run_id: 'warmup-batch-1',
     kickoff_batch: {
@@ -117,6 +130,7 @@ function createHarness(options: HarnessOptions = {}) {
       samples: [],
     },
     current_warmup_run: null,
+    baseline_admission: admission,
     verification: {
       ok: (options.kickoffVerificationMissing ?? []).length === 0,
       missing: options.kickoffVerificationMissing ?? [],

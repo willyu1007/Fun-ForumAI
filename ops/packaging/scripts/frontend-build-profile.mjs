@@ -9,6 +9,7 @@ const ROOT = resolve(__dirname, '../../..')
 const PROFILE_DIR = resolve(ROOT, 'ops/packaging/build-profiles')
 
 export const REQUIRED_LAUNCH_FRONTEND_CAPABILITIES = [
+  'guidance',
   'global_highlights',
   'audience_aftershow_web',
   'audience_zone',

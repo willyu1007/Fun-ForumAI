@@ -37,6 +37,7 @@ import type {
   GovernanceBatch,
   GovernanceGenerationMode,
   KickoffBaseline,
+  RuntimeMode,
 } from '../repos/index.js'
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
 import type { WarmupGovernanceRepository } from '../repos/warmup-governance-repository.js'
@@ -86,6 +87,7 @@ const MIN_WARMUP_FOLLOWUP_SETTLE_DELAY_MS = 25
 const MAX_WARMUP_FOLLOWUP_SETTLE_DELAY_MS = 250
 const MIN_WARMUP_RUN_PROCESSOR_STALE_MS = 60_000
 const WARMUP_RUN_PROCESSOR_STALE_GRACE_MS = 60_000
+const DEFAULT_FORCE_RUNTIME_OVERRIDE_TTL_MS = 24 * 60 * 60 * 1000
 
 interface WarmupBatchContent {
   posts: Post[]
@@ -169,13 +171,23 @@ export interface RuntimeBaselineAdmission {
   kickoff_batch_id: string | null
   warmup_batch_id: string | null
   has_kickoff_baseline: boolean
+  runtime_mode: RuntimeMode
   kickoff_layer_ready: boolean
   warmup_layer_ready: boolean
   key_communities_ready: boolean
   key_shelves_ready: boolean
   media_access_ok: boolean
   aftershow_pipeline_ok: boolean
+  natural_allow_public_growth: boolean
+  growth_admission: 'blocked' | 'allowed_naturally' | 'allowed_by_force_override'
+  active_override: {
+    reason: string
+    set_by: string | null
+    set_at: string
+    expires_at: string
+  } | null
   allow_public_growth: boolean
+  natural_reasons: string[]
   reasons: string[]
 }
 
@@ -198,10 +210,12 @@ export interface KickoffBaselineDetail {
   created_at: string
   updated_at: string
   activated_at: string | null
+  runtime_mode: RuntimeMode
   kickoff_batch_id: string
   current_warmup_run_id: string | null
   kickoff_batch: WarmupBatchReadModel
   current_warmup_run: WarmupRunDetail | null
+  baseline_admission: RuntimeBaselineAdmission | null
   verification: {
     ok: boolean
     missing: string[]
@@ -768,6 +782,41 @@ function decodeWarmupRunMetadata(notes: string | null): WarmupRunStoredMetadata 
   }
 }
 
+function buildRuntimeForceOverrideState(
+  suite: KickoffBaseline,
+  now: Date,
+): {
+  active_override: RuntimeBaselineAdmission['active_override']
+  has_override_metadata: boolean
+  is_expired: boolean
+} {
+  const reason = suite.runtime_force_override_reason?.trim() ?? ''
+  const setAt = suite.runtime_force_override_set_at
+  const expiresAt = suite.runtime_force_override_expires_at
+  const hasOverrideMetadata = reason.length > 0 && setAt !== null && expiresAt !== null
+  if (!hasOverrideMetadata || !setAt || !expiresAt) {
+    return {
+      active_override: null,
+      has_override_metadata: false,
+      is_expired: false,
+    }
+  }
+
+  const isExpired = expiresAt.getTime() <= now.getTime()
+  return {
+    active_override: isExpired
+      ? null
+      : {
+          reason,
+          set_by: suite.runtime_force_override_set_by,
+          set_at: setAt.toISOString(),
+          expires_at: expiresAt.toISOString(),
+        },
+    has_override_metadata: true,
+    is_expired: isExpired,
+  }
+}
+
 function createQueuedWarmupRevisionKey(now = Date.now()): string {
   return `warmup:queued:${now}`
 }
@@ -940,6 +989,7 @@ export class WarmupGovernanceService {
       state: 'draft',
       baseline_label: baselineLabel,
       created_by_user_id: input.created_by_user_id ?? null,
+      runtime_mode: 'blocked',
     })
 
     const kickoffBatch = await this.deps.warmupGovernanceRepo.createBatch({
@@ -981,6 +1031,11 @@ export class WarmupGovernanceService {
       await this.deps.warmupGovernanceRepo.updateBaseline(suite.id, {
         kickoff_batch_id: kickoffBatch.id,
         state: 'active',
+        runtime_mode: 'warmup_only',
+        runtime_force_override_reason: null,
+        runtime_force_override_set_by: null,
+        runtime_force_override_set_at: null,
+        runtime_force_override_expires_at: null,
         activated_at: now,
         archived_at: null,
       })
@@ -991,6 +1046,7 @@ export class WarmupGovernanceService {
       })
       await this.deps.warmupGovernanceRepo.updateBaseline(suite.id, {
         state: 'archived',
+        runtime_mode: 'blocked',
         archived_at: new Date(),
       })
       throw error
@@ -1043,6 +1099,10 @@ export class WarmupGovernanceService {
     }
     const kickoffBatchReadModel = await this.buildBatchReadModel(kickoffBatch)
     const currentWarmupRun = suite.warmup_batch_id ? await this.getWarmupRun(suite.warmup_batch_id) : null
+    const baselineAdmission =
+      suite.state === 'active' && suite.archived_at === null
+        ? await this.getRuntimeBaselineAdmission()
+        : null
     return {
       id: suite.id,
       baseline_label: suite.baseline_label,
@@ -1051,15 +1111,66 @@ export class WarmupGovernanceService {
       created_at: suite.created_at.toISOString(),
       updated_at: suite.updated_at.toISOString(),
       activated_at: toIso(suite.activated_at),
+      runtime_mode: suite.runtime_mode,
       kickoff_batch_id: kickoffBatch.id,
       current_warmup_run_id: suite.warmup_batch_id,
       kickoff_batch: kickoffBatchReadModel,
       current_warmup_run: currentWarmupRun,
+      baseline_admission: baselineAdmission?.kickoff_baseline_id === suite.id ? baselineAdmission : null,
       verification: {
         ok: batchReadinessReasons(kickoffBatchReadModel, 'kickoff').length === 0,
         missing: batchReadinessReasons(kickoffBatchReadModel, 'kickoff'),
       },
     }
+  }
+
+  async promoteRuntimeToAutonomous(input: {
+    actor_user_id?: string | null
+    now?: Date
+  } = {}): Promise<RuntimeBaselineAdmission> {
+    const suite = await this.requireActiveKickoffBaseline()
+    const admission = await this.getRuntimeBaselineAdmission()
+    if (!admission.natural_allow_public_growth) {
+      throw new ValidationError('runtime baseline is not ready for autonomous mode', {
+        reasons: admission.natural_reasons,
+      })
+    }
+
+    await this.deps.warmupGovernanceRepo.updateBaseline(suite.id, {
+      runtime_mode: 'autonomous',
+      runtime_force_override_reason: null,
+      runtime_force_override_set_by: null,
+      runtime_force_override_set_at: null,
+      runtime_force_override_expires_at: null,
+    })
+    return this.getRuntimeBaselineAdmission()
+  }
+
+  async forcePromoteRuntimeToAutonomous(input: {
+    reason: string
+    actor_user_id?: string | null
+    expires_at?: Date | null
+    now?: Date
+  }): Promise<RuntimeBaselineAdmission> {
+    const reason = input.reason.trim()
+    if (reason.length === 0) {
+      throw new ValidationError('force runtime promote reason is required')
+    }
+    const suite = await this.requireActiveKickoffBaseline()
+    const now = input.now ?? new Date()
+    const expiresAt = input.expires_at ?? new Date(now.getTime() + DEFAULT_FORCE_RUNTIME_OVERRIDE_TTL_MS)
+    if (expiresAt.getTime() <= now.getTime()) {
+      throw new ValidationError('force runtime promote expiry must be in the future')
+    }
+
+    await this.deps.warmupGovernanceRepo.updateBaseline(suite.id, {
+      runtime_mode: 'autonomous',
+      runtime_force_override_reason: reason,
+      runtime_force_override_set_by: input.actor_user_id ?? 'launch.gray.promote',
+      runtime_force_override_set_at: now,
+      runtime_force_override_expires_at: expiresAt,
+    })
+    return this.getRuntimeBaselineAdmission()
   }
 
   async listWarmupRuns(): Promise<WarmupRunListItem[]> {
@@ -1121,6 +1232,11 @@ export class WarmupGovernanceService {
     }
 
     const suite = await this.requireActiveKickoffBaseline()
+    if (suite.runtime_mode === 'blocked') {
+      throw new ValidationError('kickoff baseline is blocked from warmup runtime', {
+        runtime_mode: suite.runtime_mode,
+      })
+    }
     const kickoffDetail = await this.getKickoffDetail(suite.id)
     if (!kickoffDetail.verification.ok) {
       throw new ValidationError('kickoff baseline is not ready for warmup runtime', {
@@ -1438,13 +1554,18 @@ export class WarmupGovernanceService {
         kickoff_batch_id: null,
         warmup_batch_id: null,
         has_kickoff_baseline: false,
+        runtime_mode: 'blocked',
         kickoff_layer_ready: false,
         warmup_layer_ready: false,
         key_communities_ready: false,
         key_shelves_ready: false,
         media_access_ok: false,
         aftershow_pipeline_ok: false,
+        natural_allow_public_growth: false,
+        growth_admission: 'blocked',
+        active_override: null,
         allow_public_growth: false,
+        natural_reasons: ['no_kickoff_baseline'],
         reasons: ['no_kickoff_baseline'],
       }
     }
@@ -1468,6 +1589,7 @@ export class WarmupGovernanceService {
       now: new Date(),
     })
     const programmingHealth = opsPayload.health
+    const overrideState = buildRuntimeForceOverrideState(suite, new Date())
 
     const kickoffLayerReady = kickoffBatch?.state === 'active' && kickoffBatch.activated_at !== null
     const warmupLayerReady = warmupBatch?.state === 'active' && warmupBatch.activated_at !== null
@@ -1514,19 +1636,59 @@ export class WarmupGovernanceService {
     if (!mediaAccessOk) reasons.push('media_access_not_ready')
     if (!aftershowPipelineOk) reasons.push('aftershow_pipeline_not_ready')
 
+    const naturalReasons = [...new Set(reasons)]
+    const naturalAllowPublicGrowth = naturalReasons.length === 0
+    const runtimeMode: RuntimeMode = (() => {
+      if (suite.runtime_mode === 'blocked') return 'blocked'
+      if (suite.runtime_mode === 'warmup_only') return 'warmup_only'
+      if (overrideState.has_override_metadata) {
+        return overrideState.active_override ? 'autonomous' : 'warmup_only'
+      }
+      return 'autonomous'
+    })()
+    const growthAdmission: RuntimeBaselineAdmission['growth_admission'] =
+      runtimeMode !== 'autonomous'
+        ? 'blocked'
+        : overrideState.active_override
+          ? 'allowed_by_force_override'
+          : naturalAllowPublicGrowth
+            ? 'allowed_naturally'
+            : 'blocked'
+    const effectiveReasons =
+      growthAdmission === 'allowed_by_force_override'
+        ? []
+        : growthAdmission === 'allowed_naturally'
+          ? []
+          : [
+              ...(runtimeMode === 'blocked'
+                ? ['runtime_mode_blocked']
+                : runtimeMode === 'warmup_only'
+                  ? ['runtime_mode_not_autonomous']
+                  : []),
+              ...(overrideState.has_override_metadata && !overrideState.active_override
+                ? ['force_override_expired']
+                : []),
+              ...naturalReasons,
+            ]
+
     return {
       kickoff_baseline_id: suite.id,
       kickoff_batch_id: suite.kickoff_batch_id,
       warmup_batch_id: suite.warmup_batch_id,
       has_kickoff_baseline: true,
+      runtime_mode: runtimeMode,
       kickoff_layer_ready: kickoffLayerReady,
       warmup_layer_ready: warmupLayerReady,
       key_communities_ready: keyCommunitiesReady,
       key_shelves_ready: keyShelvesReady,
       media_access_ok: mediaAccessOk,
       aftershow_pipeline_ok: aftershowPipelineOk,
-      allow_public_growth: reasons.length === 0,
-      reasons: [...new Set(reasons)],
+      natural_allow_public_growth: naturalAllowPublicGrowth,
+      growth_admission: growthAdmission,
+      active_override: overrideState.active_override,
+      allow_public_growth: growthAdmission !== 'blocked',
+      natural_reasons: naturalReasons,
+      reasons: [...new Set(effectiveReasons)],
     }
   }
 

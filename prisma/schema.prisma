@@ -1327,6 +1327,12 @@ enum GovernanceBatchState {
   @@map("WarmStartBatchState")
 }
 
+enum RuntimeMode {
+  blocked
+  warmup_only
+  autonomous
+}
+
 model KickoffBaseline {
   id              String               @id @default(cuid())
   state           KickoffBaselineState @default(draft)
@@ -1336,6 +1342,11 @@ model KickoffBaseline {
   kickoffBatchId  String?              @map("kickoff_batch_id")
   warmupBatchId   String?              @map("warmup_batch_id")
   createdByUserId String?              @map("created_by_user_id")
+  runtimeMode     RuntimeMode          @default(blocked) @map("runtime_mode")
+  runtimeForceOverrideReason    String?   @map("runtime_force_override_reason")
+  runtimeForceOverrideSetBy     String?   @map("runtime_force_override_set_by")
+  runtimeForceOverrideSetAt     DateTime? @map("runtime_force_override_set_at")
+  runtimeForceOverrideExpiresAt DateTime? @map("runtime_force_override_expires_at")
   activatedAt     DateTime?            @map("activated_at")
   archivedAt      DateTime?            @map("archived_at")
   createdAt       DateTime             @default(now()) @map("created_at")

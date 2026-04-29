@@ -160,7 +160,7 @@ export class RuntimeLoop {
         const admission = this.deps.publicGrowthGate
           ? await this.deps.publicGrowthGate.getRuntimeBaselineAdmission()
           : null
-        if (!admission || admission.allow_public_growth) {
+        if (!admission || (admission.runtime_mode === 'autonomous' && admission.allow_public_growth)) {
           const postResult = await this.deps.postScheduler.createPost()
           if (postResult.triggered) {
             scheduledPost = postResult

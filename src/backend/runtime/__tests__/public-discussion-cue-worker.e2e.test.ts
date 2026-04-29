@@ -41,6 +41,30 @@ import type {
   PublicSceneSelectorService,
 } from '../../services/public-scene-selector-service.js'
 
+function makeGrowthGate(allowed: boolean) {
+  return {
+    getRuntimeBaselineAdmission: async () => ({
+      kickoff_baseline_id: 'kickoff-1',
+      kickoff_batch_id: 'kickoff-batch-1',
+      warmup_batch_id: 'warmup-batch-1',
+      has_kickoff_baseline: true,
+      runtime_mode: allowed ? ('autonomous' as const) : ('warmup_only' as const),
+      kickoff_layer_ready: true,
+      warmup_layer_ready: allowed,
+      key_communities_ready: true,
+      key_shelves_ready: true,
+      media_access_ok: true,
+      aftershow_pipeline_ok: true,
+      natural_allow_public_growth: allowed,
+      growth_admission: allowed ? ('allowed_naturally' as const) : ('blocked' as const),
+      active_override: null,
+      allow_public_growth: allowed,
+      natural_reasons: allowed ? [] : ['warmup_layer_not_ready'],
+      reasons: allowed ? [] : ['warmup_layer_not_ready'],
+    }),
+  }
+}
+
 // ===========================================================================
 // In-memory adapters for the audit-chain e2e
 // ===========================================================================
@@ -240,12 +264,7 @@ describe('PublicDiscussionCueWorker — in-process audit-chain e2e (M5)', () => 
     const budget = new InProcessTrivialCommunityBudgetService()
     const admission = new CueAdmissionController({
       communityBudgetService: budget,
-      publicGrowthGate: {
-        getRuntimeBaselineAdmission: async () => ({
-          allow_public_growth: true,
-          reasons: [],
-        }),
-      },
+      publicGrowthGate: makeGrowthGate(true),
       loadSignalService: loadSignalServiceStub,
     })
     const worker = new PublicDiscussionCueWorker(
@@ -412,12 +431,7 @@ describe('PublicDiscussionCueWorker — in-process audit-chain e2e (M5)', () => 
         admissionController: new CueAdmissionController({
           communityBudgetService: budget,
           // Force defer to drive the failure terminal path.
-          publicGrowthGate: {
-            getRuntimeBaselineAdmission: async () => ({
-              allow_public_growth: false,
-              reasons: ['warmup_layer_not_ready'],
-            }),
-          },
+          publicGrowthGate: makeGrowthGate(false),
           loadSignalService: loadSignalServiceStub,
         }),
         directorCueBrief: new DirectorCueBriefServiceImpl(),
@@ -547,12 +561,7 @@ describe('PublicDiscussionCueWorker — in-process audit-chain e2e (M5)', () => 
         cueRepo,
         admissionController: new CueAdmissionController({
           communityBudgetService: budget,
-          publicGrowthGate: {
-            getRuntimeBaselineAdmission: async () => ({
-              allow_public_growth: true,
-              reasons: [],
-            }),
-          },
+          publicGrowthGate: makeGrowthGate(true),
           loadSignalService: loadSignalServiceStub,
         }),
         directorCueBrief: new DirectorCueBriefServiceImpl(),
@@ -698,12 +707,7 @@ describe('PublicDiscussionCueWorker — in-process audit-chain e2e (M5)', () => 
         cueRepo,
         admissionController: new CueAdmissionController({
           communityBudgetService: budget,
-          publicGrowthGate: {
-            getRuntimeBaselineAdmission: async () => ({
-              allow_public_growth: true,
-              reasons: [],
-            }),
-          },
+          publicGrowthGate: makeGrowthGate(true),
           loadSignalService: loadSignalServiceStub,
         }),
         directorCueBrief: new DirectorCueBriefServiceImpl(),
@@ -832,12 +836,7 @@ describe('PublicDiscussionCueWorker — in-process audit-chain e2e (M5)', () => 
         cueRepo,
         admissionController: new CueAdmissionController({
           communityBudgetService: budget,
-          publicGrowthGate: {
-            getRuntimeBaselineAdmission: async () => ({
-              allow_public_growth: true,
-              reasons: [],
-            }),
-          },
+          publicGrowthGate: makeGrowthGate(true),
           loadSignalService: loadSignalServiceStub,
         }),
         directorCueBrief: new DirectorCueBriefServiceImpl(),
@@ -935,12 +934,7 @@ describe('PublicDiscussionCueWorker — in-process audit-chain e2e (M5)', () => 
         cueRepo,
         admissionController: new CueAdmissionController({
           communityBudgetService: budget,
-          publicGrowthGate: {
-            getRuntimeBaselineAdmission: async () => ({
-              allow_public_growth: false,
-              reasons: ['warmup_layer_not_ready'],
-            }),
-          },
+          publicGrowthGate: makeGrowthGate(false),
           loadSignalService: loadSignalServiceStub,
         }),
         directorCueBrief: new DirectorCueBriefServiceImpl(),

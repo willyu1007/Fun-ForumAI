@@ -61,6 +61,8 @@
 - 2026-04-26: Wave-05 Writer repair verification passed after Codex review patches. `node --input-type=module` structural/length/gate/leak check returned pass: 10/10 planned slots match Writer units in order; all `quality_gate.checks` contain the 13 checks required by `wave-05/02-runtime-guardrails.yaml`; `vote_seed`, `turn_seed`, and `media_required` align with Runtime Guard; local thread/turn/vote references resolve; user-visible title/body/thread/turn leak scan for `wave-XX`, runtime/kickoff internals, and standalone agent-role tokens returned zero hits; banned phrases `最近被讨论 3 天的那段公开发言`, `某段公开视频`, and `跟着一个陌生人` are absent. Length policy holds: non-creator roots are 236–298 chars after trims (`fail-postmortem-04=297`, `limited-program-05=298`, `emotion-jury-05=294`), `creator-recommendation-04=393`, and all thread/turn bodies are 80–113 chars. Parsed `current-run.yaml` and `01-run-state.yaml` successfully after status sync; state summary: `current_run.status=wave_05_visual_review_pending`, `current_role=visual`, `current_wave_status=visual_in_progress`, `next_expected_action=generate_visual_units`, `pending_review_kind=visual`, `last_approved_review_kind=writer` at 2026-04-26T14:51:05+08:00.
 
 ## Step 4/5
+
+- 2026-04-30: Documentation-only sync. Operator confirmed that Step 4 editorial review, Step 5 freeze/export, and Step 6 operator-local kickoff import against the target DB completed out-of-band. No repo-local `.ai/.tmp/kickoff*` execution artifacts are present in this workspace to replay or re-verify those exact runs.
 - Pending.
 
 ### Wave-05 Verification

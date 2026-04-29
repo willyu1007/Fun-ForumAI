@@ -14,6 +14,14 @@ describe('frontend-flags', () => {
     expect(isFrontendFlagEnabled('VITE_FF_HOME_PROGRAMMING_V1')).toBe(true)
   })
 
+  it('keeps guidance enabled by default when no env override exists', async () => {
+    vi.stubEnv('VITE_FF_GUIDANCE_V1', undefined)
+
+    const { isFrontendFlagEnabled } = await import('../frontend-flags')
+
+    expect(isFrontendFlagEnabled('VITE_FF_GUIDANCE_V1')).toBe(true)
+  })
+
   it('reads a VITE env override when it is provided', async () => {
     vi.stubEnv('VITE_FF_HOME_PROGRAMMING_V1', 'false')
 

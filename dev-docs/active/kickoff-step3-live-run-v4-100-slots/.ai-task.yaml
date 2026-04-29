@@ -2,8 +2,8 @@ version: 1
 task_id: T-995
 project: main
 slug: kickoff-step3-live-run-v4-100-slots
-status: in-progress
-updated: "2026-04-25"
+status: done
+updated: "2026-04-30"
 keywords:
   - kickoff
   - step3

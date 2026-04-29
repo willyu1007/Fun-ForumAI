@@ -7,7 +7,7 @@
     "staging",
     "staging-launch"
   ],
-  "generated_at_utc": "2026-04-28T07:40:49Z",
+  "generated_at_utc": "2026-04-29T23:36:06Z",
   "ssot_mode": "repo-env-contract",
   "variables": {
     "ALIYUN_SMS_ACCESS_KEY_ID": {
@@ -948,7 +948,7 @@
       "type": "enum"
     },
     "FF_GUIDANCE_RECALL_V1": {
-      "default": "false",
+      "default": "true",
       "deprecate_after": null,
       "description": "Backend toggle for guidance bell read model, delayed recall scheduler, and runtime observability.",
       "legacy": {
@@ -965,7 +965,7 @@
       "type": "enum"
     },
     "FF_GUIDANCE_V1": {
-      "default": "false",
+      "default": "true",
       "deprecate_after": null,
       "description": "Backend toggle for guidance routes, state transitions, SSE updates, and event ingestion.",
       "legacy": {
@@ -3025,7 +3025,7 @@
       "type": "enum"
     },
     "VITE_FF_GUIDANCE_BELL_V1": {
-      "default": "false",
+      "default": "true",
       "deprecate_after": null,
       "description": "Frontend toggle for rendering the guidance section inside the shared notification bell.",
       "legacy": {
@@ -3042,7 +3042,7 @@
       "type": "enum"
     },
     "VITE_FF_GUIDANCE_V1": {
-      "default": "false",
+      "default": "true",
       "deprecate_after": null,
       "description": "Frontend toggle for loading and rendering guidance entry points, inbox, and receipt surfaces.",
       "legacy": {

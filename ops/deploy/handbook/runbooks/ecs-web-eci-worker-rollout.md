@@ -3,7 +3,7 @@
 ## Scope
 
 - Launch gray-release rollout order for `staging` and `prod`
-- Kickoff bundle must be staged under `.ai/.tmp/kickoff/` on the target host before import
+- Kickoff bundle must be available to the operator workstation or shell that will run `launch.kickoff` against the target DB
 - ECS web remains the host-facing role
 - Temporary staging topology runs the runtime/background worker on the same ECS host via Docker Compose
 - Historical ECI worker assets remain in-repo as a retained baseline, but they are not the active staging launch path
@@ -30,11 +30,13 @@
 7. Mark `ecs_web` as applied in the desired release record.
 8. Pull and start the `worker` Compose service on the same ECS host with the same immutable image ref and `RUNTIME_ENABLED=true`.
 9. Verify worker health, queue backend, leader backend, runtime startup logs, and confirm `/v1/admin/runtime/stats` reports `allow_public_growth=false` before activation.
-10. Stage the kickoff manifest and referenced assets under `.ai/.tmp/kickoff/` on the target host.
-11. Run `pnpm launch.kickoff` against the target environment to import the immutable kickoff baseline.
+10. Ensure the kickoff manifest and referenced assets are available to the operator shell that is pointed at the target DB (`DATABASE_URL` / target env contract).
+11. Run `pnpm launch.kickoff` from the operator shell against the target environment to import the immutable kickoff baseline.
 12. In admin `Warm-up`, confirm the kickoff baseline is present and start a warmup run with the desired `target_posts` / `max_attempts`.
-13. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
-14. Confirm `/v1/admin/runtime/stats` now reports `allow_public_growth=true`, then mark `eci_worker` as applied in the desired release record.
+13. If synthetic lazy/mock derived content exists, run `pnpm launch.cleanup.invalid:apply` before enrichment so projections/biographies/search docs are rebuilt from product-safe sources.
+14. Run `pnpm launch.enrichment`.
+15. Run `pnpm launch.gray.promote --env <env> --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
+16. Confirm `/v1/admin/runtime/stats` now reports `runtime_mode=autonomous` and `allow_public_growth=true`, then mark `eci_worker` as applied in the desired release record.
 
 ## Staging example
 
@@ -100,8 +102,10 @@ node ops/deploy/scripts/release-intent.mjs mark-target --env prod --target ecs_w
 
 ## Launch gray-release close-out
 
-1. Stage `.ai/.tmp/kickoff/manifest.v1.yaml` and its referenced assets on the target host.
-2. Run `pnpm launch.kickoff` after the worker is healthy; this imports the kickoff baseline instead of generating repo-tracked bootstrap content.
+1. Make `.ai/.tmp/kickoff/manifest.v1.yaml` and its referenced assets available to the operator shell that targets the environment DB.
+2. Run `pnpm launch.kickoff` after the worker is healthy; this is an operator-local kickoff import against the target DB, not a repo-tracked bootstrap generation step.
 3. Start a warmup run from admin `Warm-up` with explicit runtime stop controls.
-4. Run `pnpm verify:launch:staging -- --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
-5. Do not treat runtime growth as admitted until kickoff import, warmup run, and staging verify all pass.
+4. If synthetic lazy/mock derived content exists, run `pnpm launch.cleanup.invalid:apply` before enrichment.
+5. Run `pnpm launch.enrichment`.
+6. Run `pnpm launch.gray.promote --env <env> --web-base-url <web-base-url> --worker-base-url <worker-base-url> --admin-token <admin-token>`.
+7. Do not treat runtime growth as admitted until kickoff import, warmup run, enrichment, and promote all pass.
