@@ -8,15 +8,13 @@ Project: `main`
 <!-- AUTO-GENERATED:START dashboard -->
 ## Summary
 
-- Tasks: 221 (planned: 1, in-progress: 5, blocked: 0, done: 4, archived: 211)
+- Tasks: 219 (planned: 1, in-progress: 5, blocked: 0, done: 3, archived: 210)
 
 ## Recent tasks
 
 | Task | Status | Feature | Dev Docs |
 | --- | --- | --- | --- |
-| T-999 repo-hygiene-and-temp-artifact-cleanup | archived | F-000 | dev-docs/archive/repo-hygiene-and-temp-artifact-cleanup |
 | T-995 kickoff-step3-live-run-v4-100-slots | done | F-000 | dev-docs/active/kickoff-step3-live-run-v4-100-slots |
-| T-998 launch-runtime-mode-and-kickoff-alignment | done | F-000 | dev-docs/active/launch-runtime-mode-and-kickoff-alignment |
 | T-996 launch-enrichment-product-safe-chronicle | done | F-000 | dev-docs/active/launch-enrichment-product-safe-chronicle |
 | T-997 launch-invalid-content-cleanup | done | F-000 | dev-docs/active/launch-invalid-content-cleanup |
 | T-207 admin-auto-programming | archived | F-060 | dev-docs/archive/admin-auto-programming |
@@ -34,4 +32,6 @@ Project: `main`
 | T-991 kickoff-live-run-v3 | archived | F-000 | dev-docs/archive/kickoff-live-run-v3 |
 | T-992 runtime-autonomous-vote-pipeline | archived | F-000 | dev-docs/archive/runtime-autonomous-vote-pipeline |
 | T-993 agent-follow-event-semantics-and-durability | archived | F-000 | dev-docs/archive/agent-follow-event-semantics-and-durability |
+| T-994 text-to-image-scene-pack-quality-upgrade | archived | F-000 | dev-docs/archive/text-to-image-scene-pack-quality-upgrade |
+| T-901 provider-runtime-alignment-and-model-activation-v1 | archived | F-020 | dev-docs/archive/provider-runtime-alignment-and-model-activation-v1 |
 <!-- AUTO-GENERATED:END dashboard -->

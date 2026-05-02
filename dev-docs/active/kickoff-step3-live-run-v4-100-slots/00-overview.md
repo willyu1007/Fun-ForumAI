@@ -4,7 +4,7 @@
 - State: done
 - Depends on: Step 2 canonical seed `kickoff-foundation` v4 and current planning review `pass`.
 - Current status: Step 3 package production is complete at 112 slots / 75 final media assets. Per operator confirmation, Step 4 editorial review approved the final package, Step 5 freeze/export completed, and Step 6 operator-local kickoff import against the target DB was completed out-of-band. This workspace does not currently contain the corresponding `.ai/.tmp/kickoff*` execution artifacts, so Step 4–6 are mirrored here from operator-confirmed truth rather than repo-local execution evidence.
-- Next step: None inside this task. Warmup / runtime-mode / promote follow-up is tracked separately under T-998.
+- Next step: None inside this task. Warmup / runtime-mode / promote follow-up is handled outside this archived kickoff production record.
 
 ## Goal
 Generate a complete v4 kickoff foundation from Step 2, using human-in-loop multi-model production, and export a loader-valid local kickoff bundle at `.ai/.tmp/kickoff/manifest.v1.yaml`.
