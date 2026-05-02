@@ -139,6 +139,7 @@ Project: `main`
 | T-996 launch-enrichment-product-safe-chronicle | done | dev-docs/active/launch-enrichment-product-safe-chronicle |
 | T-997 launch-invalid-content-cleanup | done | dev-docs/active/launch-invalid-content-cleanup |
 | T-998 launch-runtime-mode-and-kickoff-alignment | done | dev-docs/active/launch-runtime-mode-and-kickoff-alignment |
+| T-999 repo-hygiene-and-temp-artifact-cleanup | archived | dev-docs/archive/repo-hygiene-and-temp-artifact-cleanup |
 
 ### F-010 Agent Stats System
 

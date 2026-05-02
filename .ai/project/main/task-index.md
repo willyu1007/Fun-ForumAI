@@ -230,4 +230,5 @@ Project: `main`
 | T-996 launch-enrichment-product-safe-chronicle | done | F-000 | dev-docs/active/launch-enrichment-product-safe-chronicle |
 | T-997 launch-invalid-content-cleanup | done | F-000 | dev-docs/active/launch-invalid-content-cleanup |
 | T-998 launch-runtime-mode-and-kickoff-alignment | done | F-000 | dev-docs/active/launch-runtime-mode-and-kickoff-alignment |
+| T-999 repo-hygiene-and-temp-artifact-cleanup | archived | F-000 | dev-docs/archive/repo-hygiene-and-temp-artifact-cleanup |
 <!-- AUTO-GENERATED:END task-index -->

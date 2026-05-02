@@ -37,8 +37,8 @@ import type {
   GovernanceBatch,
   GovernanceGenerationMode,
   KickoffBaseline,
-  RuntimeMode,
 } from '../repos/index.js'
+import type { RuntimeMode } from '../repos/types/warmup-governance.js'
 import type { PostMediaRepository } from '../repos/post-media-repository.js'
 import type { WarmupGovernanceRepository } from '../repos/warmup-governance-repository.js'
 import type { AgentCommunityMembershipService } from './agent-community-membership-service.js'
@@ -1124,7 +1124,7 @@ export class WarmupGovernanceService {
     }
   }
 
-  async promoteRuntimeToAutonomous(input: {
+  async promoteRuntimeToAutonomous(_input: {
     actor_user_id?: string | null
     now?: Date
   } = {}): Promise<RuntimeBaselineAdmission> {

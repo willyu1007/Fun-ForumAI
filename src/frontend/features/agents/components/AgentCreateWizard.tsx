@@ -55,6 +55,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
   const [style, setStyle] = useState<StyleSettings>(DEFAULT_STYLE)
   const [creating, setCreating] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const createAgent = useCreateAgent()
@@ -63,6 +64,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
     const file = event.target.files?.[0]
     if (!file) return
     setUploadError(null)
+    setCreateError(null)
     try {
       const dataUrl = await readImageAsDataUrl(file)
       setAvatarUrl(dataUrl)
@@ -77,6 +79,7 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
     setName('')
     setAvatarUrl('')
     setUploadError(null)
+    setCreateError(null)
     setPreviewSrc(null)
     setSelectedPersona(null)
     setInterests([])
@@ -89,9 +92,13 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
   }
   const doCreate = async (finalStyle: StyleSettings) => {
     if (!name.trim()) return
+    setCreateError(null)
     setCreating(true)
     try {
       const avatar = avatarUrl.trim()
+      if (avatar.startsWith('data:')) {
+        throw new Error('当前版本暂不支持直接保存本地上传头像，请改用预设头像或移除后继续。')
+      }
       const res = await createAgent.mutateAsync({
         display_name: name.trim(),
         avatar_url: avatar ? avatar : undefined,
@@ -103,7 +110,8 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
       })
       onCreated(res.data)
       handleClose()
-    } catch {
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : '创建失败，请稍后重试')
       setCreating(false)
     }
   }
@@ -146,7 +154,10 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    setCreateError(null)
+                  }}
                   placeholder="给你的 Agent 起个名字"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
@@ -158,7 +169,11 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                     <button
                       key={preset.src}
                       type="button"
-                      onClick={() => { setAvatarUrl(preset.src); setUploadError(null) }}
+                      onClick={() => {
+                        setAvatarUrl(preset.src)
+                        setUploadError(null)
+                        setCreateError(null)
+                      }}
                       onDoubleClick={() => setPreviewSrc(preset.src)}
                       className={cn(
                         'relative flex items-center justify-center rounded-lg p-0.5 transition-all',
@@ -198,18 +213,36 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
                     上传图片
                   </button>
                   {avatarUrl.startsWith('data:') && (
-                    <img
-                      src={avatarUrl}
-                      alt="自定义头像"
-                      className="h-8 w-8 cursor-pointer rounded-md object-cover ring-2 ring-primary ring-offset-1"
-                      draggable={false}
-                      onDoubleClick={() => setPreviewSrc(avatarUrl)}
-                    />
+                    <>
+                      <img
+                        src={avatarUrl}
+                        alt="自定义头像"
+                        className="h-8 w-8 cursor-pointer rounded-md object-cover ring-2 ring-primary ring-offset-1"
+                        draggable={false}
+                        onDoubleClick={() => setPreviewSrc(avatarUrl)}
+                      />
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+                        onClick={() => {
+                          setAvatarUrl('')
+                          setUploadError(null)
+                          setCreateError(null)
+                        }}
+                      >
+                        移除
+                      </button>
+                    </>
                   )}
                   {uploadError && (
                     <span className="text-xs text-destructive">{uploadError}</span>
                   )}
                 </div>
+                {avatarUrl.startsWith('data:') ? (
+                  <p className="mt-2 text-xs text-amber-600">
+                    当前版本暂不支持直接保存本地上传头像。创建前请改用预设头像，或移除后继续。
+                  </p>
+                ) : null}
               </div>
             </div>
           )}
@@ -303,6 +336,9 @@ export function AgentCreateWizard({ open, onClose, onCreated }: AgentCreateWizar
             </Button>
           </div>
         </div>
+        {createError ? (
+          <p className="pt-2 text-xs text-destructive">{createError}</p>
+        ) : null}
       </DialogContent>
     </Dialog>
 

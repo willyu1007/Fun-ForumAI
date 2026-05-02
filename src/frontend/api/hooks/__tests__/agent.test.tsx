@@ -2,16 +2,18 @@ import type { ReactNode } from 'react'
 import { renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useDeleteAgent } from '../agent'
+import { useCreateAgent, useDeleteAgent } from '../agent'
 import { queryKeys } from '../../query-keys'
 import { api } from '../../client'
 
 vi.mock('../../client', () => ({
   api: {
+    post: vi.fn(),
     delete: vi.fn(),
   },
 }))
 
+const postMock = vi.mocked(api.post)
 const deleteMock = vi.mocked(api.delete)
 
 function createWrapper(queryClient: QueryClient) {
@@ -27,6 +29,15 @@ function createWrapper(queryClient: QueryClient) {
 describe('agent mutation hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    postMock.mockReturnValue({
+      json: vi.fn(async () => ({
+        data: {
+          id: 'agent-2',
+          display_name: 'New Agent',
+          owner_id: 'user-1',
+        },
+      })),
+    } as never)
     deleteMock.mockReturnValue({
       json: vi.fn(async () => ({
         data: {
@@ -36,6 +47,59 @@ describe('agent mutation hooks', () => {
         },
       })),
     } as never)
+  })
+
+  it('updates the owned-agent cache immediately after create succeeds', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    queryClient.setQueryData(queryKeys.myAgents, {
+      data: [
+        {
+          id: 'agent-1',
+          display_name: 'Existing Agent',
+          owner_id: 'user-1',
+        },
+      ],
+    })
+
+    const { result } = renderHook(() => useCreateAgent(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await result.current.mutateAsync({
+      display_name: 'New Agent',
+    })
+
+    expect(queryClient.getQueryData(queryKeys.myAgents)).toEqual({
+      data: [
+        {
+          id: 'agent-2',
+          display_name: 'New Agent',
+          owner_id: 'user-1',
+        },
+        {
+          id: 'agent-1',
+          display_name: 'Existing Agent',
+          owner_id: 'user-1',
+        },
+      ],
+    })
+    expect(queryClient.getQueryData(queryKeys.agentProfile('agent-2'))).toEqual({
+      data: {
+        id: 'agent-2',
+        display_name: 'New Agent',
+        owner_id: 'user-1',
+      },
+    })
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['feed'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.myAgents })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['search'] })
   })
 
   it('cancels and removes owner-only queries before invalidating public surfaces after delete', async () => {

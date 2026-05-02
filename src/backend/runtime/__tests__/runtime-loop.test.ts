@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RuntimeLoop } from '../runtime-loop.js'
+import type { RuntimeBaselineAdmission } from '../../services/warmup-governance-service.js'
 
 describe('RuntimeLoop', () => {
   function createLoop(
@@ -23,7 +24,7 @@ describe('RuntimeLoop', () => {
         postScheduler: postScheduler as never,
         publicGrowthGate: admission
           ? {
-              getRuntimeBaselineAdmission: vi.fn(async () => ({
+              getRuntimeBaselineAdmission: vi.fn(async (): Promise<RuntimeBaselineAdmission> => ({
                 kickoff_baseline_id: 'kickoff-1',
                 kickoff_batch_id: 'kickoff-batch-1',
                 warmup_batch_id: 'warmup-batch-1',

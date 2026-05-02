@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WarmupProbeContextInput } from '../../../shared/warmup-verifier.js'
+import type { RuntimeBaselineAdmission } from '../warmup-governance-service.js'
 
 const ORIGINAL_CWD = process.cwd()
 let originalHighlightsFlag: boolean | undefined
@@ -51,7 +52,7 @@ function createHarness(options: HarnessOptions = {}) {
   const cleanupHidesProbe = options.cleanupHidesProbe ?? quarantineHidesProbe
   const feedLeadCount = options.feedLeadCount ?? 0
 
-  const admission = hasBaseline
+  const admission: RuntimeBaselineAdmission = hasBaseline
     ? {
         kickoff_baseline_id: 'kickoff-1',
         kickoff_batch_id: 'kickoff-batch-1',
@@ -65,9 +66,9 @@ function createHarness(options: HarnessOptions = {}) {
         media_access_ok: true,
         aftershow_pipeline_ok: true,
         natural_allow_public_growth: (options.baselineReasons ?? []).length === 0,
-        growth_admission: ((options.baselineReasons ?? []).length === 0
+        growth_admission: (options.baselineReasons ?? []).length === 0
           ? 'allowed_naturally'
-          : 'blocked') as const,
+          : 'blocked',
         active_override: null,
         allow_public_growth: (options.baselineReasons ?? []).length === 0,
         natural_reasons: options.baselineReasons ?? [],

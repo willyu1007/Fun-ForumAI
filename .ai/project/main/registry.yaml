@@ -2024,3 +2024,10 @@ tasks:
     feature_id: F-000
     dev_docs_path: dev-docs/active/launch-runtime-mode-and-kickoff-alignment
     updated: 2026-04-30
+  - id: T-999
+    slug: repo-hygiene-and-temp-artifact-cleanup
+    status: archived
+    milestone_id: M-000
+    feature_id: F-000
+    dev_docs_path: dev-docs/archive/repo-hygiene-and-temp-artifact-cleanup
+    updated: 2026-05-02

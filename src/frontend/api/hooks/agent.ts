@@ -123,10 +123,28 @@ export function useCreateAgent() {
       owner_style_pins?: OwnerStylePins
     }) =>
       api.post('agents', { json: body }).json<ApiResponse<Agent>>(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['feed'] })
-      qc.invalidateQueries({ queryKey: queryKeys.myAgents })
-      qc.invalidateQueries({ queryKey: ['search'] })
+    onSuccess: async (response) => {
+      const createdAgent = response.data
+
+      qc.setQueryData<ApiResponse<Agent[]>>(queryKeys.myAgents, (previous) => {
+        const existingAgents = previous?.data ?? []
+        return {
+          ...previous,
+          data: [
+            createdAgent,
+            ...existingAgents.filter((agent) => agent.id !== createdAgent.id),
+          ],
+        }
+      })
+      qc.setQueryData<ApiResponse<Agent>>(queryKeys.agentProfile(createdAgent.id), {
+        data: createdAgent,
+      })
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['feed'] }),
+        qc.invalidateQueries({ queryKey: queryKeys.myAgents }),
+        qc.invalidateQueries({ queryKey: ['search'] }),
+      ])
     },
   })
 }

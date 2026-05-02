@@ -1,0 +1,12 @@
+version: 1
+task_id: T-999
+project: main
+slug: repo-hygiene-and-temp-artifact-cleanup
+status: archived
+updated: "2026-05-02"
+keywords:
+  - cleanup
+  - repo-hygiene
+  - kickoff-local
+  - temp-artifacts
+  - staging-env
