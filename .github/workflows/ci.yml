@@ -92,6 +92,7 @@ jobs:
           name: playwright-visual-regression
           path: artifacts/playwright
           if-no-files-found: warn
+          retention-days: 7
 
   governance:
     name: Governance Lint
